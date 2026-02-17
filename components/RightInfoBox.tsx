@@ -16,9 +16,11 @@ interface RightInfoBoxProps {
 const FuzzyText = ({
   children,
   style = {},
+  className = "",
 }: {
   children: React.ReactNode;
   style?: React.CSSProperties;
+  className?: string;
 }) => {
   return (
     <span
@@ -37,9 +39,11 @@ const FuzzyText = ({
           filter: "blur(12px)",
           borderRadius: "15px",
         }}
-        className="bg-[rgba(255,255,255,0.5)] [.dark_&]:bg-[rgba(29,29,29,0.5)]"
+        className="bg-[rgba(255,255,255,0.5)] dark:bg-[rgba(29,29,29,0.5)]"
       />
-      <span style={{ position: "relative", zIndex: 1 }}>{children}</span>
+      <span style={{ position: "relative", zIndex: 1 }} className={className}>
+        {children}
+      </span>
     </span>
   );
 };
@@ -110,10 +114,10 @@ border-t-[rgba(120,180,255,0.27)]
 border-l-[rgba(120,180,255,0.27)]
         shadow-[0_4px_30px_rgba(0,0,0,0.05),inset_0_0_20px_rgba(255,255,255,0.1)]
 
-        [.dark_&]:bg-[linear-gradient(120deg,rgba(255,255,255,0.1)_0%,rgba(255,255,255,0.03)_23%,rgba(255,255,255,0.008)_100%)]
-        [.dark_&]:border-[rgba(255,255,255,0.35)]
-        [.dark_&]:border-t-[rgba(255,255,255,0.23)]
-        [.dark_&]:border-l-[rgba(255,255,255,0.23)]"
+        dark:bg-[linear-gradient(120deg,rgba(255,255,255,0.1)_0%,rgba(255,255,255,0.03)_23%,rgba(255,255,255,0.008)_100%)]
+        dark:border-[rgba(255,255,255,0.35)]
+        dark:border-t-[rgba(255,255,255,0.23)]
+        dark:border-l-[rgba(255,255,255,0.23)]"
     >
       {/* Glare/Reflection Element (Simulates the ::after pseudo-element) */}
       <div
@@ -158,9 +162,8 @@ border-l-[rgba(120,180,255,0.27)]
             fontSize: "24px",
             textAlign: "center",
           }}
-          className="text-black dark:text-white"
         >
-          <FuzzyText>{title}</FuzzyText>
+          <FuzzyText className="text-black dark:text-white">{title}</FuzzyText>
         </h2>
         <h3
           style={{
@@ -169,9 +172,10 @@ border-l-[rgba(120,180,255,0.27)]
             fontSize: "18px",
             textAlign: "center",
           }}
-          className="text-black dark:text-gray-200"
         >
-          <FuzzyText>{company}</FuzzyText>
+          <FuzzyText className="text-black dark:text-gray-200">
+            {company}
+          </FuzzyText>
         </h3>
         <h4
           style={{
@@ -180,9 +184,10 @@ border-l-[rgba(120,180,255,0.27)]
             fontSize: "16px",
             textAlign: "center",
           }}
-          className="text-[#555] dark:text-gray-300"
         >
-          <FuzzyText>{role}</FuzzyText>
+          <FuzzyText className="text-[#555] dark:text-gray-300">
+            {role}
+          </FuzzyText>
         </h4>
         <p
           style={{
@@ -190,9 +195,10 @@ border-l-[rgba(120,180,255,0.27)]
             marginBottom: 0,
             fontSize: "14px",
           }}
-          className="text-inherit dark:text-white"
         >
-          <FuzzyText>{description}</FuzzyText>
+          <FuzzyText className="text-black dark:text-white">
+            {description}
+          </FuzzyText>
         </p>
       </div>
     </motion.div>

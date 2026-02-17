@@ -1,7 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 body {
   /* The color of the "paper" */
   background-color: #ffffff;

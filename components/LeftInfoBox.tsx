@@ -16,9 +16,11 @@ interface LeftInfoBoxProps {
 const FuzzyText = ({
   children,
   style = {},
+  className = "",
 }: {
   children: React.ReactNode;
   style?: React.CSSProperties;
+  className?: string;
 }) => {
   return (
     <span
@@ -37,9 +39,11 @@ const FuzzyText = ({
           filter: "blur(12px)",
           borderRadius: "15px",
         }}
-        className="bg-[rgba(255,255,255,0.5)] [.dark_&]:bg-[rgba(39,39,39,0.55)]"
+        className="bg-[rgba(255,255,255,0.5)] dark:bg-[rgba(29,29,29,0.5)]"
       />
-      <span style={{ position: "relative", zIndex: 1 }}>{children}</span>
+      <span style={{ position: "relative", zIndex: 1 }} className={className}>
+        {children}
+      </span>
     </span>
   );
 };
@@ -99,22 +103,20 @@ export default function LeftInfoBox({
         maxWidth: "650px",
         minHeight: "250px",
         marginLeft: "5%",
-
-        // "Clear Glass" Visual Styles
-        background:
-          "linear-gradient(120deg, rgba(12, 11, 11, 0.1) 0%, rgba(17, 16, 16, 0.05) 20%, rgba(0, 0, 0, 0.01) 100%)",
-        backdropFilter: "blur(1.5px)",
+        backdropFilter: "blur(1px)",
         WebkitBackdropFilter: "blur(1px)",
-
-        // Borders (mimicking light source from top-left)
-        border: "1px solid rgba(12,11,11, 0.01)",
-        borderTop: "1px solid rgba(12, 11, 11, 0.01)",
-        borderLeft: "1px solid rgba(20, 19, 19, 0.01)",
-
-        // Depth and Inner Volume
-        boxShadow:
-          "0 4px 30px rgba(0, 0, 0, 0.05), inset 0 0 20px rgba(255, 255, 255, 0.1)",
       }}
+      className="
+        bg-[linear-gradient(120deg,rgba(80,150,255,0.07)_0%,rgba(80,150,255,0.03)_20%,rgba(80,150,255,0.008)_100%)]
+        border border-[rgba(80,150,255,0.35)]
+border-t-[rgba(120,180,255,0.27)]
+border-l-[rgba(120,180,255,0.27)]
+        shadow-[0_4px_30px_rgba(0,0,0,0.05),inset_0_0_20px_rgba(255,255,255,0.1)]
+
+        dark:bg-[linear-gradient(120deg,rgba(255,255,255,0.1)_0%,rgba(255,255,255,0.03)_23%,rgba(255,255,255,0.008)_100%)]
+        dark:border-[rgba(255,255,255,0.35)]
+        dark:border-t-[rgba(255,255,255,0.23)]
+        dark:border-l-[rgba(255,255,255,0.23)]"
     >
       {/* Glare/Reflection Element (Simulates the ::after pseudo-element) */}
       <div
@@ -161,7 +163,7 @@ export default function LeftInfoBox({
             textAlign: "center",
           }}
         >
-          <FuzzyText>{title}</FuzzyText>
+          <FuzzyText className="text-black dark:text-white">{title}</FuzzyText>
         </h2>
         <h3
           style={{
@@ -171,18 +173,21 @@ export default function LeftInfoBox({
             textAlign: "center",
           }}
         >
-          <FuzzyText>{company}</FuzzyText>
+          <FuzzyText className="text-black dark:text-gray-200">
+            {company}
+          </FuzzyText>
         </h3>
         <h4
           style={{
             marginTop: 0,
             marginBottom: "16px",
             fontSize: "16px",
-            color: "#555",
             textAlign: "center",
           }}
         >
-          <FuzzyText>{role}</FuzzyText>
+          <FuzzyText className="text-[#555] dark:text-gray-300">
+            {role}
+          </FuzzyText>
         </h4>
         <p
           style={{
@@ -191,7 +196,9 @@ export default function LeftInfoBox({
             fontSize: "14px",
           }}
         >
-          <FuzzyText>{description}</FuzzyText>
+          <FuzzyText className="text-black dark:text-white">
+            {description}
+          </FuzzyText>
         </p>
       </div>
     </motion.div>
