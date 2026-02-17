@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  /* The color of the "paper" */
+  background-color: #ffffff;
+
+  /* The grid lines */
+  background-image:
+    linear-gradient(to right, #7fcbfe37 1px, transparent 1px),
+    linear-gradient(to bottom, #7fcbfe37 1px, transparent 1px);
+  /* The size of the grid squares (e.g., 40px by 40px) */
+  background-size: 25px 25px;
+}
+
+/* Dark mode inverted colors */
+.dark body {
+  background-color: #1a1a1a;
+  background-image:
+    linear-gradient(to right, #2a2a2a 1px, transparent 1px),
+    linear-gradient(to bottom, #2a2a2a 1px, transparent 1px);
+}

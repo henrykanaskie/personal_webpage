@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///Users/henrykanaskie/coding_projects/personal_website/app/page.tsx"],"sourcesContent":["\"use client\";\nimport { motion } from \"framer-motion\";\n\nexport default function HomePage() {\n  return (\n    <motion.div\n      initial={{ opacity: 0 }}\n      animate={{ opacity: 1 }}\n      transition={{ duration: 0.5 }}\n      className=\"container mx-auto px-4 py-8 text-center\"\n    >\n      <h1 className=\"text-4xl font-bold mb-4\">Welcome to My Portfolio</h1>\n      <p>\n        Use the navigation above to learn more about me, my experience, and my\n        research.\n      </p>\n    </motion.div>\n  );\n}\n"],"names":[],"mappings":";;;;;AACA;AADA;;;AAGe,SAAS;IACtB,qBACE,oOAAC,8OAAM,CAAC,GAAG;QACT,SAAS;YAAE,SAAS;QAAE;QACtB,SAAS;YAAE,SAAS;QAAE;QACtB,YAAY;YAAE,UAAU;QAAI;QAC5B,WAAU;;0BAEV,oOAAC;gBAAG,WAAU;0BAA0B;;;;;;0BACxC,oOAAC;0BAAE;;;;;;;;;;;;AAMT;KAfwB"}}]
+}
