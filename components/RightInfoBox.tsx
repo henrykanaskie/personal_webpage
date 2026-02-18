@@ -104,35 +104,87 @@ export default function RightInfoBox({
         minHeight: "250px",
         alignSelf: "flex-end",
         marginRight: "5%",
-        backdropFilter: "blur(1px)",
-        WebkitBackdropFilter: "blur(1px)",
+        backdropFilter: "blur(2px) saturate(1.05)",
+        WebkitBackdropFilter: "blur(2px) saturate(1.05)",
       }}
       className="
-        bg-[linear-gradient(120deg,rgba(80,150,255,0.07)_0%,rgba(80,150,255,0.03)_20%,rgba(80,150,255,0.008)_100%)]
-        border border-[rgba(80,150,255,0.35)]
-border-t-[rgba(120,180,255,0.27)]
-border-l-[rgba(120,180,255,0.27)]
-        shadow-[0_4px_30px_rgba(0,0,0,0.05),inset_0_0_20px_rgba(255,255,255,0.1)]
+        bg-transparent
+        border border-[rgba(255,255,255,0.12)]
+        border-t-[rgba(255,255,255,0.2)]
+        border-l-[rgba(255,255,255,0.08)]
+        shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]
 
-        dark:bg-[linear-gradient(120deg,rgba(255,255,255,0.1)_0%,rgba(255,255,255,0.03)_23%,rgba(255,255,255,0.008)_100%)]
-        dark:border-[rgba(255,255,255,0.35)]
-        dark:border-t-[rgba(255,255,255,0.23)]
-        dark:border-l-[rgba(255,255,255,0.23)]"
+        dark:border-[rgba(255,255,255,0.06)]
+        dark:border-t-[rgba(255,255,255,0.1)]
+        dark:border-l-[rgba(255,255,255,0.04)]
+        dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
     >
-      {/* Glare/Reflection Element (Simulates the ::after pseudo-element) */}
+      {/* Specular highlight — top edge caustic */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: "10%",
+          right: "10%",
+          height: "1px",
+          background:
+            "linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)",
+          borderRadius: "inherit",
+          pointerEvents: "none",
+          zIndex: 2,
+        }}
+      />
+
+      {/* Chromatic aberration edge glow */}
+      <div
+        style={{
+          position: "absolute",
+          top: -1,
+          left: -1,
+          right: -1,
+          bottom: -1,
+          borderRadius: "inherit",
+          pointerEvents: "none",
+          zIndex: 0,
+          boxShadow:
+            "inset 2px 0 8px rgba(255,0,80,0.04), inset -2px 0 8px rgba(0,100,255,0.04), inset 0 2px 8px rgba(255,200,0,0.03), inset 0 -2px 8px rgba(0,200,255,0.03)",
+        }}
+      />
+
+      {/* Internal refraction gradient */}
       <div
         style={{
           position: "absolute",
           top: 0,
           left: 0,
           right: 0,
-          height: "100%",
+          bottom: 0,
           borderRadius: "inherit",
           pointerEvents: "none",
-          opacity: 0.5,
           zIndex: 0,
+          background:
+            "radial-gradient(ellipse at 70% 20%, rgba(255,255,255,0.02) 0%, transparent 50%), radial-gradient(ellipse at 30% 80%, rgba(200,220,255,0.05) 0%, transparent 50%)",
         }}
-        className="b-[linear-gradient(120deg, transparent 20%, rgba(255, 255, 255, 0.1) 40%, transparent 50%)][.dark_&]: bg-[linear-gradient(120deg, transparent 20%, rgba(255, 255, 255, 0.1) 40%, transparent 50%)]"
+      />
+
+      {/* Edge distortion — heavier blur at edges */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          borderRadius: "inherit",
+          pointerEvents: "none",
+          zIndex: 0,
+          WebkitMaskImage:
+            "radial-gradient(ellipse at center, transparent 55%, black 100%)",
+          maskImage:
+            "radial-gradient(ellipse at center, transparent 55%, black 100%)",
+          backdropFilter: "blur(3px) saturate(1.1)",
+          WebkitBackdropFilter: "blur(3px) saturate(1.1)",
+        }}
       />
 
       {/* SVG positioned on the opposite side from alignment */}
@@ -143,6 +195,7 @@ border-l-[rgba(120,180,255,0.27)]
           left: "-250px",
           transformOrigin: "top left",
           pointerEvents: "auto",
+          zIndex: 1,
         }}
       >
         <AnimatedSvg
