@@ -10,11 +10,10 @@ import {
 import AnimatedSvg from "./AnimatedSvg";
 import {
   glassStyle,
-  glassClassNames,
-  MitosisBubble,
+  InfoBubble,
   VaporCloud,
-  useMitosisBubble,
-} from "./MitosisBubble";
+  useInfoBubble,
+} from "./InfoBubble";
 
 interface RightInfoBoxProps {
   title: string;
@@ -24,7 +23,18 @@ interface RightInfoBoxProps {
   svgPaths: string[];
   extraInfo?: string;
 }
-
+export const glassClassNames = `
+  bg-transparent
+  border border-[rgba(255,255,255,0.03)]
+  border-t-[rgba(255,255,255,0.001)]
+  border-r-[rgba(255,255,255,0.004)]
+  shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]
+  
+  dark:border-[rgba(255,255,255,0.06)]
+  dark:border-t-[rgba(255,255,255,0.1)]
+  dark:border-r-[rgba(255,255,255,0.04)]
+  dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]
+`;
 // Helper component for fuzzy text background
 const FuzzyText = ({
   children,
@@ -76,7 +86,7 @@ export default function RightInfoBox({
     handlePop,
     handleVaporDone,
     toggleBubble,
-  } = useMitosisBubble();
+  } = useInfoBubble();
 
   // SVG draw progress
   const svgProgress = useMotionValue(0);
@@ -148,7 +158,7 @@ export default function RightInfoBox({
               "linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)",
             borderRadius: "inherit",
             pointerEvents: "none",
-            zIndex: 2,
+            zIndex: 1,
           }}
         />
 
@@ -208,8 +218,8 @@ export default function RightInfoBox({
         <div
           style={{
             position: "absolute",
-            top: "-250px",
-            left: "-250px",
+            top: "35px",
+            left: "25px",
             transformOrigin: "top left",
             pointerEvents: "auto",
             zIndex: 1,
@@ -217,7 +227,7 @@ export default function RightInfoBox({
         >
           <AnimatedSvg
             paths={svgPaths}
-            size={600}
+            size={80}
             strokeWidth={0.8}
             scrollProgress={svgProgress}
           />
@@ -293,7 +303,7 @@ export default function RightInfoBox({
           )}
         </div>
 
-        {/* ── Mitosis Bubble — pops out to the LEFT ── */}
+        {/* ── Info Bubble — pops out to the LEFT ── */}
         <div
           style={{
             position: "absolute",
@@ -301,18 +311,14 @@ export default function RightInfoBox({
             left: 0,
             right: 0,
             bottom: 0,
-            zIndex: 10,
+            zIndex: 9999999,
             pointerEvents: "none",
             overflow: "visible",
           }}
         >
           <AnimatePresence>
             {isBubbleOpen && extraInfo && (
-              <MitosisBubble
-                extraInfo={extraInfo}
-                side="left"
-                onPop={handlePop}
-              />
+              <InfoBubble extraInfo={extraInfo} side="left" onPop={handlePop} />
             )}
           </AnimatePresence>
         </div>

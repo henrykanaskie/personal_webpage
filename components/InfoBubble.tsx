@@ -2,19 +2,21 @@
 
 import { useRef, useCallback, useState } from "react";
 import { motion } from "framer-motion";
+import { FuzzyText } from "./LeftInfoBox";
 
 // ─── Shared glass styling ───
 export const glassStyle: React.CSSProperties = {
-  backdropFilter: "blur(2px) saturate(1.05)",
-  WebkitBackdropFilter: "blur(2px) saturate(1.05)",
+  backdropFilter: "blur(2px) saturate(1.15)",
+  WebkitBackdropFilter: "blur(2px) saturate(1.15)",
 };
 
-export const glassClassNames = `
-  bg-transparent
-  border border-[rgba(255,255,255,0.03)]
-  border-t-[rgba(255,255,255,0.001)]
-  border-r-[rgba(255,255,255,0.004)]
+export const glassBubbleClassNames = `
+  bg-white/[0.35]
+  border border-[rgba(80,150,255,0.18)]
+  shadow-[inset_0_1px_0_rgba(80,150,255,0.12)]
   shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]
+
+  dark:bg-white/[0.02]
   dark:border-[rgba(255,255,255,0.06)]
   dark:border-t-[rgba(255,255,255,0.1)]
   dark:border-r-[rgba(255,255,255,0.04)]
@@ -126,17 +128,22 @@ function generateBorderParticles(
   const borderRadius = 24; // matches the bubble's borderRadius
 
   return Array.from({ length: count }, (_, i) => {
-    const { x: startX, y: startY } = sampleRoundedRectBorder(
+    const { x: bx, y: by } = sampleRoundedRectBorder(
       halfW,
       halfH,
       borderRadius,
     );
 
-    // Mostly radial outward from center, but with significant angular spread
-    const baseAngle = Math.atan2(startY, startX);
-    const scatter = (Math.random() - 0.5) * Math.PI * 1.2; // ±108° spread
-    const angle = baseAngle + scatter;
-    const dist = Math.random() * 25 + 15;
+    // Jitter start position so particles don't all sit exactly on the border
+    const normalAngle = Math.atan2(by, bx);
+    const jitter = (Math.random() - 0.3) * 12; // bias slightly outward
+    const startX = bx + Math.cos(normalAngle) * jitter;
+    const startY = by + Math.sin(normalAngle) * jitter;
+
+    // Wide angular spread for a natural burst
+    const scatter = (Math.random() - 0.5) * Math.PI * 1.6; // ±144° spread
+    const angle = normalAngle + scatter;
+    const dist = Math.random() * 55 + 10; // 10–65px travel
 
     return {
       id: i,
@@ -144,11 +151,11 @@ function generateBorderParticles(
       startY,
       endX: startX + Math.cos(angle) * dist,
       endY: startY + Math.sin(angle) * dist,
-      size: Math.random() * 2 + 0.5,
+      size: Math.random() * 1.5 + 0.5,
       rotation: (Math.random() - 0.5) * 360,
-      delay: Math.random() * 0.15,
-      duration: Math.random() * 0.35 + 0.25,
-      initialOpacity: Math.random() * 0.3 + 0.4,
+      delay: Math.random() * 0.25,
+      duration: Math.random() * 0.45 + 0.2,
+      initialOpacity: Math.random() * 0.4 + 0.3,
     };
   });
 }
@@ -169,7 +176,7 @@ export function VaporCloud({
   onComplete: () => void;
 }) {
   const [particles] = useState(() =>
-    generateBorderParticles(300, bubbleWidth, bubbleHeight),
+    generateBorderParticles(450, bubbleWidth, bubbleHeight),
   );
   const completedRef = useRef(0);
 
@@ -185,7 +192,7 @@ export function VaporCloud({
         left: originX,
         top: originY,
         pointerEvents: "none",
-        zIndex: 9999,
+        zIndex: 1,
       }}
     >
       {particles.map((p) => (
@@ -208,7 +215,7 @@ export function VaporCloud({
           transition={{
             duration: p.duration,
             delay: p.delay,
-            ease: [0.22, 0.1, 0.36, 1],
+            ease: "linear",
           }}
           onAnimationComplete={handleDone}
           style={{
@@ -216,10 +223,8 @@ export function VaporCloud({
             width: p.size,
             height: p.size,
             borderRadius: "50%",
-            background:
-              "radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(200,220,255,0.3) 50%, transparent 100%)",
-            boxShadow: "0 0 4px rgba(255,255,255,0.2)",
           }}
+          className="bg-[radial-gradient(circle,_rgba(40,70,180,0.95)_0%,_rgba(50,80,170,0.4)_50%,_transparent_100%)] dark:bg-[radial-gradient(circle,_rgba(255,255,255,0.8)_0%,_rgba(200,220,255,0.3)_50%,_transparent_100%)]"
         />
       ))}
     </div>
@@ -229,9 +234,9 @@ export function VaporCloud({
 // ─── Mitosis Bubble ───
 // `side`: "right" means bubble pops out to the right (for LeftInfoBox)
 //         "left"  means bubble pops out to the left  (for RightInfoBox)
-const BUBBLE_REST_OFFSET = 260; // px away from parent side edge
+const BUBBLE_REST_OFFSET = 260;
 
-export function MitosisBubble({
+export function InfoBubble({
   extraInfo,
   side,
   onPop,
@@ -243,81 +248,27 @@ export function MitosisBubble({
   const bubbleRef = useRef<HTMLDivElement>(null);
   const [isPopping, setIsPopping] = useState(false);
   const isRight = side === "right";
+  const [isPressed, setIsPressed] = useState(false);
 
   const handleClick = () => {
     if (isPopping) return;
     setIsPopping(true);
-    // Brief expand, then pop
-    setTimeout(() => {
-      if (!bubbleRef.current) return;
-      const rect = bubbleRef.current.getBoundingClientRect();
-      onPop(
-        rect.left + rect.width / 2,
-        rect.top + rect.height / 2,
-        rect.width,
-        rect.height,
-      );
-    }, 80);
+    if (!bubbleRef.current) return;
+    const rect = bubbleRef.current.getBoundingClientRect();
+    onPop(
+      rect.left + rect.width / 2,
+      rect.top + rect.height / 2,
+      rect.width,
+      rect.height,
+    );
   };
 
-  // Horizontal positioning: anchored to the appropriate side edge
   const sideAnchor = isRight ? { right: 0 } : { left: 0 };
-
-  // Bridge connects from parent side edge outward
-  const bridgeStyle: React.CSSProperties = {
-    position: "absolute",
-    top: "50%",
-    transformOrigin: isRight ? "left center" : "right center",
-    pointerEvents: "none",
-    zIndex: 2,
-    ...glassStyle,
-    ...(isRight ? { right: 0 } : { left: 0 }),
-  };
 
   return (
     <>
-      {/* ── Connecting bridge (horizontal neck) ── */}
-      <motion.div
-        style={bridgeStyle}
-        initial={{
-          width: 0,
-          height: 70,
-          y: "-50%",
-          x: isRight ? "100%" : "-0%",
-          opacity: 1,
-          borderRadius: isRight ? "0 35px 35px 0" : "35px 0 0 35px",
-        }}
-        animate={{
-          width: [0, 40, 80, 80, 0],
-          height: [70, 55, 35, 12, 0],
-          opacity: [1, 1, 1, 0.5, 0],
-          borderRadius: isRight
-            ? [
-                "0 35px 35px 0",
-                "0 28px 28px 0",
-                "0 18px 18px 0",
-                "0 6px 6px 0",
-                "0 0 0 0",
-              ]
-            : [
-                "35px 0 0 35px",
-                "28px 0 0 28px",
-                "18px 0 0 18px",
-                "6px 0 0 6px",
-                "0 0 0 0",
-              ],
-        }}
-        transition={{
-          duration: 0.85,
-          times: [0, 0.2, 0.5, 0.8, 1],
-          ease: "easeInOut",
-        }}
-      />
-
-      {/* ── The bubble itself ── */}
       <motion.div
         ref={bubbleRef}
-        onClick={handleClick}
         style={{
           position: "absolute",
           top: "50%",
@@ -328,10 +279,10 @@ export function MitosisBubble({
           cursor: "pointer",
           pointerEvents: "auto",
           transformOrigin: isRight ? "left center" : "right center",
-          zIndex: 3,
-          ...glassStyle,
+          zIndex: 9999999,
+          willChange: "auto",
         }}
-        className={glassClassNames}
+        onClick={handleClick}
         initial={{
           y: "-50%",
           x: isRight ? "30%" : "-30%",
@@ -339,35 +290,78 @@ export function MitosisBubble({
           scaleY: 0.3,
           opacity: 0,
         }}
+        onMouseDown={() => setIsPressed(true)}
+        onMouseUp={handleClick}
+        onMouseLeave={() => setIsPressed(false)}
+        onTouchStart={() => setIsPressed(true)}
+        onTouchEnd={handleClick}
         animate={{
           y: "-50%",
           x: isRight
             ? `calc(100% + ${BUBBLE_REST_OFFSET - 200}px)`
             : `calc(-100% - ${BUBBLE_REST_OFFSET - 200}px)`,
-          scaleX: isPopping ? 1.12 : 1,
-          scaleY: isPopping ? 1.12 : 1,
+          scaleX: isPopping || isPressed ? 1.08 : 1,
+          scaleY: isPopping || isPressed ? 1.08 : 1,
           opacity: 1,
         }}
         transition={
           isPopping
-            ? {
-                scale: { duration: 0.08, ease: "easeOut" },
-              }
+            ? { scale: { duration: 0.08, ease: "easeOut" } }
             : {
                 duration: 0.75,
                 ease: [0.34, 1.56, 0.64, 1],
                 opacity: { duration: 0.3, ease: "easeOut" },
               }
         }
-        exit={{
-          opacity: 0,
-          transition: { duration: 0.001 },
-        }}
+        exit={{ opacity: 0, transition: { duration: 0.001 } }}
         whileHover={
           isPopping ? {} : { scale: 1.03, transition: { duration: 0.2 } }
         }
       >
-        {/* Specular highlight on bubble */}
+        {/* 1. Base Glass Background (Matches the Box's base layer) */}
+        <div
+          className={glassBubbleClassNames}
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "inherit",
+            pointerEvents: "none",
+            zIndex: -1,
+            ...glassStyle, // <--- Blur 2px, exactly like the box
+          }}
+        />
+
+        {/* 2. Internal refraction gradient (Matches the Box) */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "inherit",
+            pointerEvents: "none",
+            zIndex: 0,
+            background:
+              "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.02) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(200,220,255,0.05) 0%, transparent 50%)",
+          }}
+        />
+
+        {/* 3. Edge distortion layer (Matches the Box) */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "inherit",
+            pointerEvents: "none",
+            zIndex: 0,
+            WebkitMaskImage:
+              "radial-gradient(ellipse at center, transparent 55%, black 100%)",
+            maskImage:
+              "radial-gradient(ellipse at center, transparent 55%, black 100%)",
+            backdropFilter: "blur(3px) saturate(1.1)",
+            WebkitBackdropFilter: "blur(3px) saturate(1.1)",
+          }}
+        />
+
+        {/* Specular highlight */}
         <div
           style={{
             position: "absolute",
@@ -375,14 +369,13 @@ export function MitosisBubble({
             left: "15%",
             right: "15%",
             height: "1px",
-            background:
-              "linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)",
             borderRadius: "inherit",
             pointerEvents: "none",
           }}
+          className="bg-[linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)] dark:bg-[linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)]"
         />
 
-        {/* Chromatic aberration on bubble */}
+        {/* Chromatic aberration */}
         <div
           style={{
             position: "absolute",
@@ -394,11 +387,11 @@ export function MitosisBubble({
           }}
         />
 
-        {/* Content — pointerEvents none so clicks pass through to the bubble div */}
+        {/* Content */}
         <div style={{ position: "relative", zIndex: 1, pointerEvents: "none" }}>
-          <p style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
+          <FuzzyText style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
             <span className="text-black dark:text-gray-200">{extraInfo}</span>
-          </p>
+          </FuzzyText>
           <p
             style={{
               margin: 0,
@@ -416,9 +409,8 @@ export function MitosisBubble({
     </>
   );
 }
-
 // ─── Hook for managing bubble state ───
-export function useMitosisBubble() {
+export function useInfoBubble() {
   const [isBubbleOpen, setIsBubbleOpen] = useState(false);
   const [vaporOrigin, setVaporOrigin] = useState<{
     x: number;

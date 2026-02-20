@@ -20,11 +20,6 @@ export default function AnimatedSvg({
   scrollProgress,
   className = "",
 }: AnimatedSvgProps) {
-  // const [debugValue, setDebugValue] = useState(0);
-
-  // useMotionValueEvent(scrollProgress, "change", (latest) => {
-  //   setDebugValue(latest);
-  // });
 
   return (
     <div
@@ -35,25 +30,8 @@ export default function AnimatedSvg({
         position: "relative",
       }}
     >
-      {/* DEBUG OVERLAY */}
-      {/* <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          background: "rgba(0,0,0,0.7)",
-          color: "white",
-          fontSize: "12px",
-          padding: "4px",
-          zIndex: 50,
-          pointerEvents: "none",
-        }}
-      >
-        Progress: {debugValue.toFixed(6)}
-      </div> */}
-
       <svg
-        viewBox="0 0 1024 572"
+        viewBox="500 300 136 112"
         style={{ width: "100%", height: "100%", overflow: "visible" }}
       >
         <g

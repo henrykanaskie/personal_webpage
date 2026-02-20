@@ -10,11 +10,10 @@ import {
 import AnimatedSvg from "./AnimatedSvg";
 import {
   glassStyle,
-  glassClassNames,
-  MitosisBubble,
+  InfoBubble,
   VaporCloud,
-  useMitosisBubble,
-} from "./MitosisBubble";
+  useInfoBubble,
+} from "./InfoBubble";
 
 interface LeftInfoBoxProps {
   title: string;
@@ -24,9 +23,20 @@ interface LeftInfoBoxProps {
   svgPaths: string[];
   extraInfo?: string;
 }
-
+export const glassClassNames = `
+  bg-transparent
+  border border-[rgba(255,255,255,0.03)]
+  border-t-[rgba(255,255,255,0.001)]
+  border-r-[rgba(255,255,255,0.004)]
+  shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]
+  
+  dark:border-[rgba(255,255,255,0.06)]
+  dark:border-t-[rgba(255,255,255,0.1)]
+  dark:border-r-[rgba(255,255,255,0.04)]
+  dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]
+`;
 // Helper component for fuzzy text background
-const FuzzyText = ({
+export const FuzzyText = ({
   children,
   style = {},
   className = "",
@@ -76,7 +86,7 @@ export default function LeftInfoBox({
     handlePop,
     handleVaporDone,
     toggleBubble,
-  } = useMitosisBubble();
+  } = useInfoBubble();
 
   // SVG draw progress
   const svgProgress = useMotionValue(0);
@@ -147,7 +157,7 @@ export default function LeftInfoBox({
               "linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)",
             borderRadius: "inherit",
             pointerEvents: "none",
-            zIndex: 2,
+            zIndex: 1,
           }}
         />
 
@@ -207,8 +217,8 @@ export default function LeftInfoBox({
         <div
           style={{
             position: "absolute",
-            top: "-250px",
-            right: "-250px",
+            top: "35px",
+            right: "-25px",
             transformOrigin: "top right",
             pointerEvents: "auto",
             zIndex: 1,
@@ -216,7 +226,7 @@ export default function LeftInfoBox({
         >
           <AnimatedSvg
             paths={svgPaths}
-            size={600}
+            size={80}
             strokeWidth={0.8}
             scrollProgress={svgProgress}
           />
@@ -280,8 +290,9 @@ export default function LeftInfoBox({
                 className="
                   group relative px-4 py-2 rounded-full text-sm font-medium
                   text-black dark:text-white
-                  bg-white/10 hover:bg-white/20 dark:bg-white/5 dark:hover:bg-white/10
-                  border border-white/10 transition-all duration-300
+                  bg-blue-500/3 hover:bg-blue-500/5 dark:bg-white/5 dark:hover:bg-white/10
+                  border border-[rgba(100,130,200,0.2)]
+                  dark:border-[rgba(255,255,255,0.05)] transition-all duration-300
                 "
               >
                 <span className="relative z-10">
@@ -292,7 +303,7 @@ export default function LeftInfoBox({
           )}
         </div>
 
-        {/* ── Mitosis Bubble — pops out to the RIGHT ── */}
+        {/* ── Info Bubble — pops out to the RIGHT ── */}
         <div
           style={{
             position: "absolute",
@@ -300,14 +311,14 @@ export default function LeftInfoBox({
             left: 0,
             right: 0,
             bottom: 0,
-            zIndex: 10,
+            zIndex: 9999999,
             pointerEvents: "none",
             overflow: "visible",
           }}
         >
           <AnimatePresence>
             {isBubbleOpen && extraInfo && (
-              <MitosisBubble
+              <InfoBubble
                 extraInfo={extraInfo}
                 side="right"
                 onPop={handlePop}
