@@ -188,7 +188,11 @@ export function VaporCloud({
 }) {
   const [particles] = useState(() => {
     const mobile = typeof window !== "undefined" && window.innerWidth < 768;
-    return generateBorderParticles(mobile ? 120 : 450, bubbleWidth, bubbleHeight);
+    return generateBorderParticles(
+      mobile ? 120 : 450,
+      bubbleWidth,
+      bubbleHeight,
+    );
   });
   const completedRef = useRef(0);
 
@@ -374,8 +378,9 @@ export function InfoBubble({
             borderRadius: "inherit",
             pointerEvents: "none",
             zIndex: 0,
-            background:
-              "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.02) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(200,220,255,0.05) 0%, transparent 50%)",
+            background: isRight
+              ? "radial-gradient(ellipse at 70% 20%, rgba(255,255,255,0.02) 30%, transparent 50%), radial-gradient(ellipse at 30% 80%, rgba(200,220,255,0.05) 0%, transparent 50%)"
+              : "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.02) 30%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(200,220,255,0.05) 0%, transparent 50%)",
           }}
         />
 
