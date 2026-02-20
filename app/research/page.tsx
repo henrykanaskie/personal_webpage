@@ -3,10 +3,12 @@
 import { rocketPaths } from "@/svgs/rocket/rocketPaths";
 import LeftInfoBox from "@/components/LeftInfoBox";
 import RightInfoBox from "@/components/RightInfoBox";
+import GlassTitle from "@/components/GlassTitle";
 
 export default function ResearchPage() {
   return (
-    <div className="flex flex-col gap-12 md:gap-24 pt-[10vh] pb-[10vh]">
+    <div className="flex flex-col gap-12 md:gap-10 pt-[1vh] pb-[10vh]">
+      <GlassTitle text="Research" />
       <LeftInfoBox
         title="Senior Software Engineer"
         company="Tech Corp"

@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { motion, MotionValue, useMotionValueEvent } from "framer-motion";
+import { motion, MotionValue } from "framer-motion";
 
 interface AnimatedSvgProps {
   paths: string[];
@@ -20,7 +19,6 @@ export default function AnimatedSvg({
   scrollProgress,
   className = "",
 }: AnimatedSvgProps) {
-
   return (
     <div
       className={className}

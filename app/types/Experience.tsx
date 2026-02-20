@@ -1,5 +1,4 @@
-
-interface Experience {
+export interface Experience {
   id: string;
   title: string;
   company: string; // added to distinguish where the experience happened

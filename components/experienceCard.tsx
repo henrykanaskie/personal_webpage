@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { motion } from "framer-motion";
-import { Experience } from "@/types/Experience"; // Path to your interface
+import { Experience } from "@/app/types/Experience";
 
 interface Props {
   experience: Experience;

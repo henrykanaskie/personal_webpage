@@ -4,6 +4,7 @@ import { useRef, useCallback, useState } from "react";
 import {
   motion,
   useMotionValue,
+  useInView,
   animate,
   AnimatePresence,
 } from "framer-motion";
@@ -83,8 +84,8 @@ export default function RightInfoBox({
   extraInfo,
 }: RightInfoBoxProps) {
   const boxRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(boxRef, { once: false, amount: 0.1 });
   const isMobile = useIsMobile();
-  const [hasAnimated, setHasAnimated] = useState(false);
   const {
     isBubbleOpen,
     vaporOrigin,
@@ -126,16 +127,10 @@ export default function RightInfoBox({
 
       <motion.div
         ref={boxRef}
-        initial={hasAnimated ? false : { opacity: 0, x: 20, y: 10 }}
-        whileInView={{ opacity: 1, x: 0, y: 0 }}
-        onAnimationComplete={() => setHasAnimated(true)}
+        initial={{ opacity: 0, x: 20, y: 10 }}
+        animate={isInView ? { opacity: 1, x: 0, y: 0 } : { opacity: 0, x: 20, y: 10 }}
         onViewportEnter={onViewportEnter}
         onViewportLeave={onViewportLeave}
-        viewport={{
-          once: false,
-          amount: 0.15,
-          margin: "-100px 0px -100px 0px",
-        }}
         transition={{
           duration: 1.2,
           ease: "easeInOut",

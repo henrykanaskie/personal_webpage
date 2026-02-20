@@ -5,14 +5,14 @@ import { motion } from "framer-motion";
 import { FuzzyText } from "./LeftInfoBox";
 
 export function useIsMobile(breakpoint = 768) {
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < breakpoint);
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, [breakpoint]);
-  return isMobile;
+  return isMobile ?? false;
 }
 
 // ─── Shared glass styling ───

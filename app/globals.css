@@ -19,3 +19,8 @@ body {
     linear-gradient(to right, #2a2a2a 1px, transparent 1px),
     linear-gradient(to bottom, #2a2a2a 1px, transparent 1px);
 }
+
+@keyframes glassShineIntro {
+  0% { background-position: 200% center; }
+  100% { background-position: -50% center; }
+}
