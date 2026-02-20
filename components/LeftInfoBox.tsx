@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useState } from "react";
 import {
   motion,
   useMotionValue,
@@ -13,6 +13,7 @@ import {
   InfoBubble,
   VaporCloud,
   useInfoBubble,
+  useIsMobile,
 } from "./InfoBubble";
 
 interface LeftInfoBoxProps {
@@ -61,6 +62,8 @@ export const FuzzyText = ({
           zIndex: -1,
           filter: "blur(12px)",
           borderRadius: "15px",
+          willChange: "filter",
+          transform: "translateZ(0)",
         }}
         className="bg-[rgba(255,255,255,0.5)] dark:bg-[rgba(29,29,29,0.5)]"
       />
@@ -80,6 +83,8 @@ export default function LeftInfoBox({
   extraInfo,
 }: LeftInfoBoxProps) {
   const boxRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
+  const [hasAnimated, setHasAnimated] = useState(false);
   const {
     isBubbleOpen,
     vaporOrigin,
@@ -121,8 +126,9 @@ export default function LeftInfoBox({
 
       <motion.div
         ref={boxRef}
-        initial={{ opacity: 0, x: -20, y: 10 }}
+        initial={hasAnimated ? false : { opacity: 0, x: -20, y: 10 }}
         whileInView={{ opacity: 1, x: 0, y: 0 }}
+        onAnimationComplete={() => setHasAnimated(true)}
         onViewportEnter={onViewportEnter}
         onViewportLeave={onViewportLeave}
         viewport={{
@@ -137,13 +143,9 @@ export default function LeftInfoBox({
         style={{
           position: "relative",
           borderRadius: "24px",
-          padding: "32px",
-          maxWidth: "650px",
-          minHeight: "250px",
-          marginLeft: "5%",
           ...glassStyle,
         }}
-        className={glassClassNames}
+        className={`${glassClassNames} p-5 md:p-8 max-w-[650px] min-h-[200px] md:min-h-[250px] mx-auto md:mx-0 md:ml-[5%] w-[calc(100%-2rem)] md:w-auto`}
       >
         {/* Specular highlight — top edge caustic */}
         <div
@@ -213,8 +215,9 @@ export default function LeftInfoBox({
           }}
         />
 
-        {/* SVG positioned in the top right corner */}
+        {/* SVG positioned in the top right corner — hidden on mobile */}
         <div
+          className="hidden md:block"
           style={{
             position: "absolute",
             top: "35px",
@@ -327,6 +330,15 @@ export default function LeftInfoBox({
           </AnimatePresence>
         </div>
       </motion.div>
+
+      {/* Mobile spacer — pushes content below when bubble is open */}
+      {isMobile && (
+        <motion.div
+          animate={{ height: isBubbleOpen ? 80 : 0 }}
+          transition={{ duration: 0.75, ease: [0.34, 1.56, 0.64, 1] }}
+          style={{ height: 0, overflow: "hidden" }}
+        />
+      )}
     </>
   );
 }

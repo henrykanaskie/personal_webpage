@@ -1,8 +1,19 @@
 "use client";
 
-import { useRef, useCallback, useState } from "react";
+import { useRef, useCallback, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FuzzyText } from "./LeftInfoBox";
+
+export function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < breakpoint);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, [breakpoint]);
+  return isMobile;
+}
 
 // ─── Shared glass styling ───
 export const glassStyle: React.CSSProperties = {
@@ -175,9 +186,10 @@ export function VaporCloud({
   bubbleHeight: number;
   onComplete: () => void;
 }) {
-  const [particles] = useState(() =>
-    generateBorderParticles(450, bubbleWidth, bubbleHeight),
-  );
+  const [particles] = useState(() => {
+    const mobile = typeof window !== "undefined" && window.innerWidth < 768;
+    return generateBorderParticles(mobile ? 120 : 450, bubbleWidth, bubbleHeight);
+  });
   const completedRef = useRef(0);
 
   const handleDone = useCallback(() => {
@@ -249,6 +261,7 @@ export function InfoBubble({
   const [isPopping, setIsPopping] = useState(false);
   const isRight = side === "right";
   const [isPressed, setIsPressed] = useState(false);
+  const isMobile = useIsMobile();
 
   const handleClick = () => {
     if (isPopping) return;
@@ -263,7 +276,11 @@ export function InfoBubble({
     );
   };
 
-  const sideAnchor = isRight ? { right: 0 } : { left: 0 };
+  const sideAnchor = isMobile
+    ? { left: "50%" }
+    : isRight
+      ? { right: 0 }
+      : { left: 0 };
 
   return (
     <>
@@ -271,39 +288,57 @@ export function InfoBubble({
         ref={bubbleRef}
         style={{
           position: "absolute",
-          top: "50%",
+          top: isMobile ? "100%" : "50%",
           ...sideAnchor,
-          width: 220,
+          width: isMobile ? "min(220px, 85vw)" : 220,
           padding: "20px 24px",
           borderRadius: "24px",
           cursor: "pointer",
           pointerEvents: "auto",
-          transformOrigin: isRight ? "left center" : "right center",
+          transformOrigin: isMobile
+            ? "center top"
+            : isRight
+              ? "left center"
+              : "right center",
           zIndex: 9999999,
           willChange: "auto",
         }}
         onClick={handleClick}
-        initial={{
-          y: "-50%",
-          x: isRight ? "30%" : "-30%",
-          scaleX: 0.15,
-          scaleY: 0.3,
-          opacity: 0,
-        }}
+        initial={
+          isMobile
+            ? { x: "-50%", y: "0%", scaleX: 0.5, scaleY: 0.15, opacity: 0 }
+            : {
+                y: "-50%",
+                x: isRight ? "30%" : "-30%",
+                scaleX: 0.15,
+                scaleY: 0.3,
+                opacity: 0,
+              }
+        }
         onMouseDown={() => setIsPressed(true)}
         onMouseUp={handleClick}
         onMouseLeave={() => setIsPressed(false)}
         onTouchStart={() => setIsPressed(true)}
         onTouchEnd={handleClick}
-        animate={{
-          y: "-50%",
-          x: isRight
-            ? `calc(100% + ${BUBBLE_REST_OFFSET - 200}px)`
-            : `calc(-100% - ${BUBBLE_REST_OFFSET - 200}px)`,
-          scaleX: isPopping || isPressed ? 1.08 : 1,
-          scaleY: isPopping || isPressed ? 1.08 : 1,
-          opacity: 1,
-        }}
+        animate={
+          isMobile
+            ? {
+                x: "-50%",
+                y: "16px",
+                scaleX: isPopping || isPressed ? 1.08 : 1,
+                scaleY: isPopping || isPressed ? 1.08 : 1,
+                opacity: 1,
+              }
+            : {
+                y: "-50%",
+                x: isRight
+                  ? `calc(100% + ${BUBBLE_REST_OFFSET - 200}px)`
+                  : `calc(-100% - ${BUBBLE_REST_OFFSET - 200}px)`,
+                scaleX: isPopping || isPressed ? 1.08 : 1,
+                scaleY: isPopping || isPressed ? 1.08 : 1,
+                opacity: 1,
+              }
+        }
         transition={
           isPopping
             ? { scale: { duration: 0.08, ease: "easeOut" } }
@@ -402,7 +437,7 @@ export function InfoBubble({
             }}
             className="text-black dark:text-white"
           >
-            click to dismiss
+            {isMobile ? "tap to dismiss" : "click to dismiss"}
           </p>
         </div>
       </motion.div>

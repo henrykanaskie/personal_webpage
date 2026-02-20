@@ -7,13 +7,7 @@ import RightInfoBox from "@/components/RightInfoBox";
 export default function ResearchPage() {
   return (
     <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "100px",
-        paddingTop: "10vh",
-        paddingBottom: "10vh",
-      }}
+      className="flex flex-col gap-12 md:gap-24 pt-[10vh] pb-[10vh]"
     >
       <LeftInfoBox
         title="Senior Software Engineer"
