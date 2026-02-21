@@ -7,7 +7,7 @@ import GlassTitle from "@/components/GlassTitle";
 
 export default function ResearchPage() {
   return (
-    <div className="flex flex-col gap-12 md:gap-10 pt-[1vh] pb-[10vh]">
+    <div className="flex flex-col gap-12 md:gap-25 pb-[10vh]">
       <GlassTitle text="Research" />
       <LeftInfoBox
         title="Senior Software Engineer"

@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
-import ThemeToggle from "@/components/ThemeToggle";
 
 const inter = Inter({ subsets: ["latin"] });
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-elevated",
+});
 
 export const metadata: Metadata = {
   title: "Personal Portfolio",
@@ -31,10 +34,11 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={inter.className}>
-        <Header />
-        <ThemeToggle />
-        <main>{children}</main>
+      <body className={`${inter.className} ${spaceGrotesk.variable}`}>
+        <div className="w-full overflow-x-clip">
+          <Header />
+          <main className="px-3">{children}</main>
+        </div>
       </body>
     </html>
   );

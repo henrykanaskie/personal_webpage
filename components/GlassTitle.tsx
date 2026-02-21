@@ -13,13 +13,12 @@ export default function GlassTitle({ text = "experience" }: { text?: string }) {
       initial={{ opacity: 0, y: 20 }}
       animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
       transition={{ duration: 1.2, ease: "easeInOut" }}
-      className="flex justify-center py-8 md:py-14 select-none"
+      className="flex justify-center pt-12 md:pt-18 select-none"
     >
       <span
-        className="relative font-extrabold tracking-tight"
+        className="relative font-extrabold tracking-tight leading-none"
         style={{
-          fontSize: "clamp(3.5rem, 9vw, 8rem)",
-          lineHeight: 1.15,
+          fontSize: "clamp(4rem, 11vw, 10rem)",
           letterSpacing: "-0.02em",
         }}
       >

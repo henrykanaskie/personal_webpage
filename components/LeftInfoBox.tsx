@@ -237,46 +237,124 @@ export default function LeftInfoBox({
               marginTop: 0,
               marginBottom: "8px",
               fontSize: "24px",
+              fontWeight: 700,
               textAlign: "center",
             }}
           >
-            <FuzzyText className="text-black dark:text-white">
-              {title}
+            <FuzzyText>
+              <span
+                className="bg-clip-text text-transparent dark:hidden"
+                style={{
+                  WebkitBackgroundClip: "text",
+                  backgroundImage: `linear-gradient(135deg, rgba(10,10,20,0.55) 0%, rgba(25,15,35,0.5) 15%, rgba(10,20,30,0.53) 30%, rgba(30,15,25,0.48) 45%, rgba(10,20,28,0.52) 60%, rgba(22,12,32,0.5) 75%, rgba(12,18,30,0.53) 90%, rgba(28,15,28,0.5) 100%)`,
+                }}
+              >
+                {title}
+              </span>
+              <span
+                className="bg-clip-text text-transparent hidden dark:inline"
+                style={{
+                  WebkitBackgroundClip: "text",
+                  backgroundImage: `linear-gradient(135deg, rgba(220,225,255,0.55) 0%, rgba(240,220,250,0.48) 15%, rgba(220,235,255,0.52) 30%, rgba(245,225,240,0.46) 45%, rgba(215,230,250,0.5) 60%, rgba(235,220,248,0.48) 75%, rgba(220,228,252,0.52) 90%, rgba(240,222,245,0.48) 100%)`,
+                }}
+              >
+                {title}
+              </span>
             </FuzzyText>
           </h2>
           <h3
+            className="font-[family-name:var(--font-elevated)]"
             style={{
               marginTop: 0,
               marginBottom: "4px",
               fontSize: "18px",
+              fontWeight: 700,
               textAlign: "center",
+              letterSpacing: "-0.01em",
             }}
           >
-            <FuzzyText className="text-black dark:text-gray-200">
-              {company}
+            <FuzzyText>
+              <span
+                className="bg-clip-text text-transparent dark:hidden"
+                style={{
+                  WebkitBackgroundClip: "text",
+                  backgroundImage: `linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(25,15,35,0.92) 15%, rgba(10,20,30,0.94) 30%, rgba(30,15,25,0.9) 45%, rgba(10,20,28,0.93) 60%, rgba(22,12,32,0.91) 75%, rgba(12,18,30,0.94) 90%, rgba(28,15,28,0.91) 100%)`,
+                }}
+              >
+                {company}
+              </span>
+              <span
+                className="bg-clip-text text-transparent hidden dark:inline"
+                style={{
+                  WebkitBackgroundClip: "text",
+                  backgroundImage: `linear-gradient(135deg, rgba(248,250,255,0.96) 0%, rgba(255,248,255,0.93) 15%, rgba(248,252,255,0.95) 30%, rgba(255,250,255,0.92) 45%, rgba(245,250,255,0.94) 60%, rgba(255,248,255,0.93) 75%, rgba(248,250,255,0.95) 90%, rgba(255,248,255,0.93) 100%)`,
+                }}
+              >
+                {company}
+              </span>
             </FuzzyText>
           </h3>
           <h4
+            className="font-[family-name:var(--font-elevated)]"
             style={{
               marginTop: 0,
               marginBottom: "16px",
               fontSize: "16px",
+              fontWeight: 700,
               textAlign: "center",
+              letterSpacing: "-0.01em",
             }}
           >
-            <FuzzyText className="text-[#555] dark:text-gray-300">
-              {role}
+            <FuzzyText>
+              <span
+                className="bg-clip-text text-transparent dark:hidden"
+                style={{
+                  WebkitBackgroundClip: "text",
+                  backgroundImage: `linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(25,15,35,0.92) 15%, rgba(10,20,30,0.94) 30%, rgba(30,15,25,0.9) 45%, rgba(10,20,28,0.93) 60%, rgba(22,12,32,0.91) 75%, rgba(12,18,30,0.94) 90%, rgba(28,15,28,0.91) 100%)`,
+                }}
+              >
+                {role}
+              </span>
+              <span
+                className="bg-clip-text text-transparent hidden dark:inline"
+                style={{
+                  WebkitBackgroundClip: "text",
+                  backgroundImage: `linear-gradient(135deg, rgba(248,250,255,0.96) 0%, rgba(255,248,255,0.93) 15%, rgba(248,252,255,0.95) 30%, rgba(255,250,255,0.92) 45%, rgba(245,250,255,0.94) 60%, rgba(255,248,255,0.93) 75%, rgba(248,250,255,0.95) 90%, rgba(255,248,255,0.93) 100%)`,
+                }}
+              >
+                {role}
+              </span>
             </FuzzyText>
           </h4>
           <p
+            className="font-[family-name:var(--font-elevated)]"
             style={{
               marginTop: 0,
               marginBottom: 0,
               fontSize: "14px",
+              fontWeight: 700,
+              letterSpacing: "-0.005em",
             }}
           >
-            <FuzzyText className="text-black dark:text-white">
-              {description}
+            <FuzzyText>
+              <span
+                className="bg-clip-text text-transparent dark:hidden"
+                style={{
+                  WebkitBackgroundClip: "text",
+                  backgroundImage: `linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(25,15,35,0.92) 15%, rgba(10,20,30,0.94) 30%, rgba(30,15,25,0.9) 45%, rgba(10,20,28,0.93) 60%, rgba(22,12,32,0.91) 75%, rgba(12,18,30,0.94) 90%, rgba(28,15,28,0.91) 100%)`,
+                }}
+              >
+                {description}
+              </span>
+              <span
+                className="bg-clip-text text-transparent hidden dark:inline"
+                style={{
+                  WebkitBackgroundClip: "text",
+                  backgroundImage: `linear-gradient(135deg, rgba(248,250,255,0.96) 0%, rgba(255,248,255,0.93) 15%, rgba(248,252,255,0.95) 30%, rgba(255,250,255,0.92) 45%, rgba(245,250,255,0.94) 60%, rgba(255,248,255,0.93) 75%, rgba(248,250,255,0.95) 90%, rgba(255,248,255,0.93) 100%)`,
+                }}
+              >
+                {description}
+              </span>
             </FuzzyText>
           </p>
 

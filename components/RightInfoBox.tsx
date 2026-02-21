@@ -237,11 +237,29 @@ export default function RightInfoBox({
               marginTop: 0,
               marginBottom: "8px",
               fontSize: "24px",
+              fontWeight: 700,
               textAlign: "center",
             }}
           >
-            <FuzzyText className="text-black dark:text-white">
-              {title}
+            <FuzzyText>
+              <span
+                className="bg-clip-text text-transparent dark:hidden"
+                style={{
+                  WebkitBackgroundClip: "text",
+                  backgroundImage: `linear-gradient(135deg, rgba(10,10,20,0.55) 0%, rgba(25,15,35,0.5) 15%, rgba(10,20,30,0.53) 30%, rgba(30,15,25,0.48) 45%, rgba(10,20,28,0.52) 60%, rgba(22,12,32,0.5) 75%, rgba(12,18,30,0.53) 90%, rgba(28,15,28,0.5) 100%)`,
+                }}
+              >
+                {title}
+              </span>
+              <span
+                className="bg-clip-text text-transparent hidden dark:inline"
+                style={{
+                  WebkitBackgroundClip: "text",
+                  backgroundImage: `linear-gradient(135deg, rgba(220,225,255,0.55) 0%, rgba(240,220,250,0.48) 15%, rgba(220,235,255,0.52) 30%, rgba(245,225,240,0.46) 45%, rgba(215,230,250,0.5) 60%, rgba(235,220,248,0.48) 75%, rgba(220,228,252,0.52) 90%, rgba(240,222,245,0.48) 100%)`,
+                }}
+              >
+                {title}
+              </span>
             </FuzzyText>
           </h2>
           <h3
