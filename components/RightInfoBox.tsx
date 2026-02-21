@@ -88,10 +88,12 @@ export default function RightInfoBox({
   const isMobile = useIsMobile();
   const {
     isBubbleOpen,
+    popRequested,
     vaporOrigin,
     handlePop,
     handleVaporDone,
-    toggleBubble,
+    openBubble,
+    requestPop,
   } = useInfoBubble();
 
   // SVG draw progress
@@ -144,6 +146,22 @@ export default function RightInfoBox({
       >
         {/* Specular highlight — top edge caustic */}
         <div
+          className="dark:hidden"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: "10%",
+            right: "10%",
+            height: "1px",
+            background:
+              "linear-gradient(90deg, transparent, rgba(0,0,0,0.08) 30%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.08) 70%, transparent)",
+            borderRadius: "inherit",
+            pointerEvents: "none",
+            zIndex: 1,
+          }}
+        />
+        <div
+          className="hidden dark:block"
           style={{
             position: "absolute",
             top: 0,
@@ -152,6 +170,38 @@ export default function RightInfoBox({
             height: "1px",
             background:
               "linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)",
+            borderRadius: "inherit",
+            pointerEvents: "none",
+            zIndex: 1,
+          }}
+        />
+
+        {/* Bottom specular highlight */}
+        <div
+          className="dark:hidden"
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: "10%",
+            right: "10%",
+            height: "1px",
+            background:
+              "linear-gradient(90deg, transparent, rgba(0,0,0,0.04) 30%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.04) 70%, transparent)",
+            borderRadius: "inherit",
+            pointerEvents: "none",
+            zIndex: 1,
+          }}
+        />
+        <div
+          className="hidden dark:block"
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: "10%",
+            right: "10%",
+            height: "1px",
+            background:
+              "linear-gradient(90deg, transparent, rgba(255,255,255,0.2) 30%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.2) 70%, transparent)",
             borderRadius: "inherit",
             pointerEvents: "none",
             zIndex: 1,
@@ -302,7 +352,7 @@ export default function RightInfoBox({
           {extraInfo && (
             <div className="mt-6 flex justify-center">
               <button
-                onClick={toggleBubble}
+                onClick={isBubbleOpen ? requestPop : openBubble}
                 className="
                   group relative px-4 py-2 rounded-full text-sm font-medium
                   text-black dark:text-white
@@ -333,7 +383,7 @@ export default function RightInfoBox({
         >
           <AnimatePresence>
             {isBubbleOpen && extraInfo && (
-              <InfoBubble extraInfo={extraInfo} side="left" onPop={handlePop} />
+              <InfoBubble extraInfo={extraInfo} side="left" onPop={handlePop} isMobile={isMobile} popRequested={popRequested} />
             )}
           </AnimatePresence>
         </div>

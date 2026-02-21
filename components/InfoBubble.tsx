@@ -256,18 +256,21 @@ export function InfoBubble({
   extraInfo,
   side,
   onPop,
+  isMobile,
+  popRequested,
 }: {
   extraInfo: string;
   side: "left" | "right";
   onPop: (x: number, y: number, w: number, h: number) => void;
+  isMobile: boolean;
+  popRequested?: boolean;
 }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
   const [isPopping, setIsPopping] = useState(false);
   const isRight = side === "right";
   const [isPressed, setIsPressed] = useState(false);
-  const isMobile = useIsMobile();
 
-  const handleClick = () => {
+  const handleClick = useCallback(() => {
     if (isPopping) return;
     setIsPopping(true);
     if (!bubbleRef.current) return;
@@ -278,7 +281,11 @@ export function InfoBubble({
       rect.width,
       rect.height,
     );
-  };
+  }, [isPopping, onPop]);
+
+  useEffect(() => {
+    if (popRequested) handleClick();
+  }, [popRequested, handleClick]);
 
   const sideAnchor = isMobile
     ? { left: "50%" }
@@ -403,6 +410,7 @@ export function InfoBubble({
 
         {/* Specular highlight */}
         <div
+          className="dark:hidden"
           style={{
             position: "absolute",
             top: 0,
@@ -411,8 +419,53 @@ export function InfoBubble({
             height: "1px",
             borderRadius: "inherit",
             pointerEvents: "none",
+            background:
+              "linear-gradient(90deg, transparent, rgba(0,0,0,0.08) 30%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.08) 70%, transparent)",
           }}
-          className="bg-[linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)] dark:bg-[linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)]"
+        />
+        <div
+          className="hidden dark:block"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: "15%",
+            right: "15%",
+            height: "1px",
+            borderRadius: "inherit",
+            pointerEvents: "none",
+            background:
+              "linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)",
+          }}
+        />
+
+        {/* Bottom specular highlight */}
+        <div
+          className="dark:hidden"
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: "15%",
+            right: "15%",
+            height: "1px",
+            borderRadius: "inherit",
+            pointerEvents: "none",
+            background:
+              "linear-gradient(90deg, transparent, rgba(0,0,0,0.04) 30%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.04) 70%, transparent)",
+          }}
+        />
+        <div
+          className="hidden dark:block"
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: "15%",
+            right: "15%",
+            height: "1px",
+            borderRadius: "inherit",
+            pointerEvents: "none",
+            background:
+              "linear-gradient(90deg, transparent, rgba(255,255,255,0.2) 30%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.2) 70%, transparent)",
+          }}
         />
 
         {/* Chromatic aberration */}
@@ -452,6 +505,7 @@ export function InfoBubble({
 // ─── Hook for managing bubble state ───
 export function useInfoBubble() {
   const [isBubbleOpen, setIsBubbleOpen] = useState(false);
+  const [popRequested, setPopRequested] = useState(false);
   const [vaporOrigin, setVaporOrigin] = useState<{
     x: number;
     y: number;
@@ -462,6 +516,7 @@ export function useInfoBubble() {
   const handlePop = useCallback(
     (x: number, y: number, w: number, h: number) => {
       setIsBubbleOpen(false);
+      setPopRequested(false);
       setVaporOrigin({ x, y, w, h });
     },
     [],
@@ -471,15 +526,21 @@ export function useInfoBubble() {
     setVaporOrigin(null);
   }, []);
 
-  const toggleBubble = useCallback(() => {
-    setIsBubbleOpen((prev) => !prev);
+  const openBubble = useCallback(() => {
+    setIsBubbleOpen(true);
+  }, []);
+
+  const requestPop = useCallback(() => {
+    setPopRequested(true);
   }, []);
 
   return {
     isBubbleOpen,
+    popRequested,
     vaporOrigin,
     handlePop,
     handleVaporDone,
-    toggleBubble,
+    openBubble,
+    requestPop,
   };
 }
