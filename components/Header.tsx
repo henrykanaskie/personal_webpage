@@ -13,14 +13,14 @@ const navLinks = [
   { name: "Research", href: "/research" },
 ];
 
-const lightGradient = `linear-gradient(135deg, rgba(10,10,20,0.85) 0%, rgba(25,15,35,0.8) 15%, rgba(10,20,30,0.83) 30%, rgba(30,15,25,0.78) 45%, rgba(10,20,28,0.82) 60%, rgba(22,12,32,0.8) 75%, rgba(12,18,30,0.83) 90%, rgba(28,15,28,0.8) 100%)`;
-const darkGradient = `linear-gradient(135deg, rgba(220,225,255,0.85) 0%, rgba(240,220,250,0.78) 15%, rgba(220,235,255,0.82) 30%, rgba(245,225,240,0.76) 45%, rgba(215,230,250,0.8) 60%, rgba(235,220,248,0.78) 75%, rgba(220,228,252,0.82) 90%, rgba(240,222,245,0.78) 100%)`;
+const lightGradient = `linear-gradient(135deg, rgb(100,115,145) 0%, rgb(125,110,135) 15%, rgb(105,130,150) 30%, rgb(130,115,130) 45%, rgb(100,125,145) 60%, rgb(120,110,140) 75%, rgb(105,120,148) 90%, rgb(128,115,135) 100%)`;
+const darkGradient = `linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 15%, rgb(180,210,235) 30%, rgb(215,190,215) 45%, rgb(170,200,230) 60%, rgb(200,185,225) 75%, rgb(180,195,235) 90%, rgb(210,185,220) 100%)`;
 
-const lightGradientActive = `linear-gradient(135deg, rgba(5,5,15,0.95) 0%, rgba(18,8,28,0.92) 15%, rgba(5,12,22,0.95) 30%, rgba(22,8,18,0.9) 45%, rgba(5,14,22,0.94) 60%, rgba(15,6,25,0.92) 75%, rgba(6,12,24,0.95) 90%, rgba(20,8,22,0.92) 100%)`;
-const darkGradientActive = `linear-gradient(135deg, rgba(245,248,255,1) 0%, rgba(255,245,255,0.95) 15%, rgba(245,252,255,0.98) 30%, rgba(255,248,255,0.94) 45%, rgba(240,250,255,0.97) 60%, rgba(255,245,255,0.95) 75%, rgba(245,250,255,0.98) 90%, rgba(255,248,255,0.95) 100%)`;
+const lightGradientActive = `linear-gradient(135deg, rgb(70,85,115) 0%, rgb(95,80,105) 15%, rgb(75,100,120) 30%, rgb(100,85,100) 45%, rgb(70,95,115) 60%, rgb(90,80,110) 75%, rgb(75,90,118) 90%, rgb(98,85,105) 100%)`;
+const darkGradientActive = `linear-gradient(135deg, rgb(220,235,255) 0%, rgb(245,230,250) 15%, rgb(220,245,255) 30%, rgb(250,235,245) 45%, rgb(215,240,255) 60%, rgb(240,230,250) 75%, rgb(220,238,255) 90%, rgb(245,230,248) 100%)`;
 
-const underlineGradientLight = `linear-gradient(90deg, rgba(10,10,20,0.9), rgba(25,15,35,0.85), rgba(10,20,30,0.9), rgba(30,15,25,0.85), rgba(10,10,20,0.9))`;
-const underlineGradientDark = `linear-gradient(90deg, rgba(245,248,255,0.95), rgba(255,245,255,0.9), rgba(245,252,255,0.95), rgba(255,248,255,0.9), rgba(245,248,255,0.95))`;
+const underlineGradientLight = `linear-gradient(90deg, rgb(100,115,145), rgb(125,110,135), rgb(105,130,150), rgb(130,115,130), rgb(100,115,145))`;
+const underlineGradientDark = `linear-gradient(90deg, rgb(180,200,255), rgb(210,185,230), rgb(180,210,235), rgb(210,185,230), rgb(180,200,255))`;
 
 function IridescentText({
   children,

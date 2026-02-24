@@ -4,11 +4,12 @@ import { motion, MotionValue } from "framer-motion";
 
 interface AnimatedSvgProps {
   paths: string[];
-  size?: number;
+  size?: number | string;
   color?: string;
   strokeWidth?: number;
   scrollProgress: MotionValue<number>;
   className?: string;
+  rotate?: number;
 }
 
 export default function AnimatedSvg({
@@ -18,6 +19,7 @@ export default function AnimatedSvg({
   strokeWidth = 2,
   scrollProgress,
   className = "",
+  rotate = 0,
 }: AnimatedSvgProps) {
   return (
     <div
@@ -26,6 +28,7 @@ export default function AnimatedSvg({
         width: size,
         height: size,
         position: "relative",
+        transform: rotate ? `rotate(${rotate}deg)` : undefined,
       }}
     >
       <svg

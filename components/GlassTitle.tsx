@@ -1,11 +1,50 @@
 "use client";
 
-import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { useRef, useEffect } from "react";
+import { motion, useInView, useMotionValue, animate } from "framer-motion";
+import AnimatedSvg from "./AnimatedSvg";
 
-export default function GlassTitle({ text = "experience" }: { text?: string }) {
+export default function GlassTitle({
+  text = "experience",
+  svgPaths = [],
+  svgPathsLeft,
+  svgPathsRight,
+  svgRotateLeft = 0,
+  svgRotateRight = 0,
+  svgOffsetLeft = { x: 0, y: 0 },
+  svgOffsetRight = { x: 0, y: 0 },
+}: {
+  text?: string;
+  svgPaths?: string[];
+  svgPathsLeft?: string[];
+  svgPathsRight?: string[];
+  svgRotateLeft?: number;
+  svgRotateRight?: number;
+  svgOffsetLeft?: { x?: number; y?: number };
+  svgOffsetRight?: { x?: number; y?: number };
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: false, amount: 0.3 });
+
+  const svgProgress = useMotionValue(0);
+  const drawTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (isInView) {
+      if (drawTimer.current) clearTimeout(drawTimer.current);
+      drawTimer.current = setTimeout(() => {
+        animate(svgProgress, 1, { duration: 3, ease: "easeInOut" });
+        drawTimer.current = null;
+      }, 400);
+    } else {
+      if (drawTimer.current) clearTimeout(drawTimer.current);
+      drawTimer.current = null;
+      animate(svgProgress, 0, { duration: 1.8, ease: "easeInOut" });
+    }
+    return () => {
+      if (drawTimer.current) clearTimeout(drawTimer.current);
+    };
+  }, [isInView, svgProgress]);
 
   return (
     <motion.div
@@ -13,30 +52,48 @@ export default function GlassTitle({ text = "experience" }: { text?: string }) {
       initial={{ opacity: 0, y: 20 }}
       animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
       transition={{ duration: 1.2, ease: "easeInOut" }}
-      className="flex justify-center pt-12 md:pt-18 select-none"
+      className="flex justify-center items-center pt-12 md:pt-18 pb-4 md:pb-8 select-none"
     >
+      {/* Left SVG — overlaps into text with negative margin */}
+      <div
+        className="pointer-events-none hidden md:flex items-center shrink-0"
+        style={{
+          marginRight: "clamp(-20px, -2.5vw, -30px)",
+          transform: `translate(${svgOffsetLeft.x ?? 0}px, ${svgOffsetLeft.y ?? 0}px)`,
+        }}
+      >
+        <AnimatedSvg
+          paths={svgPathsLeft ?? svgPaths}
+          size="clamp(60px, 8vw, 100px)"
+          strokeWidth={0.8}
+          scrollProgress={svgProgress}
+          rotate={svgRotateLeft}
+        />
+      </div>
+
       <span
         className="relative font-extrabold tracking-tight leading-none"
         style={{
           fontSize: "clamp(4rem, 11vw, 10rem)",
           letterSpacing: "-0.02em",
+          zIndex: 1,
         }}
       >
-        {/* Base pearlescent text */}
+        {/* Iridescent text — light mode */}
         <span
-          className="bg-clip-text text-transparent"
+          className="relative bg-clip-text text-transparent dark:hidden"
           style={{
             WebkitBackgroundClip: "text",
             backgroundImage: `linear-gradient(
               135deg,
-              rgba(100,115,145,0.55) 0%,
-              rgba(125,110,135,0.44) 15%,
-              rgba(105,130,150,0.5) 30%,
-              rgba(130,115,130,0.42) 45%,
-              rgba(100,125,145,0.48) 60%,
-              rgba(120,110,140,0.44) 75%,
-              rgba(105,120,148,0.5) 90%,
-              rgba(128,115,135,0.44) 100%
+              rgb(100,115,145) 0%,
+              rgb(125,110,135) 15%,
+              rgb(105,130,150) 30%,
+              rgb(130,115,130) 45%,
+              rgb(100,125,145) 60%,
+              rgb(120,110,140) 75%,
+              rgb(105,120,148) 90%,
+              rgb(128,115,135) 100%
             )`,
             textShadow: `
               0 1px 2px rgba(0,0,0,0.06),
@@ -52,23 +109,27 @@ export default function GlassTitle({ text = "experience" }: { text?: string }) {
           {text}
         </span>
 
-        {/* Dark mode pearlescent overlay */}
+        {/* Iridescent text — dark mode */}
         <span
-          aria-hidden
-          className="absolute inset-0 bg-clip-text text-transparent pointer-events-none opacity-0 dark:opacity-100"
+          className="relative bg-clip-text text-transparent hidden dark:inline"
           style={{
             WebkitBackgroundClip: "text",
             backgroundImage: `linear-gradient(
               135deg,
-              rgba(180,200,255,0.013) 0%,
-              rgba(210,185,230,0.009) 15%,
-              rgba(180,210,235,0.011) 30%,
-              rgba(215,190,215,0.008) 45%,
-              rgba(170,200,230,0.01) 60%,
-              rgba(200,185,225,0.009) 75%,
-              rgba(180,195,235,0.011) 90%,
-              rgba(210,185,220,0.009) 100%
+              rgb(180,200,255) 0%,
+              rgb(210,185,230) 15%,
+              rgb(180,210,235) 30%,
+              rgb(215,190,215) 45%,
+              rgb(170,200,230) 60%,
+              rgb(200,185,225) 75%,
+              rgb(180,195,235) 90%,
+              rgb(210,185,220) 100%
             )`,
+            textShadow: `
+              0 1px 2px rgba(0,0,0,0.2),
+              0 4px 8px rgba(0,0,0,0.1),
+              0 1px 0 rgba(255,255,255,0.05)
+            `,
           }}
         >
           {text}
@@ -97,6 +158,23 @@ export default function GlassTitle({ text = "experience" }: { text?: string }) {
           {text}
         </span>
       </span>
+
+      {/* Right SVG — overlaps into text with negative margin, mirrored */}
+      <div
+        className="pointer-events-none hidden md:flex items-center shrink-0"
+        style={{
+          marginLeft: "clamp(-20px, -2.5vw, -30px)",
+          transform: `scaleX(-1) translate(${svgOffsetRight.x ?? 0}px, ${svgOffsetRight.y ?? 0}px)`,
+        }}
+      >
+        <AnimatedSvg
+          paths={svgPathsRight ?? svgPaths}
+          size="clamp(60px, 8vw, 100px)"
+          strokeWidth={0.8}
+          scrollProgress={svgProgress}
+          rotate={svgRotateRight}
+        />
+      </div>
     </motion.div>
   );
 }

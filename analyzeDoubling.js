@@ -2,7 +2,7 @@
 // Usage: node analyzeDoubling.js
 
 const fs = require("fs");
-const pathData = require("./svgs/rocket/rocketPaths.ts");
+const pathData = require("./svgs/rocketPaths.ts");
 
 function parseNumbers(str) {
   return str

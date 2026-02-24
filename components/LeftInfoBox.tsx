@@ -15,6 +15,7 @@ import {
   VaporCloud,
   useInfoBubble,
   useIsMobile,
+  type BubbleInfo,
 } from "./InfoBubble";
 
 interface LeftInfoBoxProps {
@@ -23,7 +24,13 @@ interface LeftInfoBoxProps {
   role: string;
   description: string;
   svgPaths: string[];
-  extraInfo?: string;
+  svgSize?: number;
+  svgDrawDuration?: number;
+  extraInfo?: BubbleInfo;
+  svgRotate?: number;
+  svgFlipX?: boolean;
+  svgFlipY?: boolean;
+  svgOffset?: { x?: number; y?: number };
 }
 export const glassClassNames = `
   bg-transparent
@@ -63,7 +70,6 @@ export const FuzzyText = ({
           zIndex: -1,
           filter: "blur(12px)",
           borderRadius: "15px",
-          willChange: "filter",
           transform: "translateZ(0)",
         }}
         className="bg-[rgba(255,255,255,0.5)] dark:bg-[rgba(29,29,29,0.5)]"
@@ -81,7 +87,13 @@ export default function LeftInfoBox({
   role,
   description,
   svgPaths,
+  svgSize = 80,
+  svgDrawDuration = 3,
   extraInfo,
+  svgRotate = 0,
+  svgFlipX = false,
+  svgFlipY = false,
+  svgOffset = { x: 0, y: 0 },
 }: LeftInfoBoxProps) {
   const boxRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(boxRef, { once: false, amount: 0.1 });
@@ -103,10 +115,10 @@ export default function LeftInfoBox({
   const onViewportEnter = useCallback(() => {
     if (drawTimer.current) clearTimeout(drawTimer.current);
     drawTimer.current = setTimeout(() => {
-      animate(svgProgress, 1, { duration: 3, ease: "easeInOut" });
+      animate(svgProgress, 1, { duration: svgDrawDuration, ease: "easeInOut" });
       drawTimer.current = null;
     }, 600);
-  }, [svgProgress]);
+  }, [svgProgress, svgDrawDuration]);
 
   const onViewportLeave = useCallback(() => {
     if (drawTimer.current) clearTimeout(drawTimer.current);
@@ -129,8 +141,8 @@ export default function LeftInfoBox({
 
       <motion.div
         ref={boxRef}
-        initial={{ opacity: 0, x: -20, y: 10 }}
-        animate={isInView ? { opacity: 1, x: 0, y: 0 } : { opacity: 0, x: -20, y: 10 }}
+        initial={{ x: 0, y: 15 }}
+        animate={isInView ? { x: 0, y: 0 } : isMobile ? { x: 0, y: 15 } : { x: -20, y: 10 }}
         onViewportEnter={onViewportEnter}
         onViewportLeave={onViewportLeave}
         transition={{
@@ -139,299 +151,324 @@ export default function LeftInfoBox({
         }}
         style={{
           position: "relative",
-          borderRadius: "24px",
-          ...glassStyle,
+          maxWidth: "clamp(320px, 55vw, 780px)",
+          minHeight: "clamp(200px, 22vw, 300px)",
+          zIndex: isBubbleOpen ? 10 : "auto",
         }}
-        className={`${glassClassNames} p-5 md:p-8 max-w-[650px] min-h-[200px] md:min-h-[250px] mx-auto md:mx-0 md:ml-[5%] w-[calc(100%-2rem)] md:w-auto`}
+        className="mx-auto md:mx-0 md:ml-[5%] w-[calc(100%-2rem)] md:w-auto"
       >
-        {/* Specular highlight — top edge caustic */}
-        <div
-          className="dark:hidden"
-          style={{
-            position: "absolute",
-            top: 0,
-            left: "10%",
-            right: "10%",
-            height: "1px",
-            background:
-              "linear-gradient(90deg, transparent, rgba(0,0,0,0.08) 30%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.08) 70%, transparent)",
-            borderRadius: "inherit",
-            pointerEvents: "none",
-            zIndex: 1,
-          }}
-        />
-        <div
-          className="hidden dark:block"
-          style={{
-            position: "absolute",
-            top: 0,
-            left: "10%",
-            right: "10%",
-            height: "1px",
-            background:
-              "linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)",
-            borderRadius: "inherit",
-            pointerEvents: "none",
-            zIndex: 1,
-          }}
-        />
-
-        {/* Bottom specular highlight */}
-        <div
-          className="dark:hidden"
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: "10%",
-            right: "10%",
-            height: "1px",
-            background:
-              "linear-gradient(90deg, transparent, rgba(0,0,0,0.04) 30%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.04) 70%, transparent)",
-            borderRadius: "inherit",
-            pointerEvents: "none",
-            zIndex: 1,
-          }}
-        />
-        <div
-          className="hidden dark:block"
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: "10%",
-            right: "10%",
-            height: "1px",
-            background:
-              "linear-gradient(90deg, transparent, rgba(255,255,255,0.2) 30%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.2) 70%, transparent)",
-            borderRadius: "inherit",
-            pointerEvents: "none",
-            zIndex: 1,
-          }}
-        />
-
-        {/* Chromatic aberration edge glow */}
-        <div
-          style={{
-            position: "absolute",
-            top: -1,
-            left: -1,
-            right: -1,
-            bottom: -1,
-            borderRadius: "inherit",
-            pointerEvents: "none",
-            zIndex: 0,
-            boxShadow:
-              "inset 2px 0 8px rgba(255,0,80,0.04), inset -2px 0 8px rgba(0,100,255,0.04), inset 0 2px 8px rgba(255,200,0,0.03), inset 0 -2px 8px rgba(0,200,255,0.03)",
-          }}
-        />
-
-        {/* Internal refraction gradient */}
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            borderRadius: "inherit",
-            pointerEvents: "none",
-            zIndex: 0,
-            background:
-              "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.02) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(200,220,255,0.05) 0%, transparent 50%)",
-          }}
-        />
-
-        {/* Edge distortion — heavier blur at edges */}
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            borderRadius: "inherit",
-            pointerEvents: "none",
-            zIndex: 0,
-            WebkitMaskImage:
-              "radial-gradient(ellipse at center, transparent 55%, black 100%)",
-            maskImage:
-              "radial-gradient(ellipse at center, transparent 55%, black 100%)",
-            backdropFilter: "blur(3px) saturate(1.1)",
-            WebkitBackdropFilter: "blur(3px) saturate(1.1)",
-          }}
-        />
-
-        {/* SVG positioned in the top right corner — hidden on mobile */}
-        <div
+        {/* SVG positioned outside the glass box so backdrop-filter blurs it */}
+        <motion.div
           className="hidden md:block"
+          initial={{ opacity: 0 }}
+          animate={isInView ? { opacity: 1 } : { opacity: 0 }}
+          transition={{ duration: 1.2, ease: "easeInOut" }}
           style={{
             position: "absolute",
-            top: "35px",
-            right: "-25px",
+            top: `${35 + (svgOffset.y ?? 0)}px`,
+            right: `${-25 + (svgOffset.x ?? 0)}px`,
             transformOrigin: "top right",
-            pointerEvents: "auto",
-            zIndex: 1,
+            transform:
+              `${svgFlipX ? "scaleX(-1)" : ""} ${svgFlipY ? "scaleY(-1)" : ""}`.trim() ||
+              undefined,
+            pointerEvents: "none",
+            zIndex: 0,
           }}
         >
           <AnimatedSvg
             paths={svgPaths}
-            size={80}
+            size={svgSize}
             strokeWidth={0.8}
             scrollProgress={svgProgress}
+            rotate={svgRotate}
           />
-        </div>
+        </motion.div>
 
-        {/* Content */}
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <h2
+        {/* Glass box */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={isInView ? { opacity: 1 } : { opacity: 0 }}
+          transition={{ duration: 1.8, ease: "easeInOut" }}
+          style={{
+            position: "relative",
+            borderRadius: "24px",
+            ...glassStyle,
+          }}
+          className={`${glassClassNames} p-5 md:p-10 lg:p-12`}
+        >
+          {/* Specular highlight — top edge caustic */}
+          <div
+            className="dark:hidden"
             style={{
-              marginTop: 0,
-              marginBottom: "8px",
-              fontSize: "24px",
-              fontWeight: 700,
-              textAlign: "center",
+              position: "absolute",
+              top: 0,
+              left: "10%",
+              right: "10%",
+              height: "1px",
+              background:
+                "linear-gradient(90deg, transparent, rgba(0,0,0,0.08) 30%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.08) 70%, transparent)",
+              borderRadius: "inherit",
+              pointerEvents: "none",
+              zIndex: 1,
             }}
-          >
-            <FuzzyText>
-              <span
-                className="bg-clip-text text-transparent dark:hidden"
-                style={{
-                  WebkitBackgroundClip: "text",
-                  backgroundImage: `linear-gradient(135deg, rgba(10,10,20,0.55) 0%, rgba(25,15,35,0.5) 15%, rgba(10,20,30,0.53) 30%, rgba(30,15,25,0.48) 45%, rgba(10,20,28,0.52) 60%, rgba(22,12,32,0.5) 75%, rgba(12,18,30,0.53) 90%, rgba(28,15,28,0.5) 100%)`,
-                }}
-              >
-                {title}
-              </span>
-              <span
-                className="bg-clip-text text-transparent hidden dark:inline"
-                style={{
-                  WebkitBackgroundClip: "text",
-                  backgroundImage: `linear-gradient(135deg, rgba(220,225,255,0.55) 0%, rgba(240,220,250,0.48) 15%, rgba(220,235,255,0.52) 30%, rgba(245,225,240,0.46) 45%, rgba(215,230,250,0.5) 60%, rgba(235,220,248,0.48) 75%, rgba(220,228,252,0.52) 90%, rgba(240,222,245,0.48) 100%)`,
-                }}
-              >
-                {title}
-              </span>
-            </FuzzyText>
-          </h2>
-          <h3
-            className="font-[family-name:var(--font-elevated)]"
+          />
+          <div
+            className="hidden dark:block"
             style={{
-              marginTop: 0,
-              marginBottom: "4px",
-              fontSize: "18px",
-              fontWeight: 700,
-              textAlign: "center",
-              letterSpacing: "-0.01em",
+              position: "absolute",
+              top: 0,
+              left: "10%",
+              right: "10%",
+              height: "1px",
+              background:
+                "linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)",
+              borderRadius: "inherit",
+              pointerEvents: "none",
+              zIndex: 1,
             }}
-          >
-            <FuzzyText>
-              <span
-                className="bg-clip-text text-transparent dark:hidden"
-                style={{
-                  WebkitBackgroundClip: "text",
-                  backgroundImage: `linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(25,15,35,0.92) 15%, rgba(10,20,30,0.94) 30%, rgba(30,15,25,0.9) 45%, rgba(10,20,28,0.93) 60%, rgba(22,12,32,0.91) 75%, rgba(12,18,30,0.94) 90%, rgba(28,15,28,0.91) 100%)`,
-                }}
-              >
-                {company}
-              </span>
-              <span
-                className="bg-clip-text text-transparent hidden dark:inline"
-                style={{
-                  WebkitBackgroundClip: "text",
-                  backgroundImage: `linear-gradient(135deg, rgba(248,250,255,0.96) 0%, rgba(255,248,255,0.93) 15%, rgba(248,252,255,0.95) 30%, rgba(255,250,255,0.92) 45%, rgba(245,250,255,0.94) 60%, rgba(255,248,255,0.93) 75%, rgba(248,250,255,0.95) 90%, rgba(255,248,255,0.93) 100%)`,
-                }}
-              >
-                {company}
-              </span>
-            </FuzzyText>
-          </h3>
-          <h4
-            className="font-[family-name:var(--font-elevated)]"
-            style={{
-              marginTop: 0,
-              marginBottom: "16px",
-              fontSize: "16px",
-              fontWeight: 700,
-              textAlign: "center",
-              letterSpacing: "-0.01em",
-            }}
-          >
-            <FuzzyText>
-              <span
-                className="bg-clip-text text-transparent dark:hidden"
-                style={{
-                  WebkitBackgroundClip: "text",
-                  backgroundImage: `linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(25,15,35,0.92) 15%, rgba(10,20,30,0.94) 30%, rgba(30,15,25,0.9) 45%, rgba(10,20,28,0.93) 60%, rgba(22,12,32,0.91) 75%, rgba(12,18,30,0.94) 90%, rgba(28,15,28,0.91) 100%)`,
-                }}
-              >
-                {role}
-              </span>
-              <span
-                className="bg-clip-text text-transparent hidden dark:inline"
-                style={{
-                  WebkitBackgroundClip: "text",
-                  backgroundImage: `linear-gradient(135deg, rgba(248,250,255,0.96) 0%, rgba(255,248,255,0.93) 15%, rgba(248,252,255,0.95) 30%, rgba(255,250,255,0.92) 45%, rgba(245,250,255,0.94) 60%, rgba(255,248,255,0.93) 75%, rgba(248,250,255,0.95) 90%, rgba(255,248,255,0.93) 100%)`,
-                }}
-              >
-                {role}
-              </span>
-            </FuzzyText>
-          </h4>
-          <p
-            className="font-[family-name:var(--font-elevated)]"
-            style={{
-              marginTop: 0,
-              marginBottom: 0,
-              fontSize: "14px",
-              fontWeight: 700,
-              letterSpacing: "-0.005em",
-            }}
-          >
-            <FuzzyText>
-              <span
-                className="bg-clip-text text-transparent dark:hidden"
-                style={{
-                  WebkitBackgroundClip: "text",
-                  backgroundImage: `linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(25,15,35,0.92) 15%, rgba(10,20,30,0.94) 30%, rgba(30,15,25,0.9) 45%, rgba(10,20,28,0.93) 60%, rgba(22,12,32,0.91) 75%, rgba(12,18,30,0.94) 90%, rgba(28,15,28,0.91) 100%)`,
-                }}
-              >
-                {description}
-              </span>
-              <span
-                className="bg-clip-text text-transparent hidden dark:inline"
-                style={{
-                  WebkitBackgroundClip: "text",
-                  backgroundImage: `linear-gradient(135deg, rgba(248,250,255,0.96) 0%, rgba(255,248,255,0.93) 15%, rgba(248,252,255,0.95) 30%, rgba(255,250,255,0.92) 45%, rgba(245,250,255,0.94) 60%, rgba(255,248,255,0.93) 75%, rgba(248,250,255,0.95) 90%, rgba(255,248,255,0.93) 100%)`,
-                }}
-              >
-                {description}
-              </span>
-            </FuzzyText>
-          </p>
+          />
 
-          {/* Toggle Button */}
-          {extraInfo && (
-            <div className="mt-6 flex justify-center">
-              <button
-                onClick={isBubbleOpen ? requestPop : openBubble}
-                className="
+          {/* Bottom specular highlight */}
+          <div
+            className="dark:hidden"
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: "10%",
+              right: "10%",
+              height: "1px",
+              background:
+                "linear-gradient(90deg, transparent, rgba(0,0,0,0.04) 30%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.04) 70%, transparent)",
+              borderRadius: "inherit",
+              pointerEvents: "none",
+              zIndex: 1,
+            }}
+          />
+          <div
+            className="hidden dark:block"
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: "10%",
+              right: "10%",
+              height: "1px",
+              background:
+                "linear-gradient(90deg, transparent, rgba(255,255,255,0.2) 30%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.2) 70%, transparent)",
+              borderRadius: "inherit",
+              pointerEvents: "none",
+              zIndex: 1,
+            }}
+          />
+
+          {/* Chromatic aberration edge glow */}
+          <div
+            style={{
+              position: "absolute",
+              top: -1,
+              left: -1,
+              right: -1,
+              bottom: -1,
+              borderRadius: "inherit",
+              pointerEvents: "none",
+              zIndex: 0,
+              boxShadow:
+                "inset 2px 0 8px rgba(255,0,80,0.04), inset -2px 0 8px rgba(0,100,255,0.04), inset 0 2px 8px rgba(255,200,0,0.03), inset 0 -2px 8px rgba(0,200,255,0.03)",
+            }}
+          />
+
+          {/* Internal refraction gradient */}
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderRadius: "inherit",
+              pointerEvents: "none",
+              zIndex: 0,
+              background:
+                "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.02) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(200,220,255,0.05) 0%, transparent 50%)",
+            }}
+          />
+
+          {/* Edge distortion — heavier blur at edges */}
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderRadius: "inherit",
+              pointerEvents: "none",
+              zIndex: 0,
+              WebkitMaskImage:
+                "radial-gradient(ellipse at center, transparent 55%, black 100%)",
+              maskImage:
+                "radial-gradient(ellipse at center, transparent 55%, black 100%)",
+              backdropFilter: "blur(3px) saturate(1.1)",
+              WebkitBackdropFilter: "blur(3px) saturate(1.1)",
+            }}
+          />
+
+          {/* Content */}
+          <div style={{ position: "relative", zIndex: 1 }}>
+            <h2
+              style={{
+                marginTop: 0,
+                marginBottom: "8px",
+                fontSize: "clamp(1.375rem, 2.2vw, 1.875rem)",
+                fontWeight: 700,
+                textAlign: "center",
+              }}
+            >
+              <FuzzyText>
+                <span
+                  className="bg-clip-text text-transparent dark:hidden"
+                  style={{
+                    WebkitBackgroundClip: "text",
+                    backgroundImage: `linear-gradient(135deg, rgb(100,115,145) 0%, rgb(125,110,135) 15%, rgb(105,130,150) 30%, rgb(130,115,130) 45%, rgb(100,125,145) 60%, rgb(120,110,140) 75%, rgb(105,120,148) 90%, rgb(128,115,135) 100%)`,
+                  }}
+                >
+                  {title}
+                </span>
+                <span
+                  className="bg-clip-text text-transparent hidden dark:inline"
+                  style={{
+                    WebkitBackgroundClip: "text",
+                    backgroundImage: `linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 15%, rgb(180,210,235) 30%, rgb(215,190,215) 45%, rgb(170,200,230) 60%, rgb(200,185,225) 75%, rgb(180,195,235) 90%, rgb(210,185,220) 100%)`,
+                  }}
+                >
+                  {title}
+                </span>
+              </FuzzyText>
+            </h2>
+            <h3
+              className="font-[family-name:var(--font-elevated)]"
+              style={{
+                marginTop: 0,
+                marginBottom: "4px",
+                fontSize: "clamp(1.0625rem, 1.6vw, 1.375rem)",
+                fontWeight: 700,
+                textAlign: "center",
+                letterSpacing: "-0.01em",
+              }}
+            >
+              <FuzzyText>
+                <span
+                  className="bg-clip-text text-transparent dark:hidden"
+                  style={{
+                    WebkitBackgroundClip: "text",
+                    backgroundImage: `linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(25,15,35,0.92) 15%, rgba(10,20,30,0.94) 30%, rgba(30,15,25,0.9) 45%, rgba(10,20,28,0.93) 60%, rgba(22,12,32,0.91) 75%, rgba(12,18,30,0.94) 90%, rgba(28,15,28,0.91) 100%)`,
+                  }}
+                >
+                  {company}
+                </span>
+                <span
+                  className="bg-clip-text text-transparent hidden dark:inline"
+                  style={{
+                    WebkitBackgroundClip: "text",
+                    backgroundImage: `linear-gradient(135deg, rgba(248,250,255,0.96) 0%, rgba(255,248,255,0.93) 15%, rgba(248,252,255,0.95) 30%, rgba(255,250,255,0.92) 45%, rgba(245,250,255,0.94) 60%, rgba(255,248,255,0.93) 75%, rgba(248,250,255,0.95) 90%, rgba(255,248,255,0.93) 100%)`,
+                  }}
+                >
+                  {company}
+                </span>
+              </FuzzyText>
+            </h3>
+            <h4
+              className="font-[family-name:var(--font-elevated)]"
+              style={{
+                marginTop: 0,
+                marginBottom: "16px",
+                fontSize: "clamp(0.9375rem, 1.4vw, 1.25rem)",
+                fontWeight: 700,
+                textAlign: "center",
+                letterSpacing: "-0.01em",
+              }}
+            >
+              <FuzzyText>
+                <span
+                  className="bg-clip-text text-transparent dark:hidden"
+                  style={{
+                    WebkitBackgroundClip: "text",
+                    backgroundImage: `linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(25,15,35,0.92) 15%, rgba(10,20,30,0.94) 30%, rgba(30,15,25,0.9) 45%, rgba(10,20,28,0.93) 60%, rgba(22,12,32,0.91) 75%, rgba(12,18,30,0.94) 90%, rgba(28,15,28,0.91) 100%)`,
+                  }}
+                >
+                  {role}
+                </span>
+                <span
+                  className="bg-clip-text text-transparent hidden dark:inline"
+                  style={{
+                    WebkitBackgroundClip: "text",
+                    backgroundImage: `linear-gradient(135deg, rgba(248,250,255,0.96) 0%, rgba(255,248,255,0.93) 15%, rgba(248,252,255,0.95) 30%, rgba(255,250,255,0.92) 45%, rgba(245,250,255,0.94) 60%, rgba(255,248,255,0.93) 75%, rgba(248,250,255,0.95) 90%, rgba(255,248,255,0.93) 100%)`,
+                  }}
+                >
+                  {role}
+                </span>
+              </FuzzyText>
+            </h4>
+            <p
+              className="font-[family-name:var(--font-elevated)]"
+              style={{
+                marginTop: 0,
+                marginBottom: 0,
+                fontSize: "clamp(0.875rem, 1.2vw, 1.125rem)",
+                fontWeight: 700,
+                letterSpacing: "-0.005em",
+              }}
+            >
+              <FuzzyText>
+                <span
+                  className="bg-clip-text text-transparent dark:hidden"
+                  style={{
+                    WebkitBackgroundClip: "text",
+                    backgroundImage: `linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(25,15,35,0.92) 15%, rgba(10,20,30,0.94) 30%, rgba(30,15,25,0.9) 45%, rgba(10,20,28,0.93) 60%, rgba(22,12,32,0.91) 75%, rgba(12,18,30,0.94) 90%, rgba(28,15,28,0.91) 100%)`,
+                  }}
+                >
+                  {description}
+                </span>
+                <span
+                  className="bg-clip-text text-transparent hidden dark:inline"
+                  style={{
+                    WebkitBackgroundClip: "text",
+                    backgroundImage: `linear-gradient(135deg, rgba(248,250,255,0.96) 0%, rgba(255,248,255,0.93) 15%, rgba(248,252,255,0.95) 30%, rgba(255,250,255,0.92) 45%, rgba(245,250,255,0.94) 60%, rgba(255,248,255,0.93) 75%, rgba(248,250,255,0.95) 90%, rgba(255,248,255,0.93) 100%)`,
+                  }}
+                >
+                  {description}
+                </span>
+              </FuzzyText>
+            </p>
+
+            {/* Toggle Button */}
+            {extraInfo && (
+              <div className="mt-6 flex justify-center">
+                <button
+                  onClick={isBubbleOpen ? requestPop : openBubble}
+                  className="
                   group relative px-4 py-2 rounded-full text-sm font-medium
                   text-black dark:text-white
                   bg-blue-500/3 hover:bg-blue-500/5 dark:bg-white/5 dark:hover:bg-white/10
                   border border-[rgba(100,130,200,0.2)]
                   dark:border-[rgba(255,255,255,0.05)] transition-all duration-300
                 "
-              >
-                <span className="relative z-10">
-                  {isBubbleOpen ? "Close" : "More Info"}
-                </span>
-              </button>
-            </div>
-          )}
-        </div>
+                >
+                  <span className="relative z-10">
+                    {isBubbleOpen ? "Close" : "More Info"}
+                  </span>
+                </button>
+              </div>
+            )}
+          </div>
+        </motion.div>
 
         {/* ── Info Bubble — pops out to the RIGHT ── */}
-        <div
+        <motion.div
+          initial={isMobile ? { opacity: 0 } : undefined}
+          animate={isMobile ? (isInView ? { opacity: 1 } : { opacity: 0 }) : undefined}
+          transition={{ duration: 1.8, ease: "easeInOut" }}
           style={{
+            ...(!isMobile && { opacity: 1 }),
             position: "absolute",
             top: 0,
             left: 0,
@@ -453,13 +490,13 @@ export default function LeftInfoBox({
               />
             )}
           </AnimatePresence>
-        </div>
+        </motion.div>
       </motion.div>
 
       {/* Mobile spacer — pushes content below when bubble is open */}
       {isMobile && (
         <motion.div
-          animate={{ height: isBubbleOpen ? 80 : 0 }}
+          animate={{ height: isBubbleOpen ? 320 : 0 }}
           transition={{ duration: 0.75, ease: [0.34, 1.56, 0.64, 1] }}
           style={{ height: 0, overflow: "hidden" }}
         />

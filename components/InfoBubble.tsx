@@ -17,8 +17,8 @@ export function useIsMobile(breakpoint = 768) {
 
 // ─── Shared glass styling ───
 export const glassStyle: React.CSSProperties = {
-  backdropFilter: "blur(2px) saturate(1.15)",
-  WebkitBackdropFilter: "blur(2px) saturate(1.15)",
+  backdropFilter: "blur(1.3px) saturate(1.15)",
+  WebkitBackdropFilter: "blur(1.3px) saturate(1.15)",
 };
 
 export const glassBubbleClassNames = `
@@ -247,10 +247,55 @@ export function VaporCloud({
   );
 }
 
+// ─── Bubble Info Type ───
+export interface BubbleInfo {
+  startDate: string; // e.g. "Jan 2023"
+  endDate: string; // e.g. "Dec 2024" or "Present"
+  techStack: string; // comma-separated, e.g. "React, TypeScript, Node.js"
+  location: string; // e.g. "Austin, TX"
+  industry: string; // e.g. "Aerospace"
+}
+
+const MONTH_MAP: Record<string, number> = {
+  jan: 0,
+  feb: 1,
+  mar: 2,
+  apr: 3,
+  may: 4,
+  jun: 5,
+  jul: 6,
+  aug: 7,
+  sep: 8,
+  oct: 9,
+  nov: 10,
+  dec: 11,
+};
+
+function parseDateStr(s: string): Date {
+  if (s.toLowerCase() === "present") return new Date();
+  const parts = s.trim().split(/\s+/);
+  const month = MONTH_MAP[parts[0].toLowerCase().slice(0, 3)] ?? 0;
+  const year = parseInt(parts[1], 10);
+  return new Date(year, month);
+}
+
+function calcDuration(start: string, end: string): string {
+  const s = parseDateStr(start);
+  const e = parseDateStr(end);
+  let months =
+    (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth());
+  if (months < 0) months = 0;
+  const yrs = Math.floor(months / 12);
+  const mo = months % 12;
+  if (yrs === 0) return `${mo} month${mo !== 1 ? "s" : ""}`;
+  if (mo === 0) return `${yrs} yr${yrs !== 1 ? "s" : ""}`;
+  return `${yrs} yr${yrs !== 1 ? "s" : ""} ${mo} mo`;
+}
+
 // ─── Mitosis Bubble ───
 // `side`: "right" means bubble pops out to the right (for LeftInfoBox)
 //         "left"  means bubble pops out to the left  (for RightInfoBox)
-const BUBBLE_REST_OFFSET = 260;
+const BUBBLE_REST_OFFSET = 300;
 
 export function InfoBubble({
   extraInfo,
@@ -259,7 +304,7 @@ export function InfoBubble({
   isMobile,
   popRequested,
 }: {
-  extraInfo: string;
+  extraInfo: BubbleInfo;
   side: "left" | "right";
   onPop: (x: number, y: number, w: number, h: number) => void;
   isMobile: boolean;
@@ -269,6 +314,9 @@ export function InfoBubble({
   const [isPopping, setIsPopping] = useState(false);
   const isRight = side === "right";
   const [isPressed, setIsPressed] = useState(false);
+
+  // Track touch start position to distinguish scroll from tap
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const handleClick = useCallback(() => {
     if (isPopping) return;
@@ -301,7 +349,7 @@ export function InfoBubble({
           position: "absolute",
           top: isMobile ? "100%" : "50%",
           ...sideAnchor,
-          width: isMobile ? "min(220px, 85vw)" : 220,
+          width: isMobile ? "min(260px, 85vw)" : 260,
           padding: "20px 24px",
           borderRadius: "24px",
           cursor: "pointer",
@@ -313,24 +361,40 @@ export function InfoBubble({
               : "right center",
           zIndex: 9999999,
           willChange: "auto",
+          ...glassStyle,
         }}
+        className={glassBubbleClassNames}
         onClick={handleClick}
         initial={
           isMobile
-            ? { x: "-50%", y: "0%", scaleX: 0.5, scaleY: 0.15, opacity: 0 }
+            ? { x: "-50%", y: "0%", scaleX: 0.5, scaleY: 0.15 }
             : {
                 y: "-50%",
                 x: isRight ? "30%" : "-30%",
                 scaleX: 0.15,
                 scaleY: 0.3,
-                opacity: 0,
               }
         }
         onMouseDown={() => setIsPressed(true)}
         onMouseUp={handleClick}
         onMouseLeave={() => setIsPressed(false)}
-        onTouchStart={() => setIsPressed(true)}
-        onTouchEnd={handleClick}
+        onTouchStart={(e) => {
+          setIsPressed(true);
+          const t = e.touches[0];
+          touchStartRef.current = { x: t.clientX, y: t.clientY };
+        }}
+        onTouchEnd={(e) => {
+          setIsPressed(false);
+          if (!touchStartRef.current) return;
+          const t = e.changedTouches[0];
+          const dx = t.clientX - touchStartRef.current.x;
+          const dy = t.clientY - touchStartRef.current.y;
+          // Only treat as tap if finger moved less than 10px
+          if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
+            handleClick();
+          }
+          touchStartRef.current = null;
+        }}
         animate={
           isMobile
             ? {
@@ -338,7 +402,6 @@ export function InfoBubble({
                 y: "16px",
                 scaleX: isPopping || isPressed ? 1.08 : 1,
                 scaleY: isPopping || isPressed ? 1.08 : 1,
-                opacity: 1,
               }
             : {
                 y: "-50%",
@@ -347,7 +410,6 @@ export function InfoBubble({
                   : `calc(-100% - ${BUBBLE_REST_OFFSET - 200}px)`,
                 scaleX: isPopping || isPressed ? 1.08 : 1,
                 scaleY: isPopping || isPressed ? 1.08 : 1,
-                opacity: 1,
               }
         }
         transition={
@@ -356,7 +418,6 @@ export function InfoBubble({
             : {
                 duration: 0.75,
                 ease: [0.34, 1.56, 0.64, 1],
-                opacity: { duration: 0.3, ease: "easeOut" },
               }
         }
         exit={{ opacity: 0, transition: { duration: 0.001 } }}
@@ -364,20 +425,7 @@ export function InfoBubble({
           isPopping ? {} : { scale: 1.03, transition: { duration: 0.2 } }
         }
       >
-        {/* 1. Base Glass Background (Matches the Box's base layer) */}
-        <div
-          className={glassBubbleClassNames}
-          style={{
-            position: "absolute",
-            inset: 0,
-            borderRadius: "inherit",
-            pointerEvents: "none",
-            zIndex: -1,
-            ...glassStyle, // <--- Blur 2px, exactly like the box
-          }}
-        />
-
-        {/* 2. Internal refraction gradient (Matches the Box) */}
+        {/* Internal refraction gradient (Matches the Box) */}
         <div
           style={{
             position: "absolute",
@@ -391,7 +439,7 @@ export function InfoBubble({
           }}
         />
 
-        {/* 3. Edge distortion layer (Matches the Box) */}
+        {/* Edge distortion layer (Matches the Box) */}
         <div
           style={{
             position: "absolute",
@@ -481,18 +529,144 @@ export function InfoBubble({
         />
 
         {/* Content */}
-        <div style={{ position: "relative", zIndex: 1, pointerEvents: "none" }}>
-          <FuzzyText style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
-            <span className="text-black dark:text-gray-200">{extraInfo}</span>
+        <div
+          style={{
+            position: "relative",
+            zIndex: 1,
+            pointerEvents: "none",
+            textAlign: "center",
+          }}
+        >
+          {/* Duration */}
+          <div>
+            <FuzzyText style={{ margin: 0 }}>
+              <span
+                className="text-black dark:text-white"
+                style={{
+                  fontSize: 15,
+                  fontWeight: 700,
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                {calcDuration(extraInfo.startDate, extraInfo.endDate)}
+              </span>
+            </FuzzyText>
+          </div>
+          <div style={{ marginTop: 4 }}>
+            <FuzzyText style={{ margin: 0 }}>
+              <span
+                className="text-black/40 dark:text-white/40"
+                style={{ fontSize: 9, letterSpacing: "0.04em" }}
+              >
+                {extraInfo.startDate} — {extraInfo.endDate}
+              </span>
+            </FuzzyText>
+          </div>
+
+          <div
+            className="bg-black/[0.12] dark:bg-white/[0.15]"
+            style={{ height: 1, margin: "10px 0" }}
+          />
+
+          {/* Tech Stack */}
+          <FuzzyText style={{ margin: 0 }}>
+            <span
+              className="text-black/50 dark:text-white/50"
+              style={{
+                fontSize: 8,
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+              }}
+            >
+              Stack
+            </span>
           </FuzzyText>
-          <p
+          <div
             style={{
-              margin: 0,
-              marginTop: 12,
-              fontSize: "10px",
-              textAlign: "center",
-              opacity: 0.4,
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 4,
+              marginTop: 11,
+              justifyContent: "center",
             }}
+          >
+            {extraInfo.techStack.split(",").map((tech) => (
+              <span
+                key={tech.trim()}
+                className="text-black/80 dark:text-white/80 bg-black/[0.04] dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08]"
+                style={{
+                  fontSize: 9,
+                  fontFamily: "monospace",
+                  padding: "2px 6px",
+                  borderRadius: 6,
+                  letterSpacing: "0.02em",
+                }}
+              >
+                {tech.trim()}
+              </span>
+            ))}
+          </div>
+
+          <div
+            className="bg-black/[0.12] dark:bg-white/[0.15]"
+            style={{ height: 1, margin: "12px 0" }}
+          />
+
+          {/* Industry */}
+          <FuzzyText style={{ margin: 0 }}>
+            <span
+              className="text-black/40 dark:text-white/40"
+              style={{
+                fontSize: 8,
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+              }}
+            >
+              Industry
+            </span>
+          </FuzzyText>
+          <div style={{ marginTop: 3 }}>
+            <FuzzyText style={{ margin: 0 }}>
+              <span
+                className="text-black/80 dark:text-white/80"
+                style={{ fontSize: 11, fontWeight: 500 }}
+              >
+                {extraInfo.industry}
+              </span>
+            </FuzzyText>
+          </div>
+
+          <div
+            className="bg-black/[0.12] dark:bg-white/[0.15]"
+            style={{ height: 1, margin: "10px 0" }}
+          />
+
+          {/* Location */}
+          <FuzzyText style={{ margin: 0 }}>
+            <span
+              className="text-black/40 dark:text-white/40"
+              style={{
+                fontSize: 8,
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+              }}
+            >
+              Location
+            </span>
+          </FuzzyText>
+          <div style={{ marginTop: 3 }}>
+            <FuzzyText style={{ margin: 0 }}>
+              <span
+                className="text-black/80 dark:text-white/80"
+                style={{ fontSize: 11, fontWeight: 500 }}
+              >
+                {extraInfo.location}
+              </span>
+            </FuzzyText>
+          </div>
+
+          <p
+            style={{ margin: "10px 0 0", fontSize: 10, opacity: 0.4 }}
             className="text-black dark:text-white"
           >
             {isMobile ? "tap to dismiss" : "click to dismiss"}
