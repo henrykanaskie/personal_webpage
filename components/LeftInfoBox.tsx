@@ -15,6 +15,7 @@ import {
   VaporCloud,
   useInfoBubble,
   useIsMobile,
+  useIsDark,
   type BubbleInfo,
 } from "./InfoBubble";
 
@@ -96,8 +97,12 @@ export default function LeftInfoBox({
   svgOffset = { x: 0, y: 0 },
 }: LeftInfoBoxProps) {
   const boxRef = useRef<HTMLDivElement>(null);
-  const isInView = useInView(boxRef, { once: false, amount: 0.1 });
   const isMobile = useIsMobile();
+  const isDark = useIsDark();
+  const isInView = useInView(boxRef, {
+    once: false,
+    amount: isMobile ? 0.15 : 0.1,
+  });
   const {
     isBubbleOpen,
     popRequested,
@@ -106,7 +111,9 @@ export default function LeftInfoBox({
     handleVaporDone,
     openBubble,
     requestPop,
+    handleBubbleVisibility,
   } = useInfoBubble();
+
 
   // SVG draw progress
   const svgProgress = useMotionValue(0);
@@ -142,7 +149,13 @@ export default function LeftInfoBox({
       <motion.div
         ref={boxRef}
         initial={{ x: 0, y: 15 }}
-        animate={isInView ? { x: 0, y: 0 } : isMobile ? { x: 0, y: 15 } : { x: -20, y: 10 }}
+        animate={
+          isInView
+            ? { x: 0, y: 0 }
+            : isMobile
+              ? { x: 0, y: 15 }
+              : { x: -20, y: 10 }
+        }
         onViewportEnter={onViewportEnter}
         onViewportLeave={onViewportLeave}
         transition={{
@@ -153,7 +166,7 @@ export default function LeftInfoBox({
           position: "relative",
           maxWidth: "clamp(320px, 55vw, 780px)",
           minHeight: "clamp(200px, 22vw, 300px)",
-          zIndex: isBubbleOpen ? 10 : "auto",
+          zIndex: "auto",
         }}
         className="mx-auto md:mx-0 md:ml-[5%] w-[calc(100%-2rem)] md:w-auto"
       >
@@ -325,19 +338,12 @@ export default function LeftInfoBox({
             >
               <FuzzyText>
                 <span
-                  className="bg-clip-text text-transparent dark:hidden"
+                  className="bg-clip-text text-transparent"
                   style={{
                     WebkitBackgroundClip: "text",
-                    backgroundImage: `linear-gradient(135deg, rgb(100,115,145) 0%, rgb(125,110,135) 15%, rgb(105,130,150) 30%, rgb(130,115,130) 45%, rgb(100,125,145) 60%, rgb(120,110,140) 75%, rgb(105,120,148) 90%, rgb(128,115,135) 100%)`,
-                  }}
-                >
-                  {title}
-                </span>
-                <span
-                  className="bg-clip-text text-transparent hidden dark:inline"
-                  style={{
-                    WebkitBackgroundClip: "text",
-                    backgroundImage: `linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 15%, rgb(180,210,235) 30%, rgb(215,190,215) 45%, rgb(170,200,230) 60%, rgb(200,185,225) 75%, rgb(180,195,235) 90%, rgb(210,185,220) 100%)`,
+                    backgroundImage: isDark
+                      ? `linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 15%, rgb(180,210,235) 30%, rgb(215,190,215) 45%, rgb(170,200,230) 60%, rgb(200,185,225) 75%, rgb(180,195,235) 90%, rgb(210,185,220) 100%)`
+                      : `linear-gradient(135deg, rgb(100,115,145) 0%, rgb(125,110,135) 15%, rgb(105,130,150) 30%, rgb(130,115,130) 45%, rgb(100,125,145) 60%, rgb(120,110,140) 75%, rgb(105,120,148) 90%, rgb(128,115,135) 100%)`,
                   }}
                 >
                   {title}
@@ -357,19 +363,12 @@ export default function LeftInfoBox({
             >
               <FuzzyText>
                 <span
-                  className="bg-clip-text text-transparent dark:hidden"
+                  className="bg-clip-text text-transparent"
                   style={{
                     WebkitBackgroundClip: "text",
-                    backgroundImage: `linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(25,15,35,0.92) 15%, rgba(10,20,30,0.94) 30%, rgba(30,15,25,0.9) 45%, rgba(10,20,28,0.93) 60%, rgba(22,12,32,0.91) 75%, rgba(12,18,30,0.94) 90%, rgba(28,15,28,0.91) 100%)`,
-                  }}
-                >
-                  {company}
-                </span>
-                <span
-                  className="bg-clip-text text-transparent hidden dark:inline"
-                  style={{
-                    WebkitBackgroundClip: "text",
-                    backgroundImage: `linear-gradient(135deg, rgba(248,250,255,0.96) 0%, rgba(255,248,255,0.93) 15%, rgba(248,252,255,0.95) 30%, rgba(255,250,255,0.92) 45%, rgba(245,250,255,0.94) 60%, rgba(255,248,255,0.93) 75%, rgba(248,250,255,0.95) 90%, rgba(255,248,255,0.93) 100%)`,
+                    backgroundImage: isDark
+                      ? `linear-gradient(135deg, rgba(248,250,255,0.96) 0%, rgba(255,248,255,0.93) 15%, rgba(248,252,255,0.95) 30%, rgba(255,250,255,0.92) 45%, rgba(245,250,255,0.94) 60%, rgba(255,248,255,0.93) 75%, rgba(248,250,255,0.95) 90%, rgba(255,248,255,0.93) 100%)`
+                      : `linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(25,15,35,0.92) 15%, rgba(10,20,30,0.94) 30%, rgba(30,15,25,0.9) 45%, rgba(10,20,28,0.93) 60%, rgba(22,12,32,0.91) 75%, rgba(12,18,30,0.94) 90%, rgba(28,15,28,0.91) 100%)`,
                   }}
                 >
                   {company}
@@ -389,19 +388,12 @@ export default function LeftInfoBox({
             >
               <FuzzyText>
                 <span
-                  className="bg-clip-text text-transparent dark:hidden"
+                  className="bg-clip-text text-transparent"
                   style={{
                     WebkitBackgroundClip: "text",
-                    backgroundImage: `linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(25,15,35,0.92) 15%, rgba(10,20,30,0.94) 30%, rgba(30,15,25,0.9) 45%, rgba(10,20,28,0.93) 60%, rgba(22,12,32,0.91) 75%, rgba(12,18,30,0.94) 90%, rgba(28,15,28,0.91) 100%)`,
-                  }}
-                >
-                  {role}
-                </span>
-                <span
-                  className="bg-clip-text text-transparent hidden dark:inline"
-                  style={{
-                    WebkitBackgroundClip: "text",
-                    backgroundImage: `linear-gradient(135deg, rgba(248,250,255,0.96) 0%, rgba(255,248,255,0.93) 15%, rgba(248,252,255,0.95) 30%, rgba(255,250,255,0.92) 45%, rgba(245,250,255,0.94) 60%, rgba(255,248,255,0.93) 75%, rgba(248,250,255,0.95) 90%, rgba(255,248,255,0.93) 100%)`,
+                    backgroundImage: isDark
+                      ? `linear-gradient(135deg, rgba(248,250,255,0.96) 0%, rgba(255,248,255,0.93) 15%, rgba(248,252,255,0.95) 30%, rgba(255,250,255,0.92) 45%, rgba(245,250,255,0.94) 60%, rgba(255,248,255,0.93) 75%, rgba(248,250,255,0.95) 90%, rgba(255,248,255,0.93) 100%)`
+                      : `linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(25,15,35,0.92) 15%, rgba(10,20,30,0.94) 30%, rgba(30,15,25,0.9) 45%, rgba(10,20,28,0.93) 60%, rgba(22,12,32,0.91) 75%, rgba(12,18,30,0.94) 90%, rgba(28,15,28,0.91) 100%)`,
                   }}
                 >
                   {role}
@@ -420,19 +412,12 @@ export default function LeftInfoBox({
             >
               <FuzzyText>
                 <span
-                  className="bg-clip-text text-transparent dark:hidden"
+                  className="bg-clip-text text-transparent"
                   style={{
                     WebkitBackgroundClip: "text",
-                    backgroundImage: `linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(25,15,35,0.92) 15%, rgba(10,20,30,0.94) 30%, rgba(30,15,25,0.9) 45%, rgba(10,20,28,0.93) 60%, rgba(22,12,32,0.91) 75%, rgba(12,18,30,0.94) 90%, rgba(28,15,28,0.91) 100%)`,
-                  }}
-                >
-                  {description}
-                </span>
-                <span
-                  className="bg-clip-text text-transparent hidden dark:inline"
-                  style={{
-                    WebkitBackgroundClip: "text",
-                    backgroundImage: `linear-gradient(135deg, rgba(248,250,255,0.96) 0%, rgba(255,248,255,0.93) 15%, rgba(248,252,255,0.95) 30%, rgba(255,250,255,0.92) 45%, rgba(245,250,255,0.94) 60%, rgba(255,248,255,0.93) 75%, rgba(248,250,255,0.95) 90%, rgba(255,248,255,0.93) 100%)`,
+                    backgroundImage: isDark
+                      ? `linear-gradient(135deg, rgba(248,250,255,0.96) 0%, rgba(255,248,255,0.93) 15%, rgba(248,252,255,0.95) 30%, rgba(255,250,255,0.92) 45%, rgba(245,250,255,0.94) 60%, rgba(255,248,255,0.93) 75%, rgba(248,250,255,0.95) 90%, rgba(255,248,255,0.93) 100%)`
+                      : `linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(25,15,35,0.92) 15%, rgba(10,20,30,0.94) 30%, rgba(30,15,25,0.9) 45%, rgba(10,20,28,0.93) 60%, rgba(22,12,32,0.91) 75%, rgba(12,18,30,0.94) 90%, rgba(28,15,28,0.91) 100%)`,
                   }}
                 >
                   {description}
@@ -464,11 +449,7 @@ export default function LeftInfoBox({
 
         {/* ── Info Bubble — pops out to the RIGHT ── */}
         <motion.div
-          initial={isMobile ? { opacity: 0 } : undefined}
-          animate={isMobile ? (isInView ? { opacity: 1 } : { opacity: 0 }) : undefined}
-          transition={{ duration: 1.8, ease: "easeInOut" }}
           style={{
-            ...(!isMobile && { opacity: 1 }),
             position: "absolute",
             top: 0,
             left: 0,
@@ -487,6 +468,8 @@ export default function LeftInfoBox({
                 onPop={handlePop}
                 isMobile={isMobile}
                 popRequested={popRequested}
+                onVisibilityChange={handleBubbleVisibility}
+                parentInView={isInView}
               />
             )}
           </AnimatePresence>
@@ -496,8 +479,12 @@ export default function LeftInfoBox({
       {/* Mobile spacer — pushes content below when bubble is open */}
       {isMobile && (
         <motion.div
-          animate={{ height: isBubbleOpen ? 320 : 0 }}
-          transition={{ duration: 0.75, ease: [0.34, 1.56, 0.64, 1] }}
+          animate={{ height: isBubbleOpen ? 340 : 0 }}
+          transition={
+            isBubbleOpen
+              ? { duration: 0.6, ease: [0.25, 1, 0.5, 1] }
+              : { duration: 0.9, ease: [0.25, 0.1, 0.25, 1] }
+          }
           style={{ height: 0, overflow: "hidden" }}
         />
       )}

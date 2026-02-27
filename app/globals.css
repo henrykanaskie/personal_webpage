@@ -20,7 +20,26 @@ body {
     linear-gradient(to bottom, #2a2a2a 1px, transparent 1px);
 }
 
+/* Prevent Tailwind's display transition from delaying dark mode swaps */
+* {
+  transition-behavior: normal !important;
+}
+
+/* Hide scrollbar but keep scrolling */
+::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  scrollbar-width: none;
+}
+
 @keyframes glassShineIntro {
   0% { background-position: 200% center; }
   100% { background-position: -50% center; }
+}
+
+@keyframes iridescentShift {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
 }

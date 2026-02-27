@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useCallback, useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, useInView } from "framer-motion";
 import { FuzzyText } from "./LeftInfoBox";
 
 export function useIsMobile(breakpoint = 768) {
@@ -13,6 +13,20 @@ export function useIsMobile(breakpoint = 768) {
     return () => window.removeEventListener("resize", check);
   }, [breakpoint]);
   return isMobile ?? false;
+}
+
+export function useIsDark() {
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    const el = document.documentElement;
+    setIsDark(el.classList.contains("dark"));
+    const observer = new MutationObserver(() => {
+      setIsDark(el.classList.contains("dark"));
+    });
+    observer.observe(el, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+  return isDark;
 }
 
 // ─── Shared glass styling ───
@@ -303,14 +317,23 @@ export function InfoBubble({
   onPop,
   isMobile,
   popRequested,
+  onVisibilityChange,
+  parentInView,
 }: {
   extraInfo: BubbleInfo;
   side: "left" | "right";
   onPop: (x: number, y: number, w: number, h: number) => void;
   isMobile: boolean;
   popRequested?: boolean;
+  onVisibilityChange?: (inView: boolean) => void;
+  parentInView?: boolean;
 }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
+  const isBubbleInView = useInView(bubbleRef, { once: false, amount: 0.4 });
+
+  useEffect(() => {
+    onVisibilityChange?.(isBubbleInView);
+  }, [isBubbleInView, onVisibilityChange]);
   const [isPopping, setIsPopping] = useState(false);
   const isRight = side === "right";
   const [isPressed, setIsPressed] = useState(false);
@@ -334,6 +357,22 @@ export function InfoBubble({
   useEffect(() => {
     if (popRequested) handleClick();
   }, [popRequested, handleClick]);
+
+  // Scroll bubble into center of viewport after entrance animation (mobile only)
+  useEffect(() => {
+    if (!isMobile) return;
+    const timer = setTimeout(() => {
+      if (!bubbleRef.current) return;
+      const rect = bubbleRef.current.getBoundingClientRect();
+      const bubbleCenter = rect.top + rect.height / 2;
+      const viewportCenter = window.innerHeight / 2;
+      const offset = bubbleCenter - viewportCenter;
+      if (Math.abs(offset) > 50) {
+        window.scrollBy({ top: offset, behavior: "smooth" });
+      }
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [isMobile]);
 
   const sideAnchor = isMobile
     ? { left: "50%" }
@@ -367,12 +406,13 @@ export function InfoBubble({
         onClick={handleClick}
         initial={
           isMobile
-            ? { x: "-50%", y: "0%", scaleX: 0.5, scaleY: 0.15 }
+            ? { x: "-50%", y: "0%", scaleX: 0.5, scaleY: 0.15, opacity: 0 }
             : {
                 y: "-50%",
                 x: isRight ? "30%" : "-30%",
                 scaleX: 0.15,
                 scaleY: 0.3,
+                opacity: 0,
               }
         }
         onMouseDown={() => setIsPressed(true)}
@@ -402,6 +442,7 @@ export function InfoBubble({
                 y: "16px",
                 scaleX: isPopping || isPressed ? 1.08 : 1,
                 scaleY: isPopping || isPressed ? 1.08 : 1,
+                opacity: isBubbleInView || parentInView ? 1 : 0,
               }
             : {
                 y: "-50%",
@@ -410,14 +451,22 @@ export function InfoBubble({
                   : `calc(-100% - ${BUBBLE_REST_OFFSET - 200}px)`,
                 scaleX: isPopping || isPressed ? 1.08 : 1,
                 scaleY: isPopping || isPressed ? 1.08 : 1,
+                opacity: isBubbleInView || parentInView ? 1 : 0,
               }
         }
         transition={
           isPopping
-            ? { scale: { duration: 0.08, ease: "easeOut" } }
+            ? {
+                scale: { duration: 0.08, ease: "easeOut" },
+                opacity: { duration: 0.08 },
+              }
             : {
                 duration: 0.75,
                 ease: [0.34, 1.56, 0.64, 1],
+                opacity: {
+                  duration: isBubbleInView ? 0.3 : 1.4,
+                  ease: "easeInOut",
+                },
               }
         }
         exit={{ opacity: 0, transition: { duration: 0.001 } }}
@@ -679,6 +728,7 @@ export function InfoBubble({
 // ─── Hook for managing bubble state ───
 export function useInfoBubble() {
   const [isBubbleOpen, setIsBubbleOpen] = useState(false);
+  const [isBubbleVisible, setIsBubbleVisible] = useState(false);
   const [popRequested, setPopRequested] = useState(false);
   const [vaporOrigin, setVaporOrigin] = useState<{
     x: number;
@@ -691,7 +741,10 @@ export function useInfoBubble() {
     (x: number, y: number, w: number, h: number) => {
       setIsBubbleOpen(false);
       setPopRequested(false);
-      setVaporOrigin({ x, y, w, h });
+      // Defer vapor cloud to next frame so bubble exit doesn't compete
+      requestAnimationFrame(() => {
+        setVaporOrigin({ x, y, w, h });
+      });
     },
     [],
   );
@@ -708,13 +761,33 @@ export function useInfoBubble() {
     setPopRequested(true);
   }, []);
 
+  // Delayed version: delays the rising edge so the box fades in after the bubble
+  const [isBubbleVisibleDelayed, setIsBubbleVisibleDelayed] = useState(false);
+  const delayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleBubbleVisibility = useCallback((inView: boolean) => {
+    setIsBubbleVisible(inView);
+    if (delayTimer.current) clearTimeout(delayTimer.current);
+    if (inView) {
+      // Delay the rising edge so box fades in after bubble
+
+      setIsBubbleVisibleDelayed(true);
+    } else {
+      // No delay on fade-out — they fade together
+      setIsBubbleVisibleDelayed(false);
+    }
+  }, []);
+
   return {
     isBubbleOpen,
+    isBubbleVisible,
+    isBubbleVisibleDelayed,
     popRequested,
     vaporOrigin,
     handlePop,
     handleVaporDone,
     openBubble,
     requestPop,
+    handleBubbleVisibility,
   };
 }

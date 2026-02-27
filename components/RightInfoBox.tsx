@@ -15,6 +15,7 @@ import {
   VaporCloud,
   useInfoBubble,
   useIsMobile,
+  useIsDark,
   type BubbleInfo,
 } from "./InfoBubble";
 
@@ -96,8 +97,12 @@ export default function RightInfoBox({
   svgOffset = { x: 0, y: 0 },
 }: RightInfoBoxProps) {
   const boxRef = useRef<HTMLDivElement>(null);
-  const isInView = useInView(boxRef, { once: false, amount: 0.1 });
   const isMobile = useIsMobile();
+  const isDark = useIsDark();
+  const isInView = useInView(boxRef, {
+    once: false,
+    amount: isMobile ? 0.15 : 0.1,
+  });
   const {
     isBubbleOpen,
     popRequested,
@@ -106,7 +111,9 @@ export default function RightInfoBox({
     handleVaporDone,
     openBubble,
     requestPop,
+    handleBubbleVisibility,
   } = useInfoBubble();
+
 
   // SVG draw progress
   const svgProgress = useMotionValue(0);
@@ -142,7 +149,13 @@ export default function RightInfoBox({
       <motion.div
         ref={boxRef}
         initial={{ x: 0, y: 15 }}
-        animate={isInView ? { x: 0, y: 0 } : isMobile ? { x: 0, y: 15 } : { x: 20, y: 10 }}
+        animate={
+          isInView
+            ? { x: 0, y: 0 }
+            : isMobile
+              ? { x: 0, y: 15 }
+              : { x: 20, y: 10 }
+        }
         onViewportEnter={onViewportEnter}
         onViewportLeave={onViewportLeave}
         transition={{
@@ -153,7 +166,7 @@ export default function RightInfoBox({
           position: "relative",
           maxWidth: "clamp(320px, 55vw, 780px)",
           minHeight: "clamp(200px, 22vw, 300px)",
-          zIndex: isBubbleOpen ? 10 : "auto",
+          zIndex: "auto",
         }}
         className="mx-auto md:mx-0 md:self-end md:mr-[5%] w-[calc(100%-2rem)] md:w-auto"
       >
@@ -186,9 +199,10 @@ export default function RightInfoBox({
 
         {/* Glass box */}
         <motion.div
+          initial={{ opacity: 0 }}
+          animate={isInView ? { opacity: 1 } : { opacity: 0 }}
           transition={{ duration: 1.8, ease: "easeInOut" }}
           style={{
-            opacity: 1,
             position: "relative",
             borderRadius: "24px",
             ...glassStyle,
@@ -402,11 +416,7 @@ export default function RightInfoBox({
 
         {/* ── Info Bubble — pops out to the LEFT ── */}
         <motion.div
-          initial={isMobile ? { opacity: 0 } : undefined}
-          animate={isMobile ? (isInView ? { opacity: 1 } : { opacity: 0 }) : undefined}
-          transition={{ duration: 1.8, ease: "easeInOut" }}
           style={{
-            ...(!isMobile && { opacity: 1 }),
             position: "absolute",
             top: 0,
             left: 0,
@@ -425,6 +435,8 @@ export default function RightInfoBox({
                 onPop={handlePop}
                 isMobile={isMobile}
                 popRequested={popRequested}
+                onVisibilityChange={handleBubbleVisibility}
+                parentInView={isInView}
               />
             )}
           </AnimatePresence>
@@ -434,8 +446,12 @@ export default function RightInfoBox({
       {/* Mobile spacer — pushes content below when bubble is open */}
       {isMobile && (
         <motion.div
-          animate={{ height: isBubbleOpen ? 320 : 0 }}
-          transition={{ duration: 0.75, ease: [0.34, 1.56, 0.64, 1] }}
+          animate={{ height: isBubbleOpen ? 340 : 0 }}
+          transition={
+            isBubbleOpen
+              ? { duration: 0.6, ease: [0.25, 1, 0.5, 1] }
+              : { duration: 0.9, ease: [0.25, 0.1, 0.25, 1] }
+          }
           style={{ height: 0, overflow: "hidden" }}
         />
       )}

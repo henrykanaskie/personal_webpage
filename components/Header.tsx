@@ -10,7 +10,8 @@ import { glassClassNames, FuzzyText } from "./LeftInfoBox";
 const navLinks = [
   { name: "About", href: "/about" },
   { name: "Experience", href: "/experience" },
-  { name: "Research", href: "/research" },
+  { name: "Projects", href: "/projects" },
+  { name: "Education", href: "/education" },
 ];
 
 const lightGradient = `linear-gradient(135deg, rgb(100,115,145) 0%, rgb(125,110,135) 15%, rgb(105,130,150) 30%, rgb(130,115,130) 45%, rgb(100,125,145) 60%, rgb(120,110,140) 75%, rgb(105,120,148) 90%, rgb(128,115,135) 100%)`;
@@ -25,27 +26,26 @@ const underlineGradientDark = `linear-gradient(90deg, rgb(180,200,255), rgb(210,
 function IridescentText({
   children,
   active = false,
+  isDark = false,
 }: {
   children: React.ReactNode;
   active?: boolean;
+  isDark?: boolean;
 }) {
-  const light = active ? lightGradientActive : lightGradient;
-  const dark = active ? darkGradientActive : darkGradient;
+  const gradient = isDark
+    ? active
+      ? darkGradientActive
+      : darkGradient
+    : active
+      ? lightGradientActive
+      : lightGradient;
   return (
-    <>
-      <span
-        className="bg-clip-text text-transparent dark:hidden"
-        style={{ WebkitBackgroundClip: "text", backgroundImage: light }}
-      >
-        {children}
-      </span>
-      <span
-        className="bg-clip-text text-transparent hidden dark:inline"
-        style={{ WebkitBackgroundClip: "text", backgroundImage: dark }}
-      >
-        {children}
-      </span>
-    </>
+    <span
+      className="bg-clip-text text-transparent"
+      style={{ WebkitBackgroundClip: "text", backgroundImage: gradient }}
+    >
+      {children}
+    </span>
   );
 }
 
@@ -259,7 +259,7 @@ export default function Header() {
       <nav className="container mx-auto flex justify-between items-center relative z-10">
         <Link href="/" className="text-2xl font-bold">
           <FuzzyText>
-            <IridescentText>My Portfolio</IridescentText>
+            <IridescentText isDark={isDark}>My Portfolio</IridescentText>
           </FuzzyText>
         </Link>
 
@@ -272,7 +272,7 @@ export default function Header() {
                 <li key={link.name}>
                   <Link href={link.href} className="relative">
                     <FuzzyText>
-                      <IridescentText active={isActive}>
+                      <IridescentText active={isActive} isDark={isDark}>
                         {link.name}
                       </IridescentText>
                     </FuzzyText>
@@ -282,12 +282,12 @@ export default function Header() {
                         layoutId="underline"
                       >
                         <div
-                          className="absolute inset-0 dark:hidden"
-                          style={{ backgroundImage: underlineGradientLight }}
-                        />
-                        <div
-                          className="absolute inset-0 hidden dark:block"
-                          style={{ backgroundImage: underlineGradientDark }}
+                          className="absolute inset-0"
+                          style={{
+                            backgroundImage: isDark
+                              ? underlineGradientDark
+                              : underlineGradientLight,
+                          }}
                         />
                       </motion.div>
                     )}
@@ -296,33 +296,73 @@ export default function Header() {
               );
             })}
           </ul>
-          <ThemeToggleButton isDark={isDark} mounted={mounted} maskId={maskId} onToggle={toggleDarkMode} />
+          <ThemeToggleButton
+            isDark={isDark}
+            mounted={mounted}
+            maskId={maskId}
+            onToggle={toggleDarkMode}
+          />
         </div>
 
         {/* ── Mobile: theme toggle + hamburger ── */}
         <div className="flex md:hidden items-center gap-2">
-          <ThemeToggleButton isDark={isDark} mounted={mounted} maskId={maskIdMobile} onToggle={toggleDarkMode} />
+          <ThemeToggleButton
+            isDark={isDark}
+            mounted={mounted}
+            maskId={maskIdMobile}
+            onToggle={toggleDarkMode}
+          />
           <button
             onClick={() => setMenuOpen((o) => !o)}
             className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-white/10 transition-all duration-200"
             aria-label="Toggle menu"
           >
-            <svg width="20" height="20" viewBox="0 0 20 20" className="text-black dark:text-white">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              className="text-black dark:text-white"
+            >
               <motion.line
-                x1="3" x2="17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
-                animate={menuOpen ? { y1: 10, y2: 10, rotate: 45 } : { y1: 5, y2: 5, rotate: 0 }}
+                x1="3"
+                x2="17"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                animate={
+                  menuOpen
+                    ? { y1: 10, y2: 10, rotate: 45 }
+                    : { y1: 5, y2: 5, rotate: 0 }
+                }
                 transition={{ duration: 0.3, ease: "easeInOut" }}
                 style={{ transformOrigin: "center" }}
               />
               <motion.line
-                x1="3" y1="10" x2="17" y2="10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
-                animate={{ opacity: menuOpen ? 0 : 1, scaleX: menuOpen ? 0 : 1 }}
+                x1="3"
+                y1="10"
+                x2="17"
+                y2="10"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                animate={{
+                  opacity: menuOpen ? 0 : 1,
+                  scaleX: menuOpen ? 0 : 1,
+                }}
                 transition={{ duration: 0.2 }}
                 style={{ transformOrigin: "center" }}
               />
               <motion.line
-                x1="3" x2="17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
-                animate={menuOpen ? { y1: 10, y2: 10, rotate: -45 } : { y1: 15, y2: 15, rotate: 0 }}
+                x1="3"
+                x2="17"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                animate={
+                  menuOpen
+                    ? { y1: 10, y2: 10, rotate: -45 }
+                    : { y1: 15, y2: 15, rotate: 0 }
+                }
                 transition={{ duration: 0.3, ease: "easeInOut" }}
                 style={{ transformOrigin: "center" }}
               />
@@ -350,7 +390,11 @@ export default function Header() {
                     initial={{ opacity: 0, y: -8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
-                    transition={{ delay: i * 0.05 + 0.1, duration: 0.3, ease: "easeOut" }}
+                    transition={{
+                      delay: i * 0.05 + 0.1,
+                      duration: 0.3,
+                      ease: "easeOut",
+                    }}
                   >
                     <Link
                       href={link.href}
@@ -358,7 +402,7 @@ export default function Header() {
                       className="relative block px-6 py-2.5 rounded-xl text-center text-lg font-semibold transition-colors duration-200 hover:bg-white/5"
                     >
                       <FuzzyText>
-                        <IridescentText active={isActive}>
+                        <IridescentText active={isActive} isDark={isDark}>
                           {link.name}
                         </IridescentText>
                       </FuzzyText>
@@ -368,12 +412,12 @@ export default function Header() {
                           layoutId="underline-mobile"
                         >
                           <div
-                            className="absolute inset-0 dark:hidden"
-                            style={{ backgroundImage: underlineGradientLight }}
-                          />
-                          <div
-                            className="absolute inset-0 hidden dark:block"
-                            style={{ backgroundImage: underlineGradientDark }}
+                            className="absolute inset-0"
+                            style={{
+                              backgroundImage: isDark
+                                ? underlineGradientDark
+                                : underlineGradientLight,
+                            }}
                           />
                         </motion.div>
                       )}

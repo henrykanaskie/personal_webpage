@@ -1,6 +1,6 @@
 import re
 
-name = "daimler"
+name = "cpu"
 svg = f"./svg_data/{name}.svg"
 jsfile = f"{name}Paths.ts"
 with open(f'{svg}', 'r') as f:
