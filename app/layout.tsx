@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
+import PageTransition from "@/components/PageTransition";
 
 const inter = Inter({ subsets: ["latin"] });
 const spaceGrotesk = Space_Grotesk({
@@ -35,9 +36,11 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.className} ${spaceGrotesk.variable}`}>
-        <div className="w-full overflow-x-clip">
+        <div className="w-full">
           <Header />
-          <main className="px-3">{children}</main>
+          <main className="px-3">
+            <PageTransition>{children}</PageTransition>
+          </main>
         </div>
       </body>
     </html>

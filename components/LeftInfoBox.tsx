@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useCallback, useState } from "react";
+import { useRef, useCallback, useEffect } from "react";
 import {
   motion,
   useMotionValue,
   useInView,
+  useIsPresent,
   animate,
   AnimatePresence,
 } from "framer-motion";
@@ -114,10 +115,19 @@ export default function LeftInfoBox({
     handleBubbleVisibility,
   } = useInfoBubble();
 
-
   // SVG draw progress
   const svgProgress = useMotionValue(0);
   const drawTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isPresent = useIsPresent();
+
+  // Fast undraw when page exit starts
+  useEffect(() => {
+    if (!isPresent) {
+      if (drawTimer.current) clearTimeout(drawTimer.current);
+      drawTimer.current = null;
+      animate(svgProgress, 0, { duration: 0.35, ease: "easeIn" });
+    }
+  }, [isPresent, svgProgress]);
 
   const onViewportEnter = useCallback(() => {
     if (drawTimer.current) clearTimeout(drawTimer.current);
@@ -148,7 +158,7 @@ export default function LeftInfoBox({
 
       <motion.div
         ref={boxRef}
-        initial={{ x: 0, y: 15 }}
+        initial={{ x: "-70vw" }}
         animate={
           isInView
             ? { x: 0, y: 0 }
@@ -156,6 +166,10 @@ export default function LeftInfoBox({
               ? { x: 0, y: 15 }
               : { x: -20, y: 10 }
         }
+        exit={{
+          x: "-70vw",
+          transition: { duration: 0.55, ease: [0.5, 0, 0.75, 0] },
+        }}
         onViewportEnter={onViewportEnter}
         onViewportLeave={onViewportLeave}
         transition={{
@@ -175,6 +189,7 @@ export default function LeftInfoBox({
           className="hidden md:block"
           initial={{ opacity: 0 }}
           animate={isInView ? { opacity: 1 } : { opacity: 0 }}
+          exit={{ opacity: 0, transition: { duration: 0.15 } }}
           transition={{ duration: 1.2, ease: "easeInOut" }}
           style={{
             position: "absolute",

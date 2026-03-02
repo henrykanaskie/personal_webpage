@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { glassClassNames, FuzzyText } from "./LeftInfoBox";
 import { glassStyle, useIsDark } from "./InfoBubble";
 
@@ -23,7 +24,14 @@ export default function EducationCard({
   const isDark = useIsDark();
 
   return (
-    <div
+    <motion.div
+      initial={{ x: "-70vw" }}
+      animate={{ x: 0, y: 0 }}
+      exit={{
+        x: "-70vw",
+        transition: { duration: 0.55, ease: [0.5, 0, 0.75, 0] },
+      }}
+      transition={{ duration: 0.8, ease: "easeOut" }}
       style={{
         position: "relative",
         width: "100%",
@@ -343,6 +351,6 @@ export default function EducationCard({
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

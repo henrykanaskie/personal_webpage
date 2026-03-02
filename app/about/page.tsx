@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import GlassTitle from "@/components/GlassTitle";
 import SkillBar from "@/components/SkillBar";
 import { glassClassNames, FuzzyText } from "@/components/LeftInfoBox";
@@ -211,7 +212,11 @@ export default function AboutPage() {
       <GlassTitle text="Henry Kanaskie" />
 
       {/* Contact info */}
-      <div
+      <motion.div
+        initial={{ opacity: 0, x: "-70vw" }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ x: "-70vw", transition: { duration: 0.55, ease: [0.5, 0, 0.75, 0] } }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
         className="-mt-4 md:-mt-20 flex flex-wrap items-center justify-center gap-y-3"
         style={{
           fontSize: "clamp(1.1rem, 2vw, 1.6rem)",
@@ -285,10 +290,15 @@ export default function AboutPage() {
             </span>
           );
         })}
-      </div>
+      </motion.div>
 
       {/* About blurb + photo side by side */}
-      <div className="flex flex-col md:flex-row md:items-stretch gap-8 md:gap-16 max-w-8xl w-full px-2 md:px-4 md:min-h-[380px]">
+      <motion.div
+        initial={{ opacity: 0, x: "70vw" }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ x: "70vw", transition: { duration: 0.55, ease: [0.5, 0, 0.75, 0] } }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="flex flex-col md:flex-row md:items-stretch gap-8 md:gap-16 max-w-8xl w-full px-2 md:px-4 md:min-h-[380px]">
         <div className="flex-1 flex">
           <GlassBlurb>
             <FuzzyText>
@@ -335,7 +345,7 @@ export default function AboutPage() {
             </div>
           </GlassBlurb>
         </div>
-      </div>
+      </motion.div>
 
       {/* Resume modal */}
       {resumeOpen && (
@@ -757,7 +767,12 @@ export default function AboutPage() {
       )}
 
       {/* Skills side by side */}
-      <div className="flex flex-col md:flex-row md:items-start gap-6 md:gap-8 max-w-8xl w-full px-2 md:px-4">
+      <motion.div
+        initial={{ opacity: 0, x: "-70vw" }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ x: "-70vw", transition: { duration: 0.55, ease: [0.5, 0, 0.75, 0] } }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="flex flex-col md:flex-row md:items-start gap-6 md:gap-8 max-w-8xl w-full px-2 md:px-4">
         <div className="flex-1">
           <GlassBlurb title="Languages & Frameworks">
             <SkillBar name="Python" level={92} />
@@ -782,7 +797,7 @@ export default function AboutPage() {
             <SkillBar name="Flask" level={70} />
           </GlassBlurb>
         </div>
-      </div>
+      </motion.div>
 
       <div style={{ height: 100 }} />
     </div>

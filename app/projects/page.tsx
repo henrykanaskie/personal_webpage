@@ -72,11 +72,11 @@ export default function ProjectsPage() {
         <GlassTitle text="Projects" svgPaths={rocketPaths} />
 
         {/* Mobile: single column. Desktop: balanced rows */}
-        <div className="flex flex-col items-center gap-10 md:gap-16 px-4 md:px-[5%]">
+        <div className="flex flex-col items-center gap-14 md:gap-24 px-4 md:px-[5%]">
           {rows.map((row, rowIdx) => (
             <div
               key={rowIdx}
-              className="flex flex-col items-center gap-10 md:flex-row md:justify-center md:gap-12 w-full"
+              className="flex flex-col items-center gap-14 md:flex-row md:justify-center md:gap-16 w-full"
             >
               {row.map((project, colIdx) => (
                 <ProjectCard

@@ -57,6 +57,7 @@ export default function GlassTitle({
       ref={ref}
       initial={{ opacity: 0, y: 20 }}
       animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+      exit={{ opacity: 0, transition: { duration: 0.3, ease: "easeIn" } }}
       transition={{ duration: 1.2, ease: "easeInOut" }}
       className="flex justify-center items-center pt-12 md:pt-18 pb-4 md:pb-8 select-none"
     >

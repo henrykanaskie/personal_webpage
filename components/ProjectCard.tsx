@@ -421,15 +421,19 @@ export default function ProjectCard({
 
       <motion.div
         ref={boxRef}
-        initial={{ x: 0, y: 15, marginTop: 0, marginBottom: 0 }}
+        initial={{ x: bubbleSide === "left" ? "-100vw" : "100vw", marginTop: 0, marginBottom: 0 }}
         animate={
           shouldShow
             ? { x: 0, y: 0, marginTop: isMobile ? 0 : desktopMarginY, marginBottom: isMobile ? 0 : desktopMarginY }
             : { x: 0, y: 15, marginTop: 0, marginBottom: 0 }
         }
+        exit={{
+          x: bubbleSide === "left" ? "-100vw" : "100vw",
+          transition: { duration: 0.7, ease: [0.5, 0, 0.75, 0] },
+        }}
         onViewportEnter={onViewportEnter}
         onViewportLeave={onViewportLeave}
-        transition={{ duration: 0.6, ease: [0.25, 1, 0.5, 1] }}
+        transition={{ duration: 1.0, ease: [0.25, 1, 0.5, 1] }}
         style={{
           position: "relative",
           zIndex: anyBubbleOpen ? 10 : "auto",

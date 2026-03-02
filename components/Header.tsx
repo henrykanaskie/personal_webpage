@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -132,12 +132,34 @@ export default function Header() {
   const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [visible, setVisible] = useState(true);
+  const lastScrollY = useRef(0);
   const maskId = useId();
   const maskIdMobile = useId();
 
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
+
+  // Smart navbar: show on scroll up, hide on scroll down
+  useEffect(() => {
+    const onScroll = () => {
+      const currentY = window.scrollY;
+      if (currentY < 50) {
+        // Always show near top of page
+        setVisible(true);
+      } else if (currentY < lastScrollY.current) {
+        // Scrolling up
+        setVisible(true);
+      } else if (currentY > lastScrollY.current + 5) {
+        // Scrolling down (with small threshold to avoid jitter)
+        setVisible(false);
+      }
+      lastScrollY.current = currentY;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -169,8 +191,12 @@ export default function Header() {
 
   return (
     <header
-      className={`${glassClassNames} relative z-50 p-4 rounded-2xl overflow-hidden mx-2 mt-2`}
-      style={{ ...glassStyle }}
+      className={`${glassClassNames} sticky top-2 z-50 p-4 rounded-2xl overflow-hidden mx-2 mt-2`}
+      style={{
+        ...glassStyle,
+        transform: visible ? "translateY(0)" : "translateY(-120%)",
+        transition: "transform 0.35s ease",
+      }}
     >
       {/* Specular highlight */}
       <div
@@ -257,7 +283,7 @@ export default function Header() {
       />
 
       <nav className="container mx-auto flex justify-between items-center relative z-10">
-        <Link href="/" className="text-2xl font-bold">
+        <Link href="/" scroll={false} className="text-2xl font-bold">
           <FuzzyText>
             <IridescentText isDark={isDark}>My Portfolio</IridescentText>
           </FuzzyText>
@@ -270,7 +296,7 @@ export default function Header() {
               const isActive = pathname === link.href;
               return (
                 <li key={link.name}>
-                  <Link href={link.href} className="relative">
+                  <Link href={link.href} scroll={false} className="relative">
                     <FuzzyText>
                       <IridescentText active={isActive} isDark={isDark}>
                         {link.name}
@@ -398,6 +424,7 @@ export default function Header() {
                   >
                     <Link
                       href={link.href}
+                      scroll={false}
                       onClick={() => setMenuOpen(false)}
                       className="relative block px-6 py-2.5 rounded-xl text-center text-lg font-semibold transition-colors duration-200 hover:bg-white/5"
                     >
