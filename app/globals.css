@@ -1,5 +1,9 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
+
+html {
+  scroll-behavior: smooth;
+}
 body {
   /* The color of the "paper" */
   background-color: #ffffff;

@@ -24,6 +24,8 @@ export default function PageTransition({
   const pathname = usePathname();
   const scrollYRef = useRef(0);
 
+  const isPhotoRoute = pathname?.startsWith("/photography") ?? false;
+
   // Disable browser scroll restoration so the page doesn't snap to top mid-animation
   useEffect(() => {
     if ("scrollRestoration" in window.history) {
@@ -51,21 +53,40 @@ export default function PageTransition({
     window.scrollTo(0, 0);
   }, []);
 
+  // ── Photography side: avoid double-load feel by using a simple one-shot fade-in
+  if (isPhotoRoute) {
+    return (
+      <motion.div
+        key={pathname}
+        initial={{ opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+      >
+        {children}
+      </motion.div>
+    );
+  }
+
+  // ── CS side (everything else): keep the existing exit/freeze transition ──
   return (
-    <AnimatePresence
-      mode="wait"
-      onExitComplete={onExitComplete}
-    >
+    <AnimatePresence mode="wait" onExitComplete={onExitComplete}>
       <motion.div
         key={pathname}
         initial={{ opacity: 0 }}
-        animate={{ opacity: 1, transition: { duration: 0.35, ease: "easeOut" } }}
+        animate={{
+          opacity: 1,
+          transition: { duration: 0.35, ease: "easeOut" },
+        }}
         exit={{
           opacity: 0,
           transition: { duration: 0.6, ease: [0.4, 0, 1, 1] },
         }}
         onAnimationStart={(def) => {
-          if (typeof def === "object" && "opacity" in def && def.opacity === 0) {
+          if (
+            typeof def === "object" &&
+            "opacity" in def &&
+            def.opacity === 0
+          ) {
             onExitStart();
           }
         }}

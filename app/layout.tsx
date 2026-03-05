@@ -3,6 +3,7 @@ import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import PageTransition from "@/components/PageTransition";
+import PhotographyBackground from "@/components/PhotographyBackground";
 
 const inter = Inter({ subsets: ["latin"] });
 const spaceGrotesk = Space_Grotesk({
@@ -36,6 +37,7 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.className} ${spaceGrotesk.variable}`}>
+        <PhotographyBackground />
         <div className="w-full">
           <Header />
           <main className="px-3">

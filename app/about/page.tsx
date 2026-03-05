@@ -179,12 +179,35 @@ export default function AboutPage() {
   const isDark = useIsDark();
   const [resumeOpen, setResumeOpen] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
-  const [emailForm, setEmailForm] = useState({ name: "", email: "", subject: "", message: "" });
-  const [emailStatus, setEmailStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [emailForm, setEmailForm] = useState({
+    name: "",
+    email: "",
+    subject: "",
+    message: "",
+  });
+  const [emailStatus, setEmailStatus] = useState<
+    "idle" | "sending" | "sent" | "error"
+  >("idle");
   const [emailError, setEmailError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const validateEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+
+  const validateForm = () => {
+    const errs: Record<string, string> = {};
+    if (!emailForm.name.trim()) errs.name = "Name is required";
+    if (!emailForm.email.trim()) errs.email = "Email is required";
+    else if (!validateEmail(emailForm.email))
+      errs.email = "Enter a valid email";
+    if (!emailForm.subject.trim()) errs.subject = "Subject is required";
+    if (!emailForm.message.trim()) errs.message = "Message is required";
+    setFieldErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) return;
     setEmailStatus("sending");
     setEmailError("");
     try {
@@ -215,7 +238,10 @@ export default function AboutPage() {
       <motion.div
         initial={{ opacity: 0, x: "-70vw" }}
         animate={{ opacity: 1, x: 0 }}
-        exit={{ x: "-70vw", transition: { duration: 0.55, ease: [0.5, 0, 0.75, 0] } }}
+        exit={{
+          x: "-70vw",
+          transition: { duration: 0.55, ease: [0.5, 0, 0.75, 0] },
+        }}
         transition={{ duration: 0.8, ease: "easeOut" }}
         className="-mt-4 md:-mt-20 flex flex-wrap items-center justify-center gap-y-3"
         style={{
@@ -227,7 +253,10 @@ export default function AboutPage() {
           {
             label: "Email",
             href: undefined,
-            action: () => { setEmailOpen(true); setEmailStatus("idle"); },
+            action: () => {
+              setEmailOpen(true);
+              setEmailStatus("idle");
+            },
           },
           {
             label: "LinkedIn",
@@ -296,9 +325,13 @@ export default function AboutPage() {
       <motion.div
         initial={{ opacity: 0, x: "70vw" }}
         animate={{ opacity: 1, x: 0 }}
-        exit={{ x: "70vw", transition: { duration: 0.55, ease: [0.5, 0, 0.75, 0] } }}
+        exit={{
+          x: "70vw",
+          transition: { duration: 0.55, ease: [0.5, 0, 0.75, 0] },
+        }}
         transition={{ duration: 0.8, ease: "easeOut" }}
-        className="flex flex-col md:flex-row md:items-stretch gap-8 md:gap-16 max-w-8xl w-full px-2 md:px-4 md:min-h-[380px]">
+        className="flex flex-col md:flex-row md:items-stretch gap-8 md:gap-16 max-w-8xl w-full px-2 md:px-4 md:min-h-[380px]"
+      >
         <div className="flex-1 flex">
           <GlassBlurb>
             <FuzzyText>
@@ -317,10 +350,10 @@ export default function AboutPage() {
                 I&apos;m a Computer Science honors student at Oregon State
                 University with a 3.95 GPA, passionate about embedded systems,
                 signal processing, and machine learning. From optimizing
-                anti-drone software at DZYNE Technologies to engineering
-                plasma thruster diagnostics and FPGA-based DSP pipelines in
-                research labs, I love working at the intersection of hardware
-                and software. I&apos;m driven by problems where physics meets
+                anti-drone software at DZYNE Technologies to engineering plasma
+                thruster diagnostics and FPGA-based DSP pipelines in research
+                labs, I love working at the intersection of hardware and
+                software. I&apos;m driven by problems where physics meets
                 computation.
               </p>
             </FuzzyText>
@@ -377,59 +410,109 @@ export default function AboutPage() {
             <div
               className="dark:hidden"
               style={{
-                position: "absolute", top: 0, left: "10%", right: "10%", height: "1px",
-                background: "linear-gradient(90deg, transparent, rgba(0,0,0,0.08) 30%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.08) 70%, transparent)",
-                borderRadius: "inherit", pointerEvents: "none", zIndex: 2,
+                position: "absolute",
+                top: 0,
+                left: "10%",
+                right: "10%",
+                height: "1px",
+                background:
+                  "linear-gradient(90deg, transparent, rgba(0,0,0,0.08) 30%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.08) 70%, transparent)",
+                borderRadius: "inherit",
+                pointerEvents: "none",
+                zIndex: 2,
               }}
             />
             <div
               className="hidden dark:block"
               style={{
-                position: "absolute", top: 0, left: "10%", right: "10%", height: "1px",
-                background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)",
-                borderRadius: "inherit", pointerEvents: "none", zIndex: 2,
+                position: "absolute",
+                top: 0,
+                left: "10%",
+                right: "10%",
+                height: "1px",
+                background:
+                  "linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)",
+                borderRadius: "inherit",
+                pointerEvents: "none",
+                zIndex: 2,
               }}
             />
             {/* Bottom specular highlight */}
             <div
               className="dark:hidden"
               style={{
-                position: "absolute", bottom: 0, left: "10%", right: "10%", height: "1px",
-                background: "linear-gradient(90deg, transparent, rgba(0,0,0,0.04) 30%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.04) 70%, transparent)",
-                borderRadius: "inherit", pointerEvents: "none", zIndex: 2,
+                position: "absolute",
+                bottom: 0,
+                left: "10%",
+                right: "10%",
+                height: "1px",
+                background:
+                  "linear-gradient(90deg, transparent, rgba(0,0,0,0.04) 30%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.04) 70%, transparent)",
+                borderRadius: "inherit",
+                pointerEvents: "none",
+                zIndex: 2,
               }}
             />
             <div
               className="hidden dark:block"
               style={{
-                position: "absolute", bottom: 0, left: "10%", right: "10%", height: "1px",
-                background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2) 30%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.2) 70%, transparent)",
-                borderRadius: "inherit", pointerEvents: "none", zIndex: 2,
+                position: "absolute",
+                bottom: 0,
+                left: "10%",
+                right: "10%",
+                height: "1px",
+                background:
+                  "linear-gradient(90deg, transparent, rgba(255,255,255,0.2) 30%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.2) 70%, transparent)",
+                borderRadius: "inherit",
+                pointerEvents: "none",
+                zIndex: 2,
               }}
             />
             {/* Chromatic aberration edge glow */}
             <div
               style={{
-                position: "absolute", top: -1, left: -1, right: -1, bottom: -1,
-                borderRadius: "inherit", pointerEvents: "none", zIndex: 0,
-                boxShadow: "inset 2px 0 8px rgba(255,0,80,0.04), inset -2px 0 8px rgba(0,100,255,0.04), inset 0 2px 8px rgba(255,200,0,0.03), inset 0 -2px 8px rgba(0,200,255,0.03)",
+                position: "absolute",
+                top: -1,
+                left: -1,
+                right: -1,
+                bottom: -1,
+                borderRadius: "inherit",
+                pointerEvents: "none",
+                zIndex: 0,
+                boxShadow:
+                  "inset 2px 0 8px rgba(255,0,80,0.04), inset -2px 0 8px rgba(0,100,255,0.04), inset 0 2px 8px rgba(255,200,0,0.03), inset 0 -2px 8px rgba(0,200,255,0.03)",
               }}
             />
             {/* Internal refraction gradient */}
             <div
               style={{
-                position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
-                borderRadius: "inherit", pointerEvents: "none", zIndex: 0,
-                background: "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.02) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(200,220,255,0.05) 0%, transparent 50%)",
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                borderRadius: "inherit",
+                pointerEvents: "none",
+                zIndex: 0,
+                background:
+                  "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.02) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(200,220,255,0.05) 0%, transparent 50%)",
               }}
             />
             {/* Edge distortion */}
             <div
               style={{
-                position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
-                borderRadius: "inherit", pointerEvents: "none", zIndex: 0,
-                WebkitMaskImage: "radial-gradient(ellipse at center, transparent 55%, black 100%)",
-                maskImage: "radial-gradient(ellipse at center, transparent 55%, black 100%)",
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                borderRadius: "inherit",
+                pointerEvents: "none",
+                zIndex: 0,
+                WebkitMaskImage:
+                  "radial-gradient(ellipse at center, transparent 55%, black 100%)",
+                maskImage:
+                  "radial-gradient(ellipse at center, transparent 55%, black 100%)",
                 backdropFilter: "blur(3px) saturate(1.1)",
                 WebkitBackdropFilter: "blur(3px) saturate(1.1)",
               }}
@@ -548,59 +631,109 @@ export default function AboutPage() {
             <div
               className="dark:hidden"
               style={{
-                position: "absolute", top: 0, left: "10%", right: "10%", height: "1px",
-                background: "linear-gradient(90deg, transparent, rgba(0,0,0,0.08) 30%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.08) 70%, transparent)",
-                borderRadius: "inherit", pointerEvents: "none", zIndex: 2,
+                position: "absolute",
+                top: 0,
+                left: "10%",
+                right: "10%",
+                height: "1px",
+                background:
+                  "linear-gradient(90deg, transparent, rgba(0,0,0,0.08) 30%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.08) 70%, transparent)",
+                borderRadius: "inherit",
+                pointerEvents: "none",
+                zIndex: 2,
               }}
             />
             <div
               className="hidden dark:block"
               style={{
-                position: "absolute", top: 0, left: "10%", right: "10%", height: "1px",
-                background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)",
-                borderRadius: "inherit", pointerEvents: "none", zIndex: 2,
+                position: "absolute",
+                top: 0,
+                left: "10%",
+                right: "10%",
+                height: "1px",
+                background:
+                  "linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)",
+                borderRadius: "inherit",
+                pointerEvents: "none",
+                zIndex: 2,
               }}
             />
             {/* Bottom specular highlight */}
             <div
               className="dark:hidden"
               style={{
-                position: "absolute", bottom: 0, left: "10%", right: "10%", height: "1px",
-                background: "linear-gradient(90deg, transparent, rgba(0,0,0,0.04) 30%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.04) 70%, transparent)",
-                borderRadius: "inherit", pointerEvents: "none", zIndex: 2,
+                position: "absolute",
+                bottom: 0,
+                left: "10%",
+                right: "10%",
+                height: "1px",
+                background:
+                  "linear-gradient(90deg, transparent, rgba(0,0,0,0.04) 30%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.04) 70%, transparent)",
+                borderRadius: "inherit",
+                pointerEvents: "none",
+                zIndex: 2,
               }}
             />
             <div
               className="hidden dark:block"
               style={{
-                position: "absolute", bottom: 0, left: "10%", right: "10%", height: "1px",
-                background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2) 30%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.2) 70%, transparent)",
-                borderRadius: "inherit", pointerEvents: "none", zIndex: 2,
+                position: "absolute",
+                bottom: 0,
+                left: "10%",
+                right: "10%",
+                height: "1px",
+                background:
+                  "linear-gradient(90deg, transparent, rgba(255,255,255,0.2) 30%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.2) 70%, transparent)",
+                borderRadius: "inherit",
+                pointerEvents: "none",
+                zIndex: 2,
               }}
             />
             {/* Chromatic aberration edge glow */}
             <div
               style={{
-                position: "absolute", top: -1, left: -1, right: -1, bottom: -1,
-                borderRadius: "inherit", pointerEvents: "none", zIndex: 0,
-                boxShadow: "inset 2px 0 8px rgba(255,0,80,0.04), inset -2px 0 8px rgba(0,100,255,0.04), inset 0 2px 8px rgba(255,200,0,0.03), inset 0 -2px 8px rgba(0,200,255,0.03)",
+                position: "absolute",
+                top: -1,
+                left: -1,
+                right: -1,
+                bottom: -1,
+                borderRadius: "inherit",
+                pointerEvents: "none",
+                zIndex: 0,
+                boxShadow:
+                  "inset 2px 0 8px rgba(255,0,80,0.04), inset -2px 0 8px rgba(0,100,255,0.04), inset 0 2px 8px rgba(255,200,0,0.03), inset 0 -2px 8px rgba(0,200,255,0.03)",
               }}
             />
             {/* Internal refraction gradient */}
             <div
               style={{
-                position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
-                borderRadius: "inherit", pointerEvents: "none", zIndex: 0,
-                background: "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.02) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(200,220,255,0.05) 0%, transparent 50%)",
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                borderRadius: "inherit",
+                pointerEvents: "none",
+                zIndex: 0,
+                background:
+                  "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.02) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(200,220,255,0.05) 0%, transparent 50%)",
               }}
             />
             {/* Edge distortion */}
             <div
               style={{
-                position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
-                borderRadius: "inherit", pointerEvents: "none", zIndex: 0,
-                WebkitMaskImage: "radial-gradient(ellipse at center, transparent 55%, black 100%)",
-                maskImage: "radial-gradient(ellipse at center, transparent 55%, black 100%)",
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                borderRadius: "inherit",
+                pointerEvents: "none",
+                zIndex: 0,
+                WebkitMaskImage:
+                  "radial-gradient(ellipse at center, transparent 55%, black 100%)",
+                maskImage:
+                  "radial-gradient(ellipse at center, transparent 55%, black 100%)",
                 backdropFilter: "blur(3px) saturate(1.1)",
                 WebkitBackdropFilter: "blur(3px) saturate(1.1)",
               }}
@@ -639,7 +772,11 @@ export default function AboutPage() {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleEmailSubmit} className="relative z-[1] p-6 flex flex-col gap-4">
+            <form
+              onSubmit={handleEmailSubmit}
+              noValidate
+              className="relative z-[1] p-6 flex flex-col gap-4"
+            >
               {(["name", "email", "subject"] as const).map((field) => (
                 <div key={field}>
                   <FuzzyText>
@@ -660,11 +797,16 @@ export default function AboutPage() {
                   </FuzzyText>
                   <input
                     type={field === "email" ? "email" : "text"}
-                    required
                     value={emailForm[field]}
-                    onChange={(e) =>
-                      setEmailForm((f) => ({ ...f, [field]: e.target.value }))
-                    }
+                    onChange={(e) => {
+                      setEmailForm((f) => ({ ...f, [field]: e.target.value }));
+                      if (fieldErrors[field])
+                        setFieldErrors((fe) => {
+                          const n = { ...fe };
+                          delete n[field];
+                          return n;
+                        });
+                    }}
                     className={`w-full rounded-xl px-4 py-2.5 outline-none transition-colors ${glassClassNames}`}
                     style={{
                       ...glassStyle,
@@ -673,8 +815,28 @@ export default function AboutPage() {
                         : "rgba(0,0,0,0.02)",
                       color: isDark ? "rgb(200,215,255)" : "rgb(80,95,125)",
                       fontSize: "0.95rem",
+                      border: fieldErrors[field]
+                        ? `1px solid ${isDark ? "rgba(255,130,130,0.4)" : "rgba(200,60,60,0.3)"}`
+                        : undefined,
                     }}
                   />
+                  {fieldErrors[field] && (
+                    <p
+                      className="bg-clip-text text-transparent"
+                      style={{
+                        WebkitBackgroundClip: "text",
+                        backgroundImage: isDark
+                          ? "linear-gradient(135deg, rgb(255,150,150), rgb(255,130,160))"
+                          : "linear-gradient(135deg, rgb(190,60,60), rgb(170,50,80))",
+                        fontSize: "0.72rem",
+                        fontWeight: 500,
+                        marginTop: 4,
+                        marginBottom: 0,
+                      }}
+                    >
+                      {fieldErrors[field]}
+                    </p>
+                  )}
                 </div>
               ))}
               <div>
@@ -694,12 +856,17 @@ export default function AboutPage() {
                   </label>
                 </FuzzyText>
                 <textarea
-                  required
                   rows={5}
                   value={emailForm.message}
-                  onChange={(e) =>
-                    setEmailForm((f) => ({ ...f, message: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    setEmailForm((f) => ({ ...f, message: e.target.value }));
+                    if (fieldErrors.message)
+                      setFieldErrors((fe) => {
+                        const n = { ...fe };
+                        delete n.message;
+                        return n;
+                      });
+                  }}
                   className={`w-full rounded-xl px-4 py-2.5 outline-none transition-colors resize-none ${glassClassNames}`}
                   style={{
                     ...glassStyle,
@@ -708,8 +875,28 @@ export default function AboutPage() {
                       : "rgba(0,0,0,0.02)",
                     color: isDark ? "rgb(200,215,255)" : "rgb(80,95,125)",
                     fontSize: "0.95rem",
+                    border: fieldErrors.message
+                      ? `1px solid ${isDark ? "rgba(255,130,130,0.4)" : "rgba(200,60,60,0.3)"}`
+                      : undefined,
                   }}
                 />
+                {fieldErrors.message && (
+                  <p
+                    className="bg-clip-text text-transparent"
+                    style={{
+                      WebkitBackgroundClip: "text",
+                      backgroundImage: isDark
+                        ? "linear-gradient(135deg, rgb(255,150,150), rgb(255,130,160))"
+                        : "linear-gradient(135deg, rgb(190,60,60), rgb(170,50,80))",
+                      fontSize: "0.72rem",
+                      fontWeight: 500,
+                      marginTop: 4,
+                      marginBottom: 0,
+                    }}
+                  >
+                    {fieldErrors.message}
+                  </p>
+                )}
               </div>
 
               {emailStatus === "error" && (
@@ -770,9 +957,13 @@ export default function AboutPage() {
       <motion.div
         initial={{ opacity: 0, x: "-70vw" }}
         animate={{ opacity: 1, x: 0 }}
-        exit={{ x: "-70vw", transition: { duration: 0.55, ease: [0.5, 0, 0.75, 0] } }}
+        exit={{
+          x: "-70vw",
+          transition: { duration: 0.55, ease: [0.5, 0, 0.75, 0] },
+        }}
         transition={{ duration: 0.8, ease: "easeOut" }}
-        className="flex flex-col md:flex-row md:items-start gap-6 md:gap-8 max-w-8xl w-full px-2 md:px-4">
+        className="flex flex-col md:flex-row md:items-start gap-6 md:gap-8 max-w-8xl w-full px-2 md:px-4"
+      >
         <div className="flex-1">
           <GlassBlurb title="Languages & Frameworks">
             <SkillBar name="Python" level={92} />
