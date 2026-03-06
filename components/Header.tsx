@@ -14,6 +14,7 @@ const csNavLinks = [
   { name: "Experience", href: "/cs/experience" },
   { name: "Projects", href: "/cs/projects" },
   { name: "Education", href: "/cs/education" },
+  { name: "Resume", href: "/resume" },
 ];
 
 // ─── CS Gradients (cool iridescent) ──────────────────────────────────────────
