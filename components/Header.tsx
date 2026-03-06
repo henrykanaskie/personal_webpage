@@ -4,9 +4,8 @@ import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { glassStyle } from "./InfoBubble";
-import { glassClassNames } from "./LeftInfoBox";
 import { PhotographyFilmStripNav } from "./PhotographyFilmStripNav";
+import { glassStyle, glassBubbleClassNames } from "./InfoBubble";
 
 // ─── Navigation links ─────────────────────────────────────────────────────────
 
@@ -24,9 +23,6 @@ const csDarkGrad = `linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230
 
 const csLightGradActive = `linear-gradient(135deg, rgb(70,85,115) 0%, rgb(95,80,105) 15%, rgb(75,100,120) 30%, rgb(100,85,100) 45%, rgb(70,95,115) 60%, rgb(90,80,110) 75%, rgb(75,90,118) 90%, rgb(98,85,105) 100%)`;
 const csDarkGradActive = `linear-gradient(135deg, rgb(220,235,255) 0%, rgb(245,230,250) 15%, rgb(220,245,255) 30%, rgb(250,235,245) 45%, rgb(215,240,255) 60%, rgb(240,230,250) 75%, rgb(220,238,255) 90%, rgb(245,230,248) 100%)`;
-
-const csUnderlineLight = `linear-gradient(90deg, rgb(100,115,145), rgb(125,110,135), rgb(105,130,150), rgb(130,115,130), rgb(100,115,145))`;
-const csUnderlineDark = `linear-gradient(90deg, rgb(180,200,255), rgb(210,185,230), rgb(180,210,235), rgb(210,185,230), rgb(180,200,255))`;
 
 // ─── Iridescent text (CS nav) ──────────────────────────────────────────────────
 
@@ -329,222 +325,84 @@ export default function Header() {
     );
   }
 
-  // ── CS side: glassmorphic nav ──
+  // ── CS side: individual glass bubble nav ──
+  const activeBubbleStyle: React.CSSProperties = {
+    ...glassStyle,
+    border: isDark ? "1px solid rgba(180,200,255,0.3)" : "1px solid rgba(100,115,145,0.25)",
+    boxShadow: isDark
+      ? "inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 16px rgba(180,200,255,0.1)"
+      : "inset 0 1px 0 rgba(255,255,255,0.5), 0 4px 16px rgba(100,115,145,0.1)",
+  };
+
+  const homeSvg = (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="2" y="3" width="7" height="14" rx="1.5"
+        fill={isDark ? "url(#cs-home-grad-dark-l)" : "url(#cs-home-grad-light-l)"} opacity={0.85} />
+      <rect x="11" y="3" width="7" height="14" rx="1.5"
+        fill={isDark ? "url(#cs-home-grad-dark-r)" : "url(#cs-home-grad-light-r)"} opacity={0.85} />
+      <defs>
+        <linearGradient id="cs-home-grad-dark-l" x1="2" y1="3" x2="9" y2="17" gradientUnits="userSpaceOnUse">
+          <stop stopColor="rgb(180,200,255)" /><stop offset="1" stopColor="rgb(210,185,230)" />
+        </linearGradient>
+        <linearGradient id="cs-home-grad-dark-r" x1="11" y1="3" x2="18" y2="17" gradientUnits="userSpaceOnUse">
+          <stop stopColor="rgb(200,185,225)" /><stop offset="1" stopColor="rgb(180,200,255)" />
+        </linearGradient>
+        <linearGradient id="cs-home-grad-light-l" x1="2" y1="3" x2="9" y2="17" gradientUnits="userSpaceOnUse">
+          <stop stopColor="rgb(100,115,145)" /><stop offset="1" stopColor="rgb(125,110,135)" />
+        </linearGradient>
+        <linearGradient id="cs-home-grad-light-r" x1="11" y1="3" x2="18" y2="17" gradientUnits="userSpaceOnUse">
+          <stop stopColor="rgb(120,95,135)" /><stop offset="1" stopColor="rgb(100,115,145)" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+
   return (
     <header
-      className={`${glassClassNames} sticky top-2 z-50 p-4 rounded-2xl overflow-hidden mx-2 mt-2`}
+      className="sticky top-2 z-50 mx-2 mt-2 p-3"
       style={{
-        ...glassStyle,
         transform: visible ? "translateY(0)" : "translateY(-120%)",
         transition: "transform 0.35s ease",
       }}
     >
-      {/* Specular highlight — top */}
-      <div
-        className="dark:hidden"
-        style={{
-          position: "absolute",
-          top: 0,
-          left: "10%",
-          right: "10%",
-          height: "1px",
-          background:
-            "linear-gradient(90deg, transparent, rgba(0,0,0,0.08) 30%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.08) 70%, transparent)",
-          pointerEvents: "none",
-          zIndex: 1,
-        }}
-      />
-      <div
-        className="hidden dark:block"
-        style={{
-          position: "absolute",
-          top: 0,
-          left: "10%",
-          right: "10%",
-          height: "1px",
-          background:
-            "linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)",
-          pointerEvents: "none",
-          zIndex: 1,
-        }}
-      />
-
-      {/* Specular highlight — bottom */}
-      <div
-        className="dark:hidden"
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: "10%",
-          right: "10%",
-          height: "1px",
-          background:
-            "linear-gradient(90deg, transparent, rgba(0,0,0,0.04) 30%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.04) 70%, transparent)",
-          pointerEvents: "none",
-          zIndex: 1,
-        }}
-      />
-      <div
-        className="hidden dark:block"
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: "10%",
-          right: "10%",
-          height: "1px",
-          background:
-            "linear-gradient(90deg, transparent, rgba(255,255,255,0.2) 30%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.2) 70%, transparent)",
-          pointerEvents: "none",
-          zIndex: 1,
-        }}
-      />
-
-      {/* Chromatic aberration edge glow */}
-      <div
-        style={{
-          position: "absolute",
-          inset: -1,
-          pointerEvents: "none",
-          zIndex: 0,
-          boxShadow:
-            "inset 2px 0 8px rgba(255,0,80,0.04), inset -2px 0 8px rgba(0,100,255,0.04), inset 0 2px 8px rgba(255,200,0,0.03), inset 0 -2px 8px rgba(0,200,255,0.03)",
-        }}
-      />
-
-      {/* Internal refraction gradient */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          pointerEvents: "none",
-          zIndex: 0,
-          background:
-            "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.02) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(200,220,255,0.05) 0%, transparent 50%)",
-        }}
-      />
-
-      <nav className="container mx-auto flex justify-between items-center relative z-10">
-        {/* Home icon — split-screen */}
+      <nav className="flex items-center gap-2">
+        {/* Home bubble */}
         <Link
           href="/"
           scroll={false}
-          className="flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-200 hover:bg-white/5"
           aria-label="Home"
           title="Home"
+          className={`${glassBubbleClassNames} flex items-center justify-center w-12 h-12 rounded-full shrink-0 transition-all duration-200`}
+          style={glassStyle}
         >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 20 20"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <rect
-              x="2"
-              y="3"
-              width="7"
-              height="14"
-              rx="1.5"
-              fill={
-                isDark
-                  ? "url(#cs-home-grad-dark-l)"
-                  : "url(#cs-home-grad-light-l)"
-              }
-              opacity={0.85}
-            />
-            <rect
-              x="11"
-              y="3"
-              width="7"
-              height="14"
-              rx="1.5"
-              fill={
-                isDark
-                  ? "url(#cs-home-grad-dark-r)"
-                  : "url(#cs-home-grad-light-r)"
-              }
-              opacity={0.85}
-            />
-            <defs>
-              <linearGradient
-                id="cs-home-grad-dark-l"
-                x1="2"
-                y1="3"
-                x2="9"
-                y2="17"
-                gradientUnits="userSpaceOnUse"
-              >
-                <stop stopColor="rgb(180,200,255)" />
-                <stop offset="1" stopColor="rgb(210,185,230)" />
-              </linearGradient>
-              <linearGradient
-                id="cs-home-grad-dark-r"
-                x1="11"
-                y1="3"
-                x2="18"
-                y2="17"
-                gradientUnits="userSpaceOnUse"
-              >
-                <stop stopColor="rgb(200,185,225)" />
-                <stop offset="1" stopColor="rgb(180,200,255)" />
-              </linearGradient>
-              <linearGradient
-                id="cs-home-grad-light-l"
-                x1="2"
-                y1="3"
-                x2="9"
-                y2="17"
-                gradientUnits="userSpaceOnUse"
-              >
-                <stop stopColor="rgb(100,115,145)" />
-                <stop offset="1" stopColor="rgb(125,110,135)" />
-              </linearGradient>
-              <linearGradient
-                id="cs-home-grad-light-r"
-                x1="11"
-                y1="3"
-                x2="18"
-                y2="17"
-                gradientUnits="userSpaceOnUse"
-              >
-                <stop stopColor="rgb(120,95,135)" />
-                <stop offset="1" stopColor="rgb(100,115,145)" />
-              </linearGradient>
-            </defs>
-          </svg>
+          {homeSvg}
         </Link>
 
-        {/* ── Desktop nav ── */}
-        <div className="hidden md:flex items-center space-x-4">
-          <ul className="flex items-center space-x-4 font-semibold text-lg">
-            {csNavLinks.map((link) => {
-              const active = pathname === link.href;
-              return (
-                <li key={link.name}>
-                  <Link href={link.href} scroll={false} className="relative">
-                    <IridescentText active={active} isDark={isDark}>
-                      {link.name}
-                    </IridescentText>
-                    {active && (
-                      <motion.div
-                        className="absolute -bottom-1 left-0 h-[2px] w-full rounded-full overflow-hidden"
-                        layoutId="underline"
-                      >
-                        <div
-                          className="absolute inset-0"
-                          style={{
-                            backgroundImage: isDark
-                              ? csUnderlineDark
-                              : csUnderlineLight,
-                          }}
-                        />
-                      </motion.div>
-                    )}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+        {/* ── Desktop nav bubbles — evenly spaced ── */}
+        <div className="hidden md:flex flex-1 items-center justify-evenly">
+          {csNavLinks.map((link) => {
+            const active = pathname === link.href;
+            return (
+              <Link
+                key={link.name}
+                href={link.href}
+                scroll={false}
+                className={`${glassBubbleClassNames} px-7 py-3 rounded-full font-semibold text-lg transition-all duration-200`}
+                style={active ? activeBubbleStyle : glassStyle}
+              >
+                <IridescentText active={active} isDark={isDark}>
+                  {link.name}
+                </IridescentText>
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* Theme toggle bubble (desktop) */}
+        <div
+          className={`${glassBubbleClassNames} hidden md:flex items-center justify-center w-12 h-12 rounded-full shrink-0`}
+          style={glassStyle}
+        >
           <ThemeToggleButton
             isDark={isDark}
             mounted={mounted}
@@ -553,68 +411,35 @@ export default function Header() {
           />
         </div>
 
-        {/* ── Mobile: theme toggle + hamburger ── */}
-        <div className="flex md:hidden items-center gap-2">
-          <ThemeToggleButton
-            isDark={isDark}
-            mounted={mounted}
-            maskId={maskIdMobile}
-            onToggle={toggleDarkMode}
-          />
+        {/* ── Mobile: spacer + theme toggle + hamburger ── */}
+        <div className="flex md:hidden flex-1 items-center justify-end gap-2">
+          <div
+            className={`${glassBubbleClassNames} flex items-center justify-center w-12 h-12 rounded-full`}
+            style={glassStyle}
+          >
+            <ThemeToggleButton
+              isDark={isDark}
+              mounted={mounted}
+              maskId={maskIdMobile}
+              onToggle={toggleDarkMode}
+            />
+          </div>
           <button
             onClick={() => setMenuOpen((o) => !o)}
-            className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-white/10 transition-all duration-200"
+            className={`${glassBubbleClassNames} flex items-center justify-center w-12 h-12 rounded-full transition-all duration-200`}
+            style={menuOpen ? activeBubbleStyle : glassStyle}
             aria-label="Toggle menu"
           >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 20 20"
-              className="text-black dark:text-white"
-            >
-              <motion.line
-                x1="3"
-                x2="17"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                animate={
-                  menuOpen
-                    ? { y1: 10, y2: 10, rotate: 45 }
-                    : { y1: 5, y2: 5, rotate: 0 }
-                }
-                transition={{ duration: 0.3, ease: "easeInOut" }}
-                style={{ transformOrigin: "center" }}
-              />
-              <motion.line
-                x1="3"
-                y1="10"
-                x2="17"
-                y2="10"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                animate={{
-                  opacity: menuOpen ? 0 : 1,
-                  scaleX: menuOpen ? 0 : 1,
-                }}
-                transition={{ duration: 0.2 }}
-                style={{ transformOrigin: "center" }}
-              />
-              <motion.line
-                x1="3"
-                x2="17"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                animate={
-                  menuOpen
-                    ? { y1: 10, y2: 10, rotate: -45 }
-                    : { y1: 15, y2: 15, rotate: 0 }
-                }
-                transition={{ duration: 0.3, ease: "easeInOut" }}
-                style={{ transformOrigin: "center" }}
-              />
+            <svg width="20" height="20" viewBox="0 0 20 20" className="text-black dark:text-white">
+              <motion.line x1="3" x2="17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+                animate={menuOpen ? { y1: 10, y2: 10, rotate: 45 } : { y1: 5, y2: 5, rotate: 0 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }} style={{ transformOrigin: "center" }} />
+              <motion.line x1="3" y1="10" x2="17" y2="10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+                animate={{ opacity: menuOpen ? 0 : 1, scaleX: menuOpen ? 0 : 1 }}
+                transition={{ duration: 0.2 }} style={{ transformOrigin: "center" }} />
+              <motion.line x1="3" x2="17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+                animate={menuOpen ? { y1: 10, y2: 10, rotate: -45 } : { y1: 15, y2: 15, rotate: 0 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }} style={{ transformOrigin: "center" }} />
             </svg>
           </button>
         </div>
@@ -628,9 +453,9 @@ export default function Header() {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.35, ease: [0.25, 0.8, 0.25, 1] }}
-            className="md:hidden overflow-hidden relative z-10"
+            className="md:hidden overflow-hidden"
           >
-            <div className="pt-4 pb-2 flex flex-col items-center gap-1">
+            <div className="pt-3 pb-1 flex flex-col gap-2 px-1">
               {csNavLinks.map((link, i) => {
                 const active = pathname === link.href;
                 return (
@@ -639,36 +464,18 @@ export default function Header() {
                     initial={{ opacity: 0, y: -8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
-                    transition={{
-                      delay: i * 0.05 + 0.1,
-                      duration: 0.3,
-                      ease: "easeOut",
-                    }}
+                    transition={{ delay: i * 0.05 + 0.1, duration: 0.3, ease: "easeOut" }}
                   >
                     <Link
                       href={link.href}
                       scroll={false}
                       onClick={() => setMenuOpen(false)}
-                      className="relative block px-6 py-2.5 rounded-xl text-center text-lg font-semibold transition-colors duration-200 hover:bg-white/5"
+                      className={`${glassBubbleClassNames} block px-6 py-2.5 rounded-full text-center text-lg font-semibold transition-all duration-200`}
+                      style={active ? activeBubbleStyle : glassStyle}
                     >
                       <IridescentText active={active} isDark={isDark}>
                         {link.name}
                       </IridescentText>
-                      {active && (
-                        <motion.div
-                          className="absolute bottom-1 left-1/4 right-1/4 h-[2px] rounded-full overflow-hidden"
-                          layoutId="underline-mobile"
-                        >
-                          <div
-                            className="absolute inset-0"
-                            style={{
-                              backgroundImage: isDark
-                                ? csUnderlineDark
-                                : csUnderlineLight,
-                            }}
-                          />
-                        </motion.div>
-                      )}
                     </Link>
                   </motion.div>
                 );
