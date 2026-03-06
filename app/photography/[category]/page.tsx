@@ -117,18 +117,47 @@ export default function CategoryPage() {
     gi: number;
   } | null>(null);
 
-  // Disable background scroll/actions while a photo is enlarged
+  const category = params?.category as string;
+  const section = SECTIONS.find((s) => s.id === category);
+
+  // Disable background scroll and signal the nav to hide while a photo is enlarged
   useEffect(() => {
     if (!selected) return;
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    window.dispatchEvent(new CustomEvent("photoLightbox", { detail: { open: true } }));
     return () => {
       document.body.style.overflow = originalOverflow;
+      window.dispatchEvent(new CustomEvent("photoLightbox", { detail: { open: false } }));
     };
   }, [selected]);
 
-  const category = params?.category as string;
-  const section = SECTIONS.find((s) => s.id === category);
+  // Keep a ref so the keyboard handler always has the latest selected value
+  // without needing to re-register on every state change.
+  const selectedRef = useRef(selected);
+  useEffect(() => { selectedRef.current = selected; }, [selected]);
+
+  // Arrow key navigation — listener registered once per section, uses ref for current index
+  useEffect(() => {
+    if (!section) return;
+    const onKey = (e: KeyboardEvent) => {
+      const cur = selectedRef.current;
+      if (!cur) return;
+      if (e.key === "ArrowRight") {
+        const next = cur.gi + 1;
+        if (next < section.photos.length)
+          setSelected({ photo: section.photos[next], gi: next });
+      } else if (e.key === "ArrowLeft") {
+        const prev = cur.gi - 1;
+        if (prev >= 0)
+          setSelected({ photo: section.photos[prev], gi: prev });
+      } else if (e.key === "Escape") {
+        setSelected(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [section]);
 
   if (!section) {
     notFound();
@@ -363,6 +392,30 @@ export default function CategoryPage() {
         })()}
       </div>
 
+      {/* Preload adjacent lightbox images so navigation feels instant */}
+      {selected && ([-1, 1].map((offset) => {
+        const idx = selected.gi + offset;
+        if (idx < 0 || idx >= section.photos.length) return null;
+        const p = section.photos[idx];
+        const [w, h] = p.ratio.split("/").map(Number);
+        return (
+          <div
+            key={idx}
+            aria-hidden="true"
+            style={{ position: "fixed", top: "-200vh", left: "-200vw", pointerEvents: "none" }}
+          >
+            <Image
+              src={p.src}
+              alt=""
+              width={1600}
+              height={Math.round(1600 / (w / h))}
+              sizes="(min-width: 1024px) 70vw, 100vw"
+              priority
+            />
+          </div>
+        );
+      }))}
+
       {/* Lightbox overlay for enlarged photo */}
       {selected && (
         <motion.div
@@ -382,6 +435,78 @@ export default function CategoryPage() {
           }}
           onClick={() => setSelected(null)}
         >
+          {/* Prev arrow */}
+          {selected.gi > 0 && (
+            <button
+              type="button"
+              aria-label="Previous photo"
+              onClick={(e) => {
+                e.stopPropagation();
+                const prev = selected.gi - 1;
+                setSelected({ photo: section.photos[prev], gi: prev });
+              }}
+              style={{
+                position: "fixed",
+                left: 20,
+                top: "50%",
+                transform: "translateY(-50%)",
+                zIndex: 61,
+                width: 44,
+                height: 44,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: 999,
+                border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
+                background: isDark ? "rgba(10,10,14,0.75)" : "rgba(248,245,240,0.85)",
+                backdropFilter: "blur(8px)",
+                WebkitBackdropFilter: "blur(8px)",
+                cursor: "pointer",
+                color: isDark ? "#f7f1ff" : "#503c60",
+                fontSize: 22,
+                lineHeight: 1,
+              }}
+            >
+              ‹
+            </button>
+          )}
+
+          {/* Next arrow */}
+          {selected.gi < section.photos.length - 1 && (
+            <button
+              type="button"
+              aria-label="Next photo"
+              onClick={(e) => {
+                e.stopPropagation();
+                const next = selected.gi + 1;
+                setSelected({ photo: section.photos[next], gi: next });
+              }}
+              style={{
+                position: "fixed",
+                right: 20,
+                top: "50%",
+                transform: "translateY(-50%)",
+                zIndex: 61,
+                width: 44,
+                height: 44,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: 999,
+                border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
+                background: isDark ? "rgba(10,10,14,0.75)" : "rgba(248,245,240,0.85)",
+                backdropFilter: "blur(8px)",
+                WebkitBackdropFilter: "blur(8px)",
+                cursor: "pointer",
+                color: isDark ? "#f7f1ff" : "#503c60",
+                fontSize: 22,
+                lineHeight: 1,
+              }}
+            >
+              ›
+            </button>
+          )}
+
           <motion.div
             initial={{ opacity: 0, scale: 0.96, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}

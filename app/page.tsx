@@ -122,9 +122,14 @@ function FloatingBokeh({ c, color }: { c: (typeof BOKEH)[0]; color: string }) {
 
 // ─── Divider — slow breathing pulse on hover ─────────────────────────────────
 
-function AnimatedDivider({ hovered }: { hovered: "left" | "right" | null }) {
+function AnimatedDivider({
+  hovered,
+  horizontal = false,
+}: {
+  hovered: "left" | "right" | null;
+  horizontal?: boolean;
+}) {
   const active = hovered !== null;
-  // warm neutral at rest; shifts slightly warmer on photo hover, cooler on CS hover
   const mid =
     hovered === "left"
       ? "rgba(200,185,155,0.65)"
@@ -133,7 +138,15 @@ function AnimatedDivider({ hovered }: { hovered: "left" | "right" | null }) {
         : "rgba(180,175,160,0.5)";
 
   return (
-    <div style={{ position: "relative", width: 1, flexShrink: 0, zIndex: 2 }}>
+    <div
+      style={{
+        position: "relative",
+        width: horizontal ? "100%" : 1,
+        height: horizontal ? 1 : undefined,
+        flexShrink: 0,
+        zIndex: 2,
+      }}
+    >
       <motion.div
         animate={{ opacity: active ? [0.4, 1, 0.4] : 0.4 }}
         transition={
@@ -144,7 +157,7 @@ function AnimatedDivider({ hovered }: { hovered: "left" | "right" | null }) {
         style={{
           position: "absolute",
           inset: 0,
-          background: `linear-gradient(to bottom, transparent 3%, ${mid} 20%, ${mid} 80%, transparent 97%)`,
+          background: `linear-gradient(${horizontal ? "to right" : "to bottom"}, transparent 3%, ${mid} 20%, ${mid} 80%, transparent 97%)`,
         }}
       />
     </div>
@@ -556,41 +569,65 @@ function CSSide({ active, isDark }: { active: boolean; isDark: boolean }) {
 
 export default function HomePage() {
   const [hovered, setHovered] = useState<"left" | "right" | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const isDark = useIsDark();
   const router = useRouter();
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   const inactiveDim = "brightness(0.62)";
 
   return (
     <div
-      style={{ position: "fixed", inset: 0, zIndex: 0, display: "flex" }}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 0,
+        display: "flex",
+        flexDirection: isMobile ? "column" : "row",
+      }}
       onMouseLeave={() => setHovered(null)}
     >
       {/* Photography */}
       <motion.div
         animate={{
-          flex: hovered === "left" ? 1.6 : hovered === "right" ? 0.5 : 1,
+          flex:
+            !isMobile && hovered === "left"
+              ? 1.6
+              : !isMobile && hovered === "right"
+                ? 0.5
+                : 1,
           filter: hovered === "right" ? inactiveDim : "brightness(1)",
         }}
         transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
-        style={{ minWidth: 0, overflow: "hidden", cursor: "pointer" }}
-        onMouseEnter={() => setHovered("left")}
+        style={{ minWidth: 0, minHeight: 0, overflow: "hidden", cursor: "pointer" }}
+        onMouseEnter={() => !isMobile && setHovered("left")}
         onClick={() => router.push("/photography")}
       >
         <PhotoSide active={hovered === "left"} isDark={isDark} />
       </motion.div>
 
-      <AnimatedDivider hovered={hovered} />
+      <AnimatedDivider hovered={hovered} horizontal={isMobile} />
 
       {/* CS */}
       <motion.div
         animate={{
-          flex: hovered === "right" ? 1.6 : hovered === "left" ? 0.5 : 1,
+          flex:
+            !isMobile && hovered === "right"
+              ? 1.6
+              : !isMobile && hovered === "left"
+                ? 0.5
+                : 1,
           filter: hovered === "left" ? inactiveDim : "brightness(1)",
         }}
         transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
-        style={{ minWidth: 0, overflow: "hidden", cursor: "pointer" }}
-        onMouseEnter={() => setHovered("right")}
+        style={{ minWidth: 0, minHeight: 0, overflow: "hidden", cursor: "pointer" }}
+        onMouseEnter={() => !isMobile && setHovered("right")}
         onClick={() => router.push("/about")}
       >
         <CSSide active={hovered === "right"} isDark={isDark} />

@@ -2,18 +2,22 @@
 
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { useContext, useRef, useCallback, useEffect } from "react";
+import { useContext, useRef, useCallback, useEffect, useLayoutEffect } from "react";
 import { LayoutRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
 function FrozenRouter({ children }: { children: React.ReactNode }) {
   const context = useContext(LayoutRouterContext);
   const frozen = useRef(context).current;
-
   return (
     <LayoutRouterContext.Provider value={frozen}>
       {children}
     </LayoutRouterContext.Provider>
   );
+}
+
+function isFullScreenPath(p: string | null | undefined): boolean {
+  if (!p) return false;
+  return p === "/" || p.startsWith("/photography");
 }
 
 export default function PageTransition({
@@ -22,52 +26,28 @@ export default function PageTransition({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const scrollYRef = useRef(0);
 
-  const isPhotoRoute = pathname?.startsWith("/photography") ?? false;
+  // Capture the EXITING route before the ref updates so exit duration is correct.
+  // useLayoutEffect fires after render, so prevPathnameRef.current still holds the
+  // old value during the render where pathname changes.
+  const prevPathnameRef = useRef(pathname);
+  const exitingIsFullScreen = isFullScreenPath(prevPathnameRef.current);
+  useLayoutEffect(() => {
+    prevPathnameRef.current = pathname;
+  }, [pathname]);
 
-  // Disable browser scroll restoration so the page doesn't snap to top mid-animation
   useEffect(() => {
     if ("scrollRestoration" in window.history) {
       window.history.scrollRestoration = "manual";
     }
   }, []);
 
-  // Freeze the page in place during exit so components slide out from
-  // their current visual positions instead of snapping to the top first.
-  const onExitStart = useCallback(() => {
-    scrollYRef.current = window.scrollY;
-    document.body.style.overflow = "hidden";
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${scrollYRef.current}px`;
-    document.body.style.left = "0";
-    document.body.style.right = "0";
-  }, []);
-
   const onExitComplete = useCallback(() => {
-    document.body.style.overflow = "";
-    document.body.style.position = "";
-    document.body.style.top = "";
-    document.body.style.left = "";
-    document.body.style.right = "";
-    window.scrollTo(0, 0);
-  }, []);
+    if (!isFullScreenPath(pathname)) {
+      window.scrollTo(0, 0);
+    }
+  }, [pathname]);
 
-  // ── Photography side: avoid double-load feel by using a simple one-shot fade-in
-  if (isPhotoRoute) {
-    return (
-      <motion.div
-        key={pathname}
-        initial={{ opacity: 0, y: 4 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-      >
-        {children}
-      </motion.div>
-    );
-  }
-
-  // ── CS side (everything else): keep the existing exit/freeze transition ──
   return (
     <AnimatePresence mode="wait" onExitComplete={onExitComplete}>
       <motion.div
@@ -75,20 +55,17 @@ export default function PageTransition({
         initial={{ opacity: 0 }}
         animate={{
           opacity: 1,
-          transition: { duration: 0.35, ease: "easeOut" },
+          transition: { duration: 0.3, ease: "easeOut" },
         }}
         exit={{
           opacity: 0,
-          transition: { duration: 0.6, ease: [0.4, 0, 1, 1] },
-        }}
-        onAnimationStart={(def) => {
-          if (
-            typeof def === "object" &&
-            "opacity" in def &&
-            def.opacity === 0
-          ) {
-            onExitStart();
-          }
+          transition: {
+            // Full-screen pages (home, photography) exit quickly so
+            // within-photo navigation doesn't feel like a double-load.
+            // Scrollable CS pages exit slower to let content settle.
+            duration: exitingIsFullScreen ? 0.2 : 0.6,
+            ease: [0.4, 0, 1, 1],
+          },
         }}
       >
         <FrozenRouter>{children}</FrozenRouter>
