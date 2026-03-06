@@ -216,9 +216,21 @@ export default function Header() {
     setMenuOpen(false);
   }, [pathname]);
 
+  // Hide nav when a photo lightbox is open
+  useEffect(() => {
+    const onLightbox = (e: Event) => {
+      const open = (e as CustomEvent<{ open: boolean }>).detail.open;
+      setVisible(!open);
+    };
+    window.addEventListener("photoLightbox", onLightbox);
+    return () => window.removeEventListener("photoLightbox", onLightbox);
+  }, []);
+
   // Smart navbar: show on scroll up, hide on scroll down
   useEffect(() => {
     const onScroll = () => {
+      // Ignore scroll events while body is frozen during page transitions
+      if (document.body.style.position === "fixed") return;
       const currentY = window.scrollY;
       if (currentY < 50) {
         setVisible(true);
@@ -256,8 +268,19 @@ export default function Header() {
     document.documentElement.classList.toggle("dark", newDark);
   };
 
-  // Hide entirely on the home split-screen page
-  if (isHome) return null;
+  // On the home split-screen page the header is invisible, but we keep a
+  // same-height placeholder in the DOM so CS pages don't shift during exit.
+  if (isHome) {
+    return (
+      <header
+        className="sticky top-2 z-50 mx-2 mt-2 p-3"
+        aria-hidden="true"
+        style={{ visibility: "hidden", pointerEvents: "none" }}
+      >
+        <nav className="h-12" />
+      </header>
+    );
+  }
 
   // ── Photography side: bottom film strip nav ──
   if (isPhotoSide) {
