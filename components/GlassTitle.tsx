@@ -30,7 +30,7 @@ export default function GlassTitle({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const isDark = useIsDark();
-  const isInView = useInView(ref, { once: false, amount: 0.3 });
+  const isInView = useInView(ref, { once: true, amount: 0.3 });
 
   const svgProgress = useMotionValue(0);
   const drawTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -42,10 +42,6 @@ export default function GlassTitle({
         animate(svgProgress, 1, { duration: 3, ease: "easeInOut" });
         drawTimer.current = null;
       }, 400);
-    } else {
-      if (drawTimer.current) clearTimeout(drawTimer.current);
-      drawTimer.current = null;
-      animate(svgProgress, 0, { duration: 1.8, ease: "easeInOut" });
     }
     return () => {
       if (drawTimer.current) clearTimeout(drawTimer.current);

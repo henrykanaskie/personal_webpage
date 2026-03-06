@@ -116,6 +116,14 @@ export default function CategoryPage() {
     photo: PhotoEntry;
     gi: number;
   } | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   const category = params?.category as string;
   const section = SECTIONS.find((s) => s.id === category);
@@ -234,42 +242,23 @@ export default function CategoryPage() {
           }}
           style={{ marginBottom: "clamp(40px, 6vw, 72px)" }}
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "baseline",
-              gap: 18,
-              marginBottom: 10,
-            }}
-          >
-            <span
-              style={{
-                color: numColor,
-                fontSize: "10px",
-                letterSpacing: "0.3em",
-                fontFamily: "monospace",
-                flexShrink: 0,
-              }}
-            >
-              {section.num}
-            </span>
+          <div style={{ textAlign: "center" }}>
             <div
               style={{
-                width: 48,
+                width: 36,
                 height: "0.5px",
                 background: ruleColor,
-                flexShrink: 0,
-                alignSelf: "center",
+                margin: "0 auto 16px",
               }}
             />
             <h1
               style={{
                 color: titleColor,
-                fontSize: "clamp(2.4rem, 5.5vw, 5rem)",
+                fontSize: "clamp(1.6rem, 5.5vw, 5rem)",
                 fontWeight: 300,
                 letterSpacing: "0.15em",
                 textTransform: "uppercase",
-                margin: 0,
+                margin: "0 0 10px",
                 lineHeight: 1.05,
               }}
             >
@@ -282,7 +271,8 @@ export default function CategoryPage() {
               fontSize: "9.5px",
               letterSpacing: "0.42em",
               textTransform: "uppercase",
-              margin: "0 0 0 76px",
+              margin: 0,
+              textAlign: "center",
             }}
           >
             {section.sub}
@@ -293,7 +283,7 @@ export default function CategoryPage() {
         {(() => {
           // Separate portraits and landscapes, then interleave them
           // so orientations are mixed across columns
-          const numCols = section.cols;
+          const numCols = isMobile ? Math.min(section.cols, 2) : section.cols;
           const indexed = section.photos.map((photo, gi) => ({ photo, gi }));
           const portraits = indexed.filter(({ photo }) => {
             const [w, h] = photo.ratio.split("/").map(Number);
