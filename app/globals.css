@@ -1,0 +1,57 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+html {
+  scroll-behavior: smooth;
+}
+body {
+  /* The color of the "paper" */
+  background-color: #ffffff;
+
+  /* The grid lines */
+  background-image:
+    linear-gradient(to right, #7fcbfe37 1px, transparent 1px),
+    linear-gradient(to bottom, #7fcbfe37 1px, transparent 1px);
+  /* The size of the grid squares (e.g., 40px by 40px) */
+  background-size: 25px 25px;
+}
+
+/* Dark mode inverted colors */
+.dark body {
+  background-color: #1a1a1a;
+  background-image:
+    linear-gradient(to right, #2a2a2a 1px, transparent 1px),
+    linear-gradient(to bottom, #2a2a2a 1px, transparent 1px);
+}
+
+/* Prevent Tailwind's display transition from delaying dark mode swaps */
+* {
+  transition-behavior: normal !important;
+}
+
+/* Hide scrollbar but keep scrolling */
+::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  scrollbar-width: none;
+}
+
+/* Utility: hide scrollbar on a specific element (e.g. film strip) */
+.scrollbar-hide {
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes glassShineIntro {
+  0% { background-position: 200% center; }
+  100% { background-position: -50% center; }
+}
+
+@keyframes iridescentShift {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}

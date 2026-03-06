@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///Users/henrykanaskie/coding_projects/personal_website/app/about/page.tsx"],"sourcesContent":["\"use client\";\nimport { motion } from \"framer-motion\";\n\nexport default function AboutPage() {\n  return (\n    <motion.div\n      initial={{ opacity: 0 }}\n      animate={{ opacity: 1 }}\n      transition={{ duration: 0.5 }}\n      className=\"container mx-auto px-4 py-8\"\n    >\n      <h1 className=\"text-4xl font-bold mb-4\">About Me</h1>\n      <p>This is where you can write about yourself.</p>\n    </motion.div>\n  );\n}\n"],"names":[],"mappings":";;;;;AACA;AADA;;;AAGe,SAAS;IACtB,qBACE,qRAAC,2OAAM,CAAC,GAAG;QACT,SAAS;YAAE,SAAS;QAAE;QACtB,SAAS;YAAE,SAAS;QAAE;QACtB,YAAY;YAAE,UAAU;QAAI;QAC5B,WAAU;;0BAEV,qRAAC;gBAAG,WAAU;0BAA0B;;;;;;0BACxC,qRAAC;0BAAE;;;;;;;;;;;;AAGT"}}]
+}
