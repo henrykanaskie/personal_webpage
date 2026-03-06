@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { SECTIONS } from "@/app/photography/data";
@@ -56,7 +56,19 @@ export function PhotographyFilmStripNav({
   const stripItems = buildStripItems(isDark);
   const isActive = (href: string) => pathname === href;
   const scrollRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    const activeIndex = stripItems.findIndex((item) => item.href === pathname);
+    if (activeIndex !== -1 && itemRefs.current[activeIndex]) {
+      itemRefs.current[activeIndex]?.scrollIntoView({
+        inline: "center",
+        block: "nearest",
+        behavior: "smooth",
+      });
+    }
+  }, [pathname]);
 
   const labelColor = isDark ? "rgb(238, 225, 248)" : "rgb(80, 62, 95)";
   const subColor = isDark ? "rgba(220,210,245,0.7)" : "rgba(90,65,120,0.7)";
@@ -78,14 +90,14 @@ export function PhotographyFilmStripNav({
         pointerEvents: visible ? "auto" : "none",
         isolation: "isolate",
         display: "flex",
-        flexDirection: "column",
+        flexDirection: "row",
         alignItems: "center",
         background: stripBg,
-        paddingTop: "max(12px, env(safe-area-inset-top))",
-        paddingBottom: 10,
+        paddingTop: "max(10px, env(safe-area-inset-top))",
+        paddingBottom: 8,
       }}
     >
-      {/* Subtle creative edge (not a hard border) */}
+      {/* Subtle bottom edge */}
       <div
         aria-hidden
         style={{
@@ -102,17 +114,42 @@ export function PhotographyFilmStripNav({
           opacity: 0.9,
         }}
       />
+
+      {/* Left scroll arrow */}
+      <button
+        type="button"
+        aria-label="Scroll nav left"
+        onClick={() => scrollRef.current?.scrollBy({ left: -120, behavior: "smooth" })}
+        style={{
+          flexShrink: 0,
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          padding: "0 4px 0 8px",
+          color: isDark ? "rgba(220,210,245,0.45)" : "rgba(90,65,120,0.4)",
+          fontSize: 16,
+          lineHeight: 1,
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
+        ‹
+      </button>
+
+      {/* Scrollable nav items — takes all available space */}
       <div
         ref={scrollRef}
         className="scrollbar-hide"
         style={{
+          flex: 1,
+          minWidth: 0,
           display: "flex",
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-evenly",
-          width: "100%",
-          gap: 8,
-          padding: bottomControls ? "10px 110px 8px 24px" : "10px 24px 8px",
+          gap: 4,
+          paddingLeft: 4,
+          paddingRight: 4,
           flexWrap: "nowrap",
           overflowX: "auto",
           overflowY: "hidden",
@@ -136,6 +173,7 @@ export function PhotographyFilmStripNav({
             <Link
               key={item.href}
               href={item.href}
+              ref={(el) => { itemRefs.current[i] = el; }}
               scroll={false}
               onMouseEnter={() => setHoveredIndex(i)}
               onMouseLeave={() => setHoveredIndex(null)}
@@ -148,11 +186,10 @@ export function PhotographyFilmStripNav({
                 display: "inline-flex",
                 alignItems: "center",
                 position: "relative",
-                padding: "10px 16px 8px",
+                padding: "8px 10px 6px",
                 borderRadius: 14,
               }}
             >
-              {/* Active selector: viewfinder / view box */} 
               {active && (
                 <motion.div
                   layoutId="photo-nav-viewfinder"
@@ -166,7 +203,6 @@ export function PhotographyFilmStripNav({
                     boxShadow: `0 0 18px ${viewBoxShadow}`,
                   }}
                 >
-                  {/* Corner brackets */}
                   {[
                     { left: 10, top: 10, rotate: 0 },
                     { right: 10, top: 10, rotate: 90 },
@@ -224,16 +260,38 @@ export function PhotographyFilmStripNav({
           );
         })}
       </div>
+
+      {/* Right scroll arrow */}
+      <button
+        type="button"
+        aria-label="Scroll nav right"
+        onClick={() => scrollRef.current?.scrollBy({ left: 120, behavior: "smooth" })}
+        style={{
+          flexShrink: 0,
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          padding: "0 4px",
+          color: isDark ? "rgba(220,210,245,0.45)" : "rgba(90,65,120,0.4)",
+          fontSize: 16,
+          lineHeight: 1,
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
+        ›
+      </button>
+
+      {/* Controls — pinned to the right, never scrolls away */}
       {bottomControls && (
         <div
           style={{
-            position: "absolute",
-            right: 16,
-            top: "50%",
-            transform: "translateY(-50%)",
+            flexShrink: 0,
             display: "flex",
             alignItems: "center",
             gap: 10,
+            paddingLeft: 8,
+            paddingRight: 14,
           }}
         >
           {bottomControls}

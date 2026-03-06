@@ -628,7 +628,9 @@ export default function HomePage() {
         transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
         style={{ minWidth: 0, minHeight: 0, overflow: "hidden", cursor: "pointer" }}
         onMouseEnter={() => !isMobile && setHovered("right")}
-        onClick={() => router.push("/about")}
+        onClick={(e) => {
+          if (!(e.target as Element).closest("a")) router.push("/about");
+        }}
       >
         <CSSide active={hovered === "right"} isDark={isDark} />
       </motion.div>

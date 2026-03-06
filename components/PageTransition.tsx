@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { useContext, useRef, useCallback, useEffect, useLayoutEffect } from "react";
+import { useContext, useRef, useCallback, useEffect } from "react";
 import { LayoutRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
 function FrozenRouter({ children }: { children: React.ReactNode }) {
@@ -27,15 +27,6 @@ export default function PageTransition({
 }) {
   const pathname = usePathname();
 
-  // Capture the EXITING route before the ref updates so exit duration is correct.
-  // useLayoutEffect fires after render, so prevPathnameRef.current still holds the
-  // old value during the render where pathname changes.
-  const prevPathnameRef = useRef(pathname);
-  const exitingIsFullScreen = isFullScreenPath(prevPathnameRef.current);
-  useLayoutEffect(() => {
-    prevPathnameRef.current = pathname;
-  }, [pathname]);
-
   useEffect(() => {
     if ("scrollRestoration" in window.history) {
       window.history.scrollRestoration = "manual";
@@ -48,6 +39,12 @@ export default function PageTransition({
     }
   }, [pathname]);
 
+  // Single AnimatePresence for all routes.
+  // Exit duration is determined by the CURRENT page type at render time:
+  //   - Full-screen (home, photography): exit instantly so photo→photo navigation
+  //     has no double-load feel — the old page snaps away, new page fades in.
+  //   - CS pages: slow 0.6s exit so navigating to any destination (including
+  //     the split-screen home) has a deliberate, smooth fade-out.
   return (
     <AnimatePresence mode="wait" onExitComplete={onExitComplete}>
       <motion.div
@@ -55,15 +52,12 @@ export default function PageTransition({
         initial={{ opacity: 0 }}
         animate={{
           opacity: 1,
-          transition: { duration: 0.3, ease: "easeOut" },
+          transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
         }}
         exit={{
           opacity: 0,
           transition: {
-            // Full-screen pages (home, photography) exit quickly so
-            // within-photo navigation doesn't feel like a double-load.
-            // Scrollable CS pages exit slower to let content settle.
-            duration: exitingIsFullScreen ? 0.2 : 0.6,
+            duration: isFullScreenPath(pathname) ? 0 : 0.6,
             ease: [0.4, 0, 1, 1],
           },
         }}

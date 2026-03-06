@@ -144,35 +144,16 @@ function PhotoSectionPreview({
         transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
         style={{ marginBottom: "clamp(24px, 3vw, 36px)" }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "baseline",
-            gap: 18,
-            marginBottom: 10,
-          }}
-        >
-          <span
-            style={{
-              color: numColor,
-              fontSize: "10px",
-              letterSpacing: "0.3em",
-              fontFamily: "monospace",
-              flexShrink: 0,
-            }}
-          >
-            {section.num}
-          </span>
+        <div style={{ textAlign: "center" }}>
           <div
             style={{
-              width: 48,
+              width: 36,
               height: "0.5px",
               background: ruleColor,
-              flexShrink: 0,
-              alignSelf: "center",
+              margin: "0 auto 14px",
             }}
           />
-          <h2 style={{ margin: 0 }}>
+          <h2 style={{ margin: "0 0 8px" }}>
             <Link
               href={`/photography/${section.id}`}
               style={{
@@ -196,18 +177,18 @@ function PhotoSectionPreview({
               {section.title}
             </Link>
           </h2>
+          <p
+            style={{
+              color: subColor,
+              fontSize: "9.5px",
+              letterSpacing: "0.42em",
+              textTransform: "uppercase",
+              margin: 0,
+            }}
+          >
+            {section.sub}
+          </p>
         </div>
-        <p
-          style={{
-            color: subColor,
-            fontSize: "9.5px",
-            letterSpacing: "0.42em",
-            textTransform: "uppercase",
-            margin: "0 0 0 76px",
-          }}
-        >
-          {section.sub}
-        </p>
       </motion.div>
 
       {/* Same-width view box: horizontal scroll gallery, View More at end */}
@@ -401,24 +382,13 @@ export default function PhotographyPage() {
         transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
         style={{ marginBottom: "clamp(32px, 4vw, 48px)" }}
       >
-        <div style={{ display: "flex", alignItems: "baseline", gap: 18 }}>
-          <span
-            style={{
-              color: subColor,
-              fontSize: "10px",
-              letterSpacing: "0.3em",
-              fontFamily: "monospace",
-              flexShrink: 0,
-            }}
-          >
-            gallery
-          </span>
+        <div style={{ textAlign: "center" }}>
           <div
             style={{
-              width: 48,
+              width: 36,
               height: "0.5px",
               background: ruleColor,
-              alignSelf: "center",
+              margin: "0 auto 16px",
             }}
           />
           <h1
