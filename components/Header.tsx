@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { glassStyle } from "./InfoBubble";
 import { glassClassNames } from "./LeftInfoBox";
+import { PhotographyFilmStripNav } from "./PhotographyFilmStripNav";
 
 // ─── Navigation links ─────────────────────────────────────────────────────────
 
@@ -14,15 +15,6 @@ const csNavLinks = [
   { name: "Experience", href: "/cs/experience" },
   { name: "Projects", href: "/cs/projects" },
   { name: "Education", href: "/cs/education" },
-];
-
-const photoNavLinks = [
-  { name: "About", href: "/photography/about" },
-  { name: "Gallery", href: "/photography" },
-  { name: "Portraits", href: "/photography/portraits" },
-  { name: "Landscape", href: "/photography/landscape" },
-  { name: "Astrophotography", href: "/photography/astrophotography" },
-  { name: "Street", href: "/photography/street" },
 ];
 
 // ─── CS Gradients (cool iridescent) ──────────────────────────────────────────
@@ -35,15 +27,6 @@ const csDarkGradActive = `linear-gradient(135deg, rgb(220,235,255) 0%, rgb(245,2
 
 const csUnderlineLight = `linear-gradient(90deg, rgb(100,115,145), rgb(125,110,135), rgb(105,130,150), rgb(130,115,130), rgb(100,115,145))`;
 const csUnderlineDark = `linear-gradient(90deg, rgb(180,200,255), rgb(210,185,230), rgb(180,210,235), rgb(210,185,230), rgb(180,200,255))`;
-
-// ─── Photography nav: subtle solid colors (light/dark) ────────────────────────
-
-const photoLightColorActive = "rgb(80, 62, 95)"; // darker
-const photoDarkColorActive = "rgb(238, 225, 248)"; // brighter
-const photoMutedLight = "rgb(120, 95, 135)";
-const photoMutedDark = "rgb(165, 145, 195)";
-
-// (underline gradients no longer used for photo side — kept for CS)
 
 // ─── Iridescent text (CS nav) ──────────────────────────────────────────────────
 
@@ -79,7 +62,7 @@ function IridescentText({
 
 // ─── Theme toggle ─────────────────────────────────────────────────────────────
 
-// Photography palette for toggle (matches PhotoNav)
+// Photography palette for toggle
 const photoToggleLight = "rgb(100, 80, 115)";
 const photoToggleDark = "rgb(218, 198, 228)";
 
@@ -217,224 +200,6 @@ function ThemeToggleButton({
   );
 }
 
-// ─── Photography camera-dial nav ─────────────────────────────────────────────
-
-function PhotoNav({
-  isDark,
-  mounted,
-  maskId,
-  maskIdMobile: _maskIdMobile,
-  visible,
-  toggleDarkMode,
-  pathname,
-}: {
-  isDark: boolean;
-  mounted: boolean;
-  maskId: string;
-  maskIdMobile: string;
-  visible: boolean;
-  toggleDarkMode: () => void;
-  pathname: string | null;
-}) {
-  const isActive = (href: string) => pathname === href;
-  const activeIndex = photoNavLinks.findIndex((l) => isActive(l.href));
-
-  const borderColor = isDark
-    ? "rgba(200,185,230,0.25)"
-    : "rgba(120,85,145,0.2)";
-  const bgColor = isDark ? "rgba(8,6,14,0.7)" : "rgba(252,248,244,0.7)";
-  const notchColor = isDark ? "rgba(200,185,230,0.3)" : "rgba(120,85,145,0.25)";
-  const labelActiveColor = isDark
-    ? photoDarkColorActive
-    : photoLightColorActive;
-  const mutedColor = isDark ? photoMutedDark : photoMutedLight;
-  const indicatorColor = isDark
-    ? "rgba(220,210,245,0.9)"
-    : "rgba(110,75,140,0.85)";
-
-  return (
-    <header
-      style={{
-        position: "fixed",
-        top: "50%",
-        right: 20,
-        transform: `translateY(-50%) ${visible ? "translateX(0)" : "translateX(120%)"}`,
-        zIndex: 60,
-        opacity: visible ? 1 : 0,
-        transition: "opacity 0.35s ease, transform 0.4s ease",
-        pointerEvents: visible ? "auto" : "none",
-      }}
-    >
-      <nav
-        style={{
-          position: "relative",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          padding: "14px 0",
-          borderRadius: 40,
-          background: bgColor,
-          backdropFilter: "blur(20px) saturate(1.4)",
-          WebkitBackdropFilter: "blur(20px) saturate(1.4)",
-          border: `1px solid ${borderColor}`,
-          boxShadow: isDark
-            ? "0 8px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04)"
-            : "0 8px 28px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.6)",
-          width: 44,
-        }}
-      >
-        {/* Top knurl texture */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 2,
-            marginBottom: 10,
-          }}
-        >
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              style={{
-                width: 18,
-                height: 1,
-                background: notchColor,
-                borderRadius: 1,
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Mode selector indicator — slides to active item */}
-        <div
-          style={{
-            position: "relative",
-            display: "flex",
-            flexDirection: "column",
-            gap: 2,
-          }}
-        >
-          {/* Sliding indicator */}
-          {activeIndex >= 0 && (
-            <motion.div
-              layoutId="dial-indicator"
-              style={{
-                position: "absolute",
-                left: -2,
-                right: -2,
-                height: 36,
-                borderRadius: 20,
-                background: isDark
-                  ? "rgba(200,185,230,0.1)"
-                  : "rgba(120,85,145,0.08)",
-                border: `1px solid ${indicatorColor}`,
-                boxShadow: isDark
-                  ? "0 0 12px rgba(200,185,230,0.15)"
-                  : "0 0 8px rgba(120,85,145,0.1)",
-              }}
-              initial={false}
-              animate={{ top: activeIndex * 38 }}
-              transition={{ type: "spring", stiffness: 400, damping: 32 }}
-            />
-          )}
-
-          {/* Nav items */}
-          {photoNavLinks.map((link, _i) => {
-            const active = isActive(link.href);
-            return (
-              <Link
-                key={link.name}
-                href={link.href}
-                scroll={false}
-                onClick={() => {
-                  sessionStorage.setItem("lastBranch", "photo");
-                }}
-                style={{
-                  position: "relative",
-                  zIndex: 1,
-                  textDecoration: "none",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 40,
-                  height: 36,
-                  borderRadius: 20,
-                  transition: "opacity 0.2s ease",
-                }}
-                title={link.name}
-              >
-                {/* Notch mark */}
-                <div
-                  style={{
-                    width: active ? 14 : 8,
-                    height: 2,
-                    borderRadius: 2,
-                    background: active ? indicatorColor : notchColor,
-                    marginBottom: 3,
-                    transition: "width 0.25s ease, background 0.25s ease",
-                  }}
-                />
-                {/* Abbreviated label */}
-                <span
-                  style={{
-                    fontSize: "6px",
-                    letterSpacing: "0.18em",
-                    fontFamily: "monospace",
-                    textTransform: "uppercase",
-                    color: active ? labelActiveColor : mutedColor,
-                    fontWeight: active ? 600 : 400,
-                    transition: "color 0.2s ease",
-                    whiteSpace: "nowrap",
-                    lineHeight: 1,
-                  }}
-                >
-                  {link.name.length > 5
-                    ? link.name.slice(0, 4).toUpperCase()
-                    : link.name.toUpperCase()}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
-
-        {/* Bottom knurl texture */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 2,
-            marginTop: 10,
-          }}
-        >
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              style={{
-                width: 18,
-                height: 1,
-                background: notchColor,
-                borderRadius: 1,
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Theme toggle at bottom */}
-        <div style={{ marginTop: 12 }}>
-          <ThemeToggleButton
-            isDark={isDark}
-            mounted={mounted}
-            maskId={maskId}
-            onToggle={toggleDarkMode}
-            photoMode
-          />
-        </div>
-      </nav>
-    </header>
-  );
-}
-
 // ─── Header ───────────────────────────────────────────────────────────────────
 
 export default function Header() {
@@ -497,17 +262,69 @@ export default function Header() {
   // Hide entirely on the home split-screen page
   if (isHome) return null;
 
-  // ── Photography side: completely different nav ──
+  // ── Photography side: bottom film strip nav ──
   if (isPhotoSide) {
+    const photoBorder = isDark
+      ? "rgba(200,185,230,0.12)"
+      : "rgba(120,85,145,0.1)";
     return (
-      <PhotoNav
+      <PhotographyFilmStripNav
         isDark={isDark}
-        mounted={mounted}
-        maskId={maskId}
-        maskIdMobile={maskIdMobile}
         visible={visible}
-        toggleDarkMode={toggleDarkMode}
         pathname={pathname}
+        bottomControls={
+          <>
+            <ThemeToggleButton
+              isDark={isDark}
+              mounted={mounted}
+              maskId={maskId}
+              onToggle={toggleDarkMode}
+              photoMode
+            />
+            <Link
+              href="/"
+              scroll={false}
+              title="Home"
+              aria-label="Home"
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: "50%",
+                background: isDark
+                  ? "rgba(20,16,32,0.9)"
+                  : "rgba(248,245,240,0.95)",
+                border: `1px solid ${photoBorder}`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                textDecoration: "none",
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 20 20" fill="none">
+                <rect
+                  x="2"
+                  y="3"
+                  width="7"
+                  height="14"
+                  rx="1.5"
+                  fill={
+                    isDark ? "rgba(200,185,230,0.8)" : "rgba(120,85,145,0.7)"
+                  }
+                />
+                <rect
+                  x="11"
+                  y="3"
+                  width="7"
+                  height="14"
+                  rx="1.5"
+                  fill={
+                    isDark ? "rgba(200,185,230,0.5)" : "rgba(120,85,145,0.45)"
+                  }
+                />
+              </svg>
+            </Link>
+          </>
+        }
       />
     );
   }
@@ -607,9 +424,94 @@ export default function Header() {
       />
 
       <nav className="container mx-auto flex justify-between items-center relative z-10">
-        {/* Logo — always links home */}
-        <Link href="/" scroll={false} className="text-2xl font-bold">
-          <IridescentText isDark={isDark}>My Portfolio</IridescentText>
+        {/* Home icon — split-screen */}
+        <Link
+          href="/"
+          scroll={false}
+          className="flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-200 hover:bg-white/5"
+          aria-label="Home"
+          title="Home"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <rect
+              x="2"
+              y="3"
+              width="7"
+              height="14"
+              rx="1.5"
+              fill={
+                isDark
+                  ? "url(#cs-home-grad-dark-l)"
+                  : "url(#cs-home-grad-light-l)"
+              }
+              opacity={0.85}
+            />
+            <rect
+              x="11"
+              y="3"
+              width="7"
+              height="14"
+              rx="1.5"
+              fill={
+                isDark
+                  ? "url(#cs-home-grad-dark-r)"
+                  : "url(#cs-home-grad-light-r)"
+              }
+              opacity={0.85}
+            />
+            <defs>
+              <linearGradient
+                id="cs-home-grad-dark-l"
+                x1="2"
+                y1="3"
+                x2="9"
+                y2="17"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop stopColor="rgb(180,200,255)" />
+                <stop offset="1" stopColor="rgb(210,185,230)" />
+              </linearGradient>
+              <linearGradient
+                id="cs-home-grad-dark-r"
+                x1="11"
+                y1="3"
+                x2="18"
+                y2="17"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop stopColor="rgb(200,185,225)" />
+                <stop offset="1" stopColor="rgb(180,200,255)" />
+              </linearGradient>
+              <linearGradient
+                id="cs-home-grad-light-l"
+                x1="2"
+                y1="3"
+                x2="9"
+                y2="17"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop stopColor="rgb(100,115,145)" />
+                <stop offset="1" stopColor="rgb(125,110,135)" />
+              </linearGradient>
+              <linearGradient
+                id="cs-home-grad-light-r"
+                x1="11"
+                y1="3"
+                x2="18"
+                y2="17"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop stopColor="rgb(120,95,135)" />
+                <stop offset="1" stopColor="rgb(100,115,145)" />
+              </linearGradient>
+            </defs>
+          </svg>
         </Link>
 
         {/* ── Desktop nav ── */}

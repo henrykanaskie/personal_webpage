@@ -49,7 +49,16 @@ export default function PhotographyLayout({
       </svg>
 
       {/* Page content */}
-      <div style={{ position: "relative", zIndex: 2 }}>{children}</div>
+      <div
+        style={{
+          position: "relative",
+          zIndex: 2,
+          // Reserve space for the fixed top photography nav
+          paddingTop: "calc(env(safe-area-inset-top) + 72px)",
+        }}
+      >
+        {children}
+      </div>
     </div>
   );
 }

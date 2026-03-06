@@ -38,6 +38,14 @@ body {
   scrollbar-width: none;
 }
 
+/* Utility: hide scrollbar on a specific element (e.g. film strip) */
+.scrollbar-hide {
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 @keyframes glassShineIntro {
   0% { background-position: 200% center; }
   100% { background-position: -50% center; }

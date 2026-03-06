@@ -5,7 +5,7 @@ import { motion, useInView } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 import { useIsDark } from "@/components/InfoBubble";
-import { SECTIONS, Section, PhotoEntry, RGB } from "@/app/photography/data";
+import { Section, PhotoEntry, RGB } from "@/app/photography/data";
 
 // ─── Gear data — update with your actual kit ─────────────────────────────────
 
