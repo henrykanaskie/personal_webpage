@@ -3,17 +3,17 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { SECTIONS } from "@/app/photography/data";
+import { SECTION_META as SECTIONS } from "@/app/photography/data";
 
 const photoNavLinks = [
   { name: "About", short: "ABT", href: "/photography/about" },
   { name: "Gallery", short: "GAL", href: "/photography" },
   { name: "Portraits", short: "PORT", href: "/photography/portraits" },
-  { name: "Nature", short: "NAT", href: "/photography/landscape" },
+  { name: "Nature", short: "NAT", href: "/photography/nature" },
   { name: "Astro", short: "ASTR", href: "/photography/astrophotography" },
   { name: "Street", short: "STR", href: "/photography/street" },
   { name: "Automotive", short: "AUTO", href: "/photography/automotive" },
-  { name: "Collages", short: "COLL", href: "/photography/collages" },
+  { name: "Natl Parks", short: "NPS", href: "/photography/natl-parks" },
 ];
 
 const VIEWFINDER_W = 200;
@@ -29,7 +29,7 @@ function getSectionId(href: string): string | null {
 }
 
 function buildNavItems(isDark: boolean) {
-  const fallbackSrc = SECTIONS[0]?.photos?.[0]?.src ?? "/photography/placeholder.svg";
+  const fallbackSrc = "/photography/placeholder.svg";
   const fallbackAccent: [number, number, number] = [128, 72, 138];
 
   return photoNavLinks.map((link) => {
@@ -40,7 +40,7 @@ function buildNavItems(isDark: boolean) {
       : fallbackAccent;
     return {
       ...link,
-      thumbnailSrc: section?.photos?.[0]?.src ?? fallbackSrc,
+      thumbnailSrc: fallbackSrc,
       sub: section?.sub ?? "",
       accent,
     };

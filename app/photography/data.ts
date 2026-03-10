@@ -17,10 +17,15 @@ export interface Section {
   darkAccent: RGB;
   lightAccent: RGB;
   cols: number;
+  /** Folder name under public/photography/. If absent, section shows no photos. */
+  dir?: string;
+  /** Populated at build time by getPhotos.ts */
   photos: PhotoEntry[];
 }
 
-export const SECTIONS: Section[] = [
+// Section metadata only — photos are populated server-side from the filesystem.
+// To add a new section: add an entry here and create the matching folder under public/photography/<dir>/.
+export const SECTION_META: Omit<Section, "photos">[] = [
   {
     id: "portraits",
     num: "01",
@@ -29,38 +34,17 @@ export const SECTIONS: Section[] = [
     darkAccent: [110, 140, 255],
     lightAccent: [210, 60, 110],
     cols: 3,
-    photos: [
-      // Replace these with real portrait files once you add a /photography/portraits folder
-      { src: "/photography/placeholder.svg", ratio: "2/3", angle: 155 },
-      { src: "/photography/placeholder.svg", ratio: "2/3", angle: 135 },
-      { src: "/photography/placeholder.svg", ratio: "1/1", angle: 165 },
-      { src: "/photography/placeholder.svg", ratio: "2/3", angle: 145 },
-      { src: "/photography/placeholder.svg", ratio: "1/1", angle: 150 },
-      { src: "/photography/placeholder.svg", ratio: "2/3", angle: 160 },
-    ],
+    dir: "portraits",
   },
   {
-    id: "landscape",
+    id: "nature",
     num: "02",
-    title: "Landscape",
+    title: "Nature",
     sub: "Horizons & Earth",
     darkAccent: [110, 140, 255],
     lightAccent: [210, 60, 110],
     cols: 3,
-    photos: [
-      { src: "/photography/nature/DSC08190.jpg", ratio: "2/3", angle: 155 },
-      { src: "/photography/nature/DSC02629 (1).jpg", ratio: "3/2", angle: 135 },
-      { src: "/photography/nature/DSC05497 (1).jpg", ratio: "2/3", angle: 165 },
-      { src: "/photography/nature/DSC08520.jpg", ratio: "3/2", angle: 145 },
-      {
-        src: "/photography/nature/DSC00824-Enhanced-NR.JPG",
-        ratio: "2/3",
-        angle: 140,
-      },
-      { src: "/photography/nature/DSC02213 (1).jpg", ratio: "2/3", angle: 130 },
-      { src: "/photography/nature/DSC08739.jpg", ratio: "2/3", angle: 150 },
-      { src: "/photography/nature/DSC08791.jpg", ratio: "3/2", angle: 160 },
-    ],
+    dir: "nature",
   },
   {
     id: "astrophotography",
@@ -70,12 +54,7 @@ export const SECTIONS: Section[] = [
     darkAccent: [110, 140, 255],
     lightAccent: [210, 60, 110],
     cols: 3,
-    photos: [
-      { src: "/photography/astro/M31 (1).jpg", ratio: "2/3", angle: 155 },
-      { src: "/photography/astro/DSC02102 (1).jpg", ratio: "3/2", angle: 135 },
-      { src: "/photography/astro/DSC04795 (1).jpg", ratio: "2/3", angle: 165 },
-      { src: "/photography/astro/DSC08958 (1).jpg", ratio: "2/3", angle: 145 },
-    ],
+    dir: "astro",
   },
   {
     id: "street",
@@ -85,23 +64,7 @@ export const SECTIONS: Section[] = [
     darkAccent: [110, 140, 255],
     lightAccent: [210, 60, 110],
     cols: 3,
-    photos: [
-      { src: "/photography/street/DSC01039.jpg", ratio: "4/5", angle: 155 },
-      { src: "/photography/street/DSC01105.jpg", ratio: "2/3", angle: 135 },
-      { src: "/photography/street/DSC01243 (1).jpg", ratio: "2/3", angle: 165 },
-      { src: "/photography/street/DSC01590.JPG", ratio: "2/3", angle: 145 },
-      {
-        src: "/photography/street/DSC07734-2 (1).jpg",
-        ratio: "2/3",
-        angle: 150,
-      },
-      { src: "/photography/street/HK0_1105.JPG", ratio: "2/3", angle: 160 },
-      {
-        src: "/photography/street/DSC00824-Enhanced-NR.JPG",
-        ratio: "2/3",
-        angle: 140,
-      },
-    ],
+    dir: "street",
   },
   {
     id: "automotive",
@@ -111,28 +74,16 @@ export const SECTIONS: Section[] = [
     darkAccent: [110, 140, 255],
     lightAccent: [210, 60, 110],
     cols: 3,
-    photos: [
-      { src: "/photography/placeholder.svg", ratio: "3/2", angle: 155 },
-      { src: "/photography/placeholder.svg", ratio: "3/2", angle: 135 },
-      { src: "/photography/placeholder.svg", ratio: "2/3", angle: 165 },
-      { src: "/photography/placeholder.svg", ratio: "3/2", angle: 145 },
-      { src: "/photography/placeholder.svg", ratio: "2/3", angle: 150 },
-    ],
+    dir: "automotive",
   },
   {
-    id: "collages",
+    id: "natl-parks",
     num: "06",
-    title: "Collages",
-    sub: "Mixed & Layered",
+    title: "Natl Parks",
+    sub: "Parks & Wilderness",
     darkAccent: [110, 140, 255],
     lightAccent: [210, 60, 110],
     cols: 3,
-    photos: [
-      { src: "/photography/placeholder.svg", ratio: "1/1", angle: 155 },
-      { src: "/photography/placeholder.svg", ratio: "3/2", angle: 135 },
-      { src: "/photography/placeholder.svg", ratio: "2/3", angle: 165 },
-      { src: "/photography/placeholder.svg", ratio: "1/1", angle: 145 },
-      { src: "/photography/placeholder.svg", ratio: "3/2", angle: 150 },
-    ],
+    dir: "natl-parks",
   },
 ];
