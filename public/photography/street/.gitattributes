@@ -7,3 +7,8 @@ DSC07734-2[[:space:]](1).jpg filter=lfs diff=lfs merge=lfs -text
 HK0_9207.jpg filter=lfs diff=lfs merge=lfs -text
 DSC01039.jpg filter=lfs diff=lfs merge=lfs -text
 DSC01105.jpg filter=lfs diff=lfs merge=lfs -text
+DSC01243-(1).jpg filter=lfs diff=lfs merge=lfs -text
+DSC01590.jpg filter=lfs diff=lfs merge=lfs -text
+DSC07734-2-(1).jpg filter=lfs diff=lfs merge=lfs -text
+HK0_1105.jpg filter=lfs diff=lfs merge=lfs -text
+DSC00824-Enhanced-NR.jpg filter=lfs diff=lfs merge=lfs -text
