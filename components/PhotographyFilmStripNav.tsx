@@ -3,17 +3,17 @@
 import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { SECTIONS } from "@/app/photography/data";
+import { SECTION_META as SECTIONS } from "@/app/photography/data";
 
 const photoNavLinks: { name: string; href: string }[] = [
   { name: "About", href: "/photography/about" },
   { name: "Gallery", href: "/photography" },
   { name: "Portraits", href: "/photography/portraits" },
-  { name: "Nature", href: "/photography/landscape" },
+  { name: "Nature", href: "/photography/nature" },
   { name: "Astro", href: "/photography/astrophotography" },
   { name: "Street", href: "/photography/street" },
   { name: "Automotive", href: "/photography/automotive" },
-  { name: "Collages", href: "/photography/collages" },
+  { name: "Natl Parks", href: "/photography/natl-parks" },
 ];
 
 const HOVER_SCALE = 1.04;

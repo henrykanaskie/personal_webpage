@@ -186,8 +186,7 @@ function generateBorderParticles(
 }
 
 // ─── Border Vapor Cloud ───
-// Particles originate from the bubble's border and drift outward like mist escaping.
-// Uses a single <canvas> + RAF loop instead of individual motion.div elements for performance.
+// Particles originate from the bubble's border and drift outward like mist escaping
 export function VaporCloud({
   originX,
   originY,
@@ -201,75 +200,64 @@ export function VaporCloud({
   bubbleHeight: number;
   onComplete: () => void;
 }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const onCompleteRef = useRef(onComplete);
-  onCompleteRef.current = onComplete;
+  const [particles] = useState(() => {
+    const mobile = typeof window !== "undefined" && window.innerWidth < 768;
+    return generateBorderParticles(
+      mobile ? 120 : 450,
+      bubbleWidth,
+      bubbleHeight,
+    );
+  });
+  const completedRef = useRef(0);
 
-  const PAD = 80;
-  const cw = bubbleWidth + PAD * 2;
-  const ch = bubbleHeight + PAD * 2;
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
-    if (!ctx) return;
-
-    const isDark = document.documentElement.classList.contains("dark");
-    const count = window.innerWidth < 768 ? 60 : 180;
-    const particles = generateBorderParticles(count, bubbleWidth, bubbleHeight);
-    const maxEnd = Math.max(...particles.map((p) => (p.delay + p.duration) * 1000));
-    const cx = cw / 2;
-    const cy = ch / 2;
-    const color = isDark ? "rgba(255,255,255,0.75)" : "rgba(50,75,185,0.85)";
-
-    const startTime = performance.now();
-    let rafId: number;
-    let completed = false;
-
-    function frame(now: number) {
-      ctx.clearRect(0, 0, cw, ch);
-      const elapsed = now - startTime;
-
-      for (const p of particles) {
-        const t = (elapsed - p.delay * 1000) / (p.duration * 1000);
-        if (t <= 0 || t >= 1) continue;
-        const x = cx + p.startX + (p.endX - p.startX) * t;
-        const y = cy + p.startY + (p.endY - p.startY) * t;
-        ctx.globalAlpha = p.initialOpacity * (1 - t);
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(x, y, Math.max(0.2, p.size * (1 - t)), 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      if (elapsed > maxEnd + 100) {
-        if (!completed) {
-          completed = true;
-          onCompleteRef.current();
-        }
-        return;
-      }
-      rafId = requestAnimationFrame(frame);
-    }
-
-    rafId = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(rafId);
-  }, [bubbleWidth, bubbleHeight, cw, ch]);
+  const handleDone = useCallback(() => {
+    completedRef.current += 1;
+    if (completedRef.current >= particles.length) onComplete();
+  }, [particles.length, onComplete]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={cw}
-      height={ch}
+    <div
       style={{
         position: "fixed",
-        left: originX - cw / 2,
-        top: originY - ch / 2,
+        left: originX,
+        top: originY,
         pointerEvents: "none",
-        zIndex: 9999999,
+        zIndex: 1,
       }}
-    />
+    >
+      {particles.map((p) => (
+        <motion.div
+          key={p.id}
+          initial={{
+            x: p.startX,
+            y: p.startY,
+            scale: 1,
+            opacity: p.initialOpacity,
+            rotate: 0,
+          }}
+          animate={{
+            x: p.endX,
+            y: p.endY,
+            scale: 0,
+            opacity: 0,
+            rotate: p.rotation,
+          }}
+          transition={{
+            duration: p.duration,
+            delay: p.delay,
+            ease: "linear",
+          }}
+          onAnimationComplete={handleDone}
+          style={{
+            position: "absolute",
+            width: p.size,
+            height: p.size,
+            borderRadius: "50%",
+          }}
+          className="bg-[radial-gradient(circle,_rgba(40,70,180,0.95)_0%,_rgba(50,80,170,0.4)_50%,_transparent_100%)] dark:bg-[radial-gradient(circle,_rgba(255,255,255,0.8)_0%,_rgba(200,220,255,0.3)_50%,_transparent_100%)]"
+        />
+      ))}
+    </div>
   );
 }
 

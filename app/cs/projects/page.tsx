@@ -16,47 +16,19 @@ function splitIntoRows<T>(items: T[]): T[][] {
 // Data-driven project list so we can compute layout from count
 const projects = [
   {
-    title: "Personal Website",
-    techStack: "Next.js, TypeScript, Tailwind, Framer Motion",
-    description:
-      "A glassmorphic portfolio site with animated SVGs, iridescent text, and vapor particle effects. Built to showcase projects and experience with a unique aesthetic.",
-    motivation:
-      "I wanted a portfolio that felt like looking through frosted glass — something that conveyed both precision and artistry. Every element is designed to feel physical and alive.",
-    deployment: {
-      githubUrl: "https://github.com/henrykanaskie/personal-website",
-      siteUrl: "https://henrykanaskie.com",
-      progress: 75,
-    },
-  },
-  {
     title: "Bee Habitat Recommendation System",
     techStack: "Python, React, JavaScript",
     description:
-      "A predictive tool for land managers and hobbyists to identify optimal plant species for local bee populations, leveraging sparse matrix factorization to model complex ecological relationships.",
-    motivation:
-      "Pollinator decline is a real problem. I wanted to build something that turns ecological data into actionable guidance — connecting Oregon Bee Atlas datasets to habitat restoration through a full-stack AI recommendation engine using truncated SVD.",
+      "Built a full-stack AI recommendation engine using truncated SVD on Oregon Bee Atlas data to predict bee-flower interactions, enabling data-driven habitat restoration for land managers. Modeled complex ecological relationships via sparse matrix factorization, identifying optimal plant species for local bee populations across diverse Oregon ecosystems.",
     deployment: {
       progress: 100,
     },
   },
   {
-    title: "Character Classification Neural Network",
+    title: "Character Classification Neural Network — From Scratch",
     techStack: "Python, NumPy, Pandas",
     description:
-      "A Feed Forward Neural Network engineered and trained from scratch to classify handwritten characters from the EMNIST dataset, achieving 85% test accuracy without any deep learning frameworks.",
-    motivation:
-      "I wanted to understand neural networks at the lowest level — no PyTorch, no TensorFlow, just raw math. Building backpropagation and gradient descent from scratch solidified my understanding of how learning actually works.",
-    deployment: {
-      progress: 100,
-    },
-  },
-  {
-    title: "Small Shell",
-    techStack: "C, Linux",
-    description:
-      "A lightweight, interactive shell for Linux featuring command execution, I/O redirection, background processes, and custom signal handling for SIGINT and SIGTSTP.",
-    motivation:
-      "Systems programming is where you learn how computers actually work. Building a shell from scratch taught me process management, file descriptors, and signal handling at the OS level.",
+      "Built a Feed Forward Neural Network from scratch in Python — no ML frameworks — implementing backpropagation, weight initialization, and hyperparameter tuning by hand; achieved 85% test accuracy on EMNIST.",
     deployment: {
       progress: 100,
     },
@@ -84,7 +56,6 @@ export default function ProjectsPage() {
                   title={project.title}
                   techStack={project.techStack}
                   description={project.description}
-                  motivation={project.motivation}
                   deployment={project.deployment}
                   bubbleSide={colIdx < row.length / 2 ? "left" : "right"}
                 />

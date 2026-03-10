@@ -48,7 +48,7 @@ interface ProjectCardProps {
   title: string;
   techStack: string;
   description: string;
-  motivation: string;
+  thumbnail?: string;
   deployment: DeploymentInfo;
   svgs?: SvgConfig[];
   bubbleSide?: "left" | "right";
@@ -196,29 +196,47 @@ function BubbleShell({
   );
 }
 
-// ─── Motivation Bubble Content ───
+// ─── Thumbnail Bubble Content ───
 
-function MotivationBubbleContent({
-  motivation,
+function ThumbnailBubbleContent({
+  thumbnail,
   isMobile,
+  isDark,
 }: {
-  motivation: string;
+  thumbnail?: string;
   isMobile: boolean;
+  isDark: boolean;
 }) {
   return (
     <div style={{ position: "relative", zIndex: 1, pointerEvents: "none", textAlign: "center" }}>
-      <FuzzyText style={{ margin: 0 }}>
-        <span className="text-black/50 dark:text-white/50" style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em" }}>
-          Motivation
-        </span>
-      </FuzzyText>
-      <div className="bg-black/[0.12] dark:bg-white/[0.15]" style={{ height: 1, margin: "8px 0" }} />
-      <FuzzyText style={{ margin: 0 }}>
-        <span className="text-black/80 dark:text-white/80" style={{ fontSize: 10, lineHeight: 1.5 }}>
-          {motivation}
-        </span>
-      </FuzzyText>
-      <p style={{ margin: "10px 0 0", fontSize: 10, opacity: 0.4 }} className="text-black dark:text-white">
+      <div
+        style={{
+          borderRadius: 12,
+          overflow: "hidden",
+          width: "100%",
+          aspectRatio: "16 / 9",
+          background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {thumbnail ? (
+          <img
+            src={thumbnail}
+            alt="Project thumbnail"
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
+        ) : (
+          <span
+            className="text-black/20 dark:text-white/20"
+            style={{ fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase" }}
+          >
+            Preview
+          </span>
+        )}
+      </div>
+      <p style={{ margin: "8px 0 0", fontSize: 10, opacity: 0.4 }} className="text-black dark:text-white">
         {isMobile ? "tap to dismiss" : "click to dismiss"}
       </p>
     </div>
@@ -325,7 +343,7 @@ export default function ProjectCard({
   title,
   techStack,
   description,
-  motivation,
+  thumbnail,
   deployment,
   svgs = [],
   bubbleSide = "right",
@@ -335,45 +353,50 @@ export default function ProjectCard({
   const isDark = useIsDark();
   const isInView = useInView(boxRef, { once: false, amount: isMobile ? 0.15 : 0.1 });
 
-  const motivationBubble = useInfoBubble();
+  const thumbnailBubble = useInfoBubble();
   const deploymentBubble = useInfoBubble();
 
+  // Auto-open thumbnail bubble when card comes into view
+  useEffect(() => {
+    if (isInView) thumbnailBubble.openBubble();
+  }, [isInView, thumbnailBubble.openBubble]);
+
   // Track which bubble opened first so the second one pushes the first down
-  const firstOpenedRef = useRef<"motivation" | "deployment" | null>(null);
+  const firstOpenedRef = useRef<"thumbnail" | "deployment" | null>(null);
 
   // Update tracking when bubbles open/close
   useEffect(() => {
-    const motOpen = motivationBubble.isBubbleOpen;
+    const thumbOpen = thumbnailBubble.isBubbleOpen;
     const depOpen = deploymentBubble.isBubbleOpen;
 
-    if (!motOpen && !depOpen) {
+    if (!thumbOpen && !depOpen) {
       firstOpenedRef.current = null;
-    } else if (motOpen && !depOpen) {
-      firstOpenedRef.current = "motivation";
-    } else if (depOpen && !motOpen) {
+    } else if (thumbOpen && !depOpen) {
+      firstOpenedRef.current = "thumbnail";
+    } else if (depOpen && !thumbOpen) {
       firstOpenedRef.current = "deployment";
     }
-  }, [motivationBubble.isBubbleOpen, deploymentBubble.isBubbleOpen]);
+  }, [thumbnailBubble.isBubbleOpen, deploymentBubble.isBubbleOpen]);
 
-  const anyBubbleOpen = motivationBubble.isBubbleOpen || deploymentBubble.isBubbleOpen;
-  const bothBubblesOpen = motivationBubble.isBubbleOpen && deploymentBubble.isBubbleOpen;
+  const anyBubbleOpen = thumbnailBubble.isBubbleOpen || deploymentBubble.isBubbleOpen;
+  const bothBubblesOpen = thumbnailBubble.isBubbleOpen && deploymentBubble.isBubbleOpen;
   const shouldShow = isMobile ? isInView : isInView || anyBubbleOpen;
 
   // When both are open, the first-opened gets pushed down, the newer one sits on top
-  const motivationIsFirst = firstOpenedRef.current === "motivation";
+  const thumbnailIsFirst = firstOpenedRef.current === "thumbnail";
 
   // Desktop: first-opened shifts down, second stays up
-  const motivationDesktopY = bothBubblesOpen
-    ? (motivationIsFirst ? BUBBLE_STACK_OFFSET : -BUBBLE_STACK_OFFSET)
+  const thumbnailDesktopY = bothBubblesOpen
+    ? (thumbnailIsFirst ? BUBBLE_STACK_OFFSET : -BUBBLE_STACK_OFFSET)
     : 0;
   const deploymentDesktopY = bothBubblesOpen
-    ? (motivationIsFirst ? -BUBBLE_STACK_OFFSET : BUBBLE_STACK_OFFSET)
+    ? (thumbnailIsFirst ? -BUBBLE_STACK_OFFSET : BUBBLE_STACK_OFFSET)
     : 0;
 
   // Mobile: the most recent bubble sits on top (closer to card),
   // pushing the first-opened one further down.
-  const motivationMobileY = bothBubblesOpen && motivationIsFirst ? MOBILE_BUBBLE_STACK : 0;
-  const deploymentMobileY = bothBubblesOpen && !motivationIsFirst ? MOBILE_BUBBLE_STACK : 0;
+  const thumbnailMobileY = bothBubblesOpen && thumbnailIsFirst ? MOBILE_BUBBLE_STACK : 0;
+  const deploymentMobileY = bothBubblesOpen && !thumbnailIsFirst ? MOBILE_BUBBLE_STACK : 0;
 
   // Only spread cards apart when both bubbles are open — that's when
   // the stacked pair actually extends beyond the card bounds.
@@ -400,13 +423,13 @@ export default function ProjectCard({
   return (
     <>
       {/* Vapor clouds */}
-      {motivationBubble.vaporOrigin && (
+      {thumbnailBubble.vaporOrigin && (
         <VaporCloud
-          originX={motivationBubble.vaporOrigin.x}
-          originY={motivationBubble.vaporOrigin.y}
-          bubbleWidth={motivationBubble.vaporOrigin.w}
-          bubbleHeight={motivationBubble.vaporOrigin.h}
-          onComplete={motivationBubble.handleVaporDone}
+          originX={thumbnailBubble.vaporOrigin.x}
+          originY={thumbnailBubble.vaporOrigin.y}
+          bubbleWidth={thumbnailBubble.vaporOrigin.w}
+          bubbleHeight={thumbnailBubble.vaporOrigin.h}
+          onComplete={thumbnailBubble.handleVaporDone}
         />
       )}
       {deploymentBubble.vaporOrigin && (
@@ -542,11 +565,11 @@ export default function ProjectCard({
             {/* Bubble toggle buttons */}
             <div className="mt-5 flex justify-center gap-3">
               <button
-                onClick={motivationBubble.isBubbleOpen ? motivationBubble.requestPop : motivationBubble.openBubble}
+                onClick={thumbnailBubble.isBubbleOpen ? thumbnailBubble.requestPop : thumbnailBubble.openBubble}
                 className="group relative px-3 py-1.5 rounded-full text-xs font-medium text-black dark:text-white bg-blue-500/3 hover:bg-blue-500/5 dark:bg-white/5 dark:hover:bg-white/10 border border-[rgba(100,130,200,0.2)] dark:border-[rgba(255,255,255,0.05)] transition-all duration-300"
               >
                 <span className="relative z-10">
-                  {motivationBubble.isBubbleOpen ? "Close" : "Reasoning"}
+                  {thumbnailBubble.isBubbleOpen ? "Close" : "Preview"}
                 </span>
               </button>
               <button
@@ -564,18 +587,18 @@ export default function ProjectCard({
         {/* Both bubbles on the same side */}
         <motion.div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999999, pointerEvents: "none", overflow: "visible" }}>
           <AnimatePresence>
-            {motivationBubble.isBubbleOpen && (
+            {thumbnailBubble.isBubbleOpen && (
               <BubbleShell
-                key="motivation"
+                key="thumbnail"
                 side={bubbleSide}
                 isMobile={isMobile}
-                onPop={motivationBubble.handlePop}
-                popRequested={motivationBubble.popRequested}
+                onPop={thumbnailBubble.handlePop}
+                popRequested={thumbnailBubble.popRequested}
                 parentInView={isInView}
-                desktopYOffset={motivationDesktopY}
-                mobileYOffset={motivationMobileY}
+                desktopYOffset={thumbnailDesktopY}
+                mobileYOffset={thumbnailMobileY}
               >
-                <MotivationBubbleContent motivation={motivation} isMobile={isMobile} />
+                <ThumbnailBubbleContent thumbnail={thumbnail} isMobile={isMobile} isDark={isDark} />
               </BubbleShell>
             )}
           </AnimatePresence>

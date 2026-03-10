@@ -250,7 +250,6 @@ function Thumbnail({ type, isDark }: { type: ThumbnailType; isDark: boolean }) {
   if (type === "matrix") {
     // Sparse matrix visualization — represents SVD/matrix factorization
     const cols = 9;
-    const rows = 5;
     const pattern = [
       [0, 1, 0, 0, 1, 0, 0, 1, 0],
       [0, 0, 1, 0, 0, 1, 0, 0, 1],

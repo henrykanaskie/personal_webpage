@@ -26,7 +26,7 @@ export default function ResearchPage() {
         title="Software Engineering Intern"
         company="DZYNE Technologies"
         role="Embedded Systems & Full-Stack"
-        description="Optimized embedded systems for anti-drone software using C and C++, ensuring modularity for future updates and products, cutting development time by 23%.\nRefactored the product automated testing system using Python, increasing testing efficiency by over 40%.\nDeveloped a full-stack GUI with React and Flask that gave operators real-time control of power, tracking, movement, and logging, reducing response time during test runs."
+        description="Reduced embedded system development time by 23% by refactoring anti-drone software modules in C and C++ for improved modularity and reuse across future product lines.\nIncreased automated testing efficiency by over 40% by restructuring the Python-based test framework, reducing manual intervention and accelerating release cycles.\nEliminated a 3+ minute operator workflow by building a full-stack GUI in React and Flask with real-time control of power, tracking, movement, and logging — reducing test-run response time to under 30 seconds."
         svgPaths={dronesPaths}
         svgSize={60}
         svgDrawDuration={3}
@@ -42,7 +42,7 @@ export default function ResearchPage() {
         title="Undergraduate Researcher"
         company="Plasma, Energy, and Space Propulsion Laboratory"
         role="Signal Processing & ML"
-        description="Developed an automated capacitor matching network algorithm using Google's OR-tools to dynamically tune impedance, speeding up the matching pipeline by 800%.\nEngineered a high-performance signal denoising pipeline in Python to extract high-fidelity thruster diagnostic data from high-noise environments.\nAccelerated plasma thruster research by 120% through parallelized signal analysis programs in MATLAB.\nEnhanced the predictive resolution of a cancer-focused plasma model by engineering high-dimensional features from 10M+ data points, improving model accuracy by 33%."
+        description="Sped up impedance matching by 800% by developing an automated capacitor tuning algorithm with Google's OR-tools, dynamically maximizing power coupling and reducing reflected power in RF plasma systems.\nOutperformed the industry-standard denoising filter by 80% by engineering a high-performance Python pipeline, extracting high-fidelity thruster health data from high-noise environments.\nAccelerated plasma thruster analysis by 120% by implementing parallelized signal processing programs in MATLAB, enabling faster experimental iteration.\nBoosted cancer-focused plasma model accuracy by 33% by engineering high-dimensional features from 10M+ data points across diverse treatment parameters."
         svgPaths={thrusterPaths}
         svgDrawDuration={6}
         svgSize={75}
@@ -60,7 +60,7 @@ export default function ResearchPage() {
         title="Undergraduate Researcher"
         company="Jason Clark Research Group"
         role="FPGA & DSP Engineering"
-        description="Developed VHDL modules for FPGA-based Digital Signal Processing to isolate and filter nano-ampere signals, achieving high-fidelity data acquisition for micro-sensor characterization.\nIntegrated artificial damping algorithms using Hardware-in-the-Loop testing with Moku instrumentation, improving sensor stability and reducing mechanical noise.\nDesigned comprehensive VHDL testbenches to simulate and validate signal responses, shortening the hardware debugging phase by facilitating rapid iterative prototyping."
+        description="Enabled nano-ampere signal acquisition for the first time in the lab by developing VHDL modules for FPGA-based DSP, unlocking precise characterization of previously unmeasurable micro-sensors.\nImproved sensor stability by integrating artificial damping algorithms via Hardware-in-the-Loop testing with Moku instrumentation, reducing mechanical noise across multiple test configurations.\nAccelerated hardware debugging by designing comprehensive VHDL testbenches that simulated and validated signal responses, enabling rapid iterative prototyping."
         svgPaths={fpgaPaths}
         svgSize={65}
         svgOffset={{ x: -45, y: 10 }}
