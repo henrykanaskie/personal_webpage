@@ -421,7 +421,7 @@ export default function CategoryPageClient({ section }: { section: Section }) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            padding: "32px 20px",
+            padding: "16px 20px",
           }}
           onClick={() => setSelected(null)}
         >
@@ -504,7 +504,7 @@ export default function CategoryPageClient({ section }: { section: Section }) {
             onClick={(e) => e.stopPropagation()}
             style={{
               position: "relative",
-              maxWidth: "min(1200px, 94vw)",
+              maxWidth: "min(1600px, 96vw)",
               borderRadius: 4,
               overflow: "visible",
               border: `1px solid ${
@@ -584,8 +584,8 @@ export default function CategoryPageClient({ section }: { section: Section }) {
               return (
                 <div
                   style={{
-                    maxWidth: "min(1200px, 94vw)",
-                    maxHeight: "calc(100vh - 120px)",
+                    maxWidth: "min(1600px, 96vw)",
+                    maxHeight: "calc(100vh - 64px)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -599,11 +599,11 @@ export default function CategoryPageClient({ section }: { section: Section }) {
                     }
                     width={baseWidth}
                     height={baseHeight}
-                    sizes="(min-width: 1024px) 70vw, 100vw"
+                    sizes="(min-width: 1024px) 90vw, 100vw"
                     style={{
                       display: "block",
-                      maxWidth: "min(1200px, 94vw)",
-                      maxHeight: "calc(100vh - 120px)",
+                      maxWidth: "min(1600px, 96vw)",
+                      maxHeight: "calc(100vh - 64px)",
                       width: "auto",
                       height: "auto",
                       objectFit: "contain",
