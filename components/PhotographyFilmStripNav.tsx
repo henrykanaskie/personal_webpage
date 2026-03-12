@@ -58,6 +58,12 @@ export function PhotographyFilmStripNav({
   const scrollRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [canScroll, setCanScroll] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const isDraggingRef = useRef(false);
+  const hasMoved = useRef(false);
+  const dragStartX = useRef(0);
+  const dragScrollLeft = useRef(0);
 
   useEffect(() => {
     const activeIndex = stripItems.findIndex((item) => item.href === pathname);
@@ -69,6 +75,40 @@ export function PhotographyFilmStripNav({
       });
     }
   }, [pathname]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const check = () => setCanScroll(el.scrollWidth > el.clientWidth);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    isDraggingRef.current = true;
+    hasMoved.current = false;
+    dragStartX.current = e.pageX;
+    dragScrollLeft.current = scrollRef.current?.scrollLeft ?? 0;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current || !scrollRef.current) return;
+    const dx = e.pageX - dragStartX.current;
+    if (Math.abs(dx) > 5) {
+      e.preventDefault();
+      hasMoved.current = true;
+      setIsDragging(true);
+      scrollRef.current.scrollLeft = dragScrollLeft.current - dx;
+    }
+  };
+
+  const stopDragging = () => {
+    isDraggingRef.current = false;
+    setIsDragging(false);
+    setTimeout(() => { hasMoved.current = false; }, 0);
+  };
 
   const labelColor = isDark ? "rgb(238, 225, 248)" : "rgb(80, 62, 95)";
   const subColor = isDark ? "rgba(220,210,245,0.7)" : "rgba(90,65,120,0.7)";
@@ -115,31 +155,43 @@ export function PhotographyFilmStripNav({
         }}
       />
 
-      {/* Left scroll arrow */}
-      <button
-        type="button"
-        aria-label="Scroll nav left"
-        onClick={() => scrollRef.current?.scrollBy({ left: -120, behavior: "smooth" })}
-        style={{
-          flexShrink: 0,
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          padding: "0 4px 0 8px",
-          color: isDark ? "rgba(220,210,245,0.45)" : "rgba(90,65,120,0.4)",
-          fontSize: 16,
-          lineHeight: 1,
-          display: "flex",
-          alignItems: "center",
-        }}
-      >
-        ‹
-      </button>
+      {/* Left scroll arrow — only shown when content overflows */}
+      {canScroll && (
+        <button
+          type="button"
+          aria-label="Scroll nav left"
+          onClick={() => scrollRef.current?.scrollBy({ left: -120, behavior: "smooth" })}
+          style={{
+            flexShrink: 0,
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            padding: "0 4px 0 8px",
+            color: isDark ? "rgba(220,210,245,0.45)" : "rgba(90,65,120,0.4)",
+            fontSize: 16,
+            lineHeight: 1,
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          ‹
+        </button>
+      )}
 
       {/* Scrollable nav items — takes all available space */}
       <div
         ref={scrollRef}
         className="scrollbar-hide"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={stopDragging}
+        onMouseLeave={stopDragging}
+        onClickCapture={(e) => {
+          if (hasMoved.current) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }}
         style={{
           flex: 1,
           minWidth: 0,
@@ -157,6 +209,8 @@ export function PhotographyFilmStripNav({
           scrollbarWidth: "none",
           msOverflowStyle: "none",
           WebkitOverflowScrolling: "touch",
+          cursor: isDragging ? "grabbing" : canScroll ? "grab" : "default",
+          userSelect: "none",
         }}
       >
         {stripItems.map((item, i) => {
@@ -261,26 +315,28 @@ export function PhotographyFilmStripNav({
         })}
       </div>
 
-      {/* Right scroll arrow */}
-      <button
-        type="button"
-        aria-label="Scroll nav right"
-        onClick={() => scrollRef.current?.scrollBy({ left: 120, behavior: "smooth" })}
-        style={{
-          flexShrink: 0,
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          padding: "0 4px",
-          color: isDark ? "rgba(220,210,245,0.45)" : "rgba(90,65,120,0.4)",
-          fontSize: 16,
-          lineHeight: 1,
-          display: "flex",
-          alignItems: "center",
-        }}
-      >
-        ›
-      </button>
+      {/* Right scroll arrow — only shown when content overflows */}
+      {canScroll && (
+        <button
+          type="button"
+          aria-label="Scroll nav right"
+          onClick={() => scrollRef.current?.scrollBy({ left: 120, behavior: "smooth" })}
+          style={{
+            flexShrink: 0,
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            padding: "0 4px",
+            color: isDark ? "rgba(220,210,245,0.45)" : "rgba(90,65,120,0.4)",
+            fontSize: 16,
+            lineHeight: 1,
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          ›
+        </button>
+      )}
 
       {/* Controls — pinned to the right, never scrolls away */}
       {bottomControls && (
