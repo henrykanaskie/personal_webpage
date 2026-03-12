@@ -7,6 +7,10 @@ export interface PhotoEntry {
   ratio: string;
   angle: number;
   alt?: string;
+  /** Average color extracted at build time via sharp (resize to 1×1) */
+  dominantHue?: number;   // 0–360
+  dominantSat?: number;   // 0–100
+  dominantLight?: number; // 0–100
 }
 
 export interface Section {
