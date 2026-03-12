@@ -13,7 +13,7 @@ export default async function CategoryPage({
   params: Promise<{ category: string }>;
 }) {
   const { category } = await params;
-  const section = buildSection(category);
+  const section = await buildSection(category);
   if (!section) notFound();
   return <CategoryPageClient section={section!} />;
 }

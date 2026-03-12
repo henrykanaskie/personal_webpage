@@ -96,6 +96,7 @@ function PhotoFrame({
       >
         {String(index + 1).padStart(2, "0")}
       </span>
+
     </motion.div>
   );
 }
@@ -113,6 +114,23 @@ export default function CategoryPageClient({ section }: { section: Section }) {
     gi: number;
   } | null>(null);
   const [numCols, setNumCols] = useState(2);
+  const [sortMode, setSortMode] = useState<"date" | "color">("color");
+
+  // Perceptual color sort key:
+  //   Colorful photos (sat ≥ 15) → sort 0–360 by hue
+  //   Neutral/grey/white/black (sat < 15) → sort 400–500 by lightness
+  // This keeps whites/greys/blacks together at the end instead of mixing
+  // them in with reds (hue = 0).
+  function colorSortKey(p: PhotoEntry): number {
+    if (p.dominantSat === undefined) return 500;
+    if (p.dominantSat < 15) return 400 + (p.dominantLight ?? 50);
+    return p.dominantHue ?? 0;
+  }
+
+  const sortedPhotos =
+    sortMode === "color"
+      ? [...section.photos].sort((a, b) => colorSortKey(a) - colorSortKey(b))
+      : section.photos;
 
   useEffect(() => {
     // Find the most portrait-oriented photo (tallest h/w ratio)
@@ -158,6 +176,9 @@ export default function CategoryPageClient({ section }: { section: Section }) {
   const selectedRef = useRef(selected);
   useEffect(() => { selectedRef.current = selected; }, [selected]);
 
+  const sortedPhotosRef = useRef(sortedPhotos);
+  useEffect(() => { sortedPhotosRef.current = sortedPhotos; }, [sortedPhotos]);
+
   // Arrow key navigation
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -165,12 +186,12 @@ export default function CategoryPageClient({ section }: { section: Section }) {
       if (!cur) return;
       if (e.key === "ArrowRight") {
         const next = cur.gi + 1;
-        if (next < section.photos.length)
-          setSelected({ photo: section.photos[next], gi: next });
+        if (next < sortedPhotosRef.current.length)
+          setSelected({ photo: sortedPhotosRef.current[next], gi: next });
       } else if (e.key === "ArrowLeft") {
         const prev = cur.gi - 1;
         if (prev >= 0)
-          setSelected({ photo: section.photos[prev], gi: prev });
+          setSelected({ photo: sortedPhotosRef.current[prev], gi: prev });
       } else if (e.key === "Escape") {
         setSelected(null);
       }
@@ -285,10 +306,63 @@ export default function CategoryPageClient({ section }: { section: Section }) {
           </p>
         </motion.div>
 
+        {/* Sort toggle */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 2,
+            marginBottom: 20,
+          }}
+        >
+          {(["date", "color"] as const).map((mode) => {
+            const isActive = sortMode === mode;
+            const [r, g, b] = accent;
+            return (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setSortMode(mode)}
+                style={{
+                  fontSize: "7.5px",
+                  letterSpacing: "0.3em",
+                  textTransform: "uppercase",
+                  fontFamily: "monospace",
+                  padding: "5px 12px",
+                  border: `0.5px solid ${
+                    isActive
+                      ? `rgba(${r},${g},${b},0.55)`
+                      : isDark
+                        ? "rgba(255,255,255,0.1)"
+                        : "rgba(0,0,0,0.1)"
+                  }`,
+                  borderRadius: 1,
+                  background: isActive
+                    ? `rgba(${r},${g},${b},${isDark ? 0.15 : 0.1})`
+                    : "transparent",
+                  color: isActive
+                    ? `rgba(${r},${g},${b},${isDark ? 0.9 : 0.8})`
+                    : subColor,
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                {mode === "date" ? "RECENT" : "COLOR"}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Photo grid — flex-column masonry */}
         {(() => {
 
-          const indexed = section.photos.map((photo, gi) => ({ photo, gi }));
+          const indexed = sortedPhotos.map((photo, gi) => ({ photo, gi }));
+
+          const cols: { photo: PhotoEntry; gi: number }[][] = Array.from(
+            { length: numCols },
+            () => [],
+          );
+
           const portraits = indexed.filter(({ photo }) => {
             const [w, h] = photo.ratio.split("/").map(Number);
             return h > w;
@@ -297,25 +371,14 @@ export default function CategoryPageClient({ section }: { section: Section }) {
             const [w, h] = photo.ratio.split("/").map(Number);
             return w >= h;
           });
-
           const interleaved: { photo: PhotoEntry; gi: number }[] = [];
-          let pi = 0, li = 0;
-          let pickPortrait = true;
+          let pi = 0, li = 0, pickPortrait = true;
           while (pi < portraits.length || li < landscapes.length) {
-            if (pickPortrait && pi < portraits.length) {
-              interleaved.push(portraits[pi++]);
-            } else if (li < landscapes.length) {
-              interleaved.push(landscapes[li++]);
-            } else if (pi < portraits.length) {
-              interleaved.push(portraits[pi++]);
-            }
+            if (pickPortrait && pi < portraits.length) interleaved.push(portraits[pi++]);
+            else if (li < landscapes.length) interleaved.push(landscapes[li++]);
+            else if (pi < portraits.length) interleaved.push(portraits[pi++]);
             pickPortrait = !pickPortrait;
           }
-
-          const cols: { photo: PhotoEntry; gi: number }[][] = Array.from(
-            { length: numCols },
-            () => [],
-          );
           const heights = new Array(numCols).fill(0);
           interleaved.forEach((item) => {
             const shortest = heights.indexOf(Math.min(...heights));
@@ -385,8 +448,8 @@ export default function CategoryPageClient({ section }: { section: Section }) {
       {/* Preload adjacent lightbox images */}
       {selected && ([-1, 1].map((offset) => {
         const idx = selected.gi + offset;
-        if (idx < 0 || idx >= section.photos.length) return null;
-        const p = section.photos[idx];
+        if (idx < 0 || idx >= sortedPhotos.length) return null;
+        const p = sortedPhotos[idx];
         const [w, h] = p.ratio.split("/").map(Number);
         return (
           <div
@@ -433,7 +496,7 @@ export default function CategoryPageClient({ section }: { section: Section }) {
               onClick={(e) => {
                 e.stopPropagation();
                 const prev = selected.gi - 1;
-                setSelected({ photo: section.photos[prev], gi: prev });
+                setSelected({ photo: sortedPhotos[prev], gi: prev });
               }}
               style={{
                 position: "fixed",
@@ -462,14 +525,14 @@ export default function CategoryPageClient({ section }: { section: Section }) {
           )}
 
           {/* Next arrow */}
-          {selected.gi < section.photos.length - 1 && (
+          {selected.gi < sortedPhotos.length - 1 && (
             <button
               type="button"
               aria-label="Next photo"
               onClick={(e) => {
                 e.stopPropagation();
                 const next = selected.gi + 1;
-                setSelected({ photo: section.photos[next], gi: next });
+                setSelected({ photo: sortedPhotos[next], gi: next });
               }}
               style={{
                 position: "fixed",
