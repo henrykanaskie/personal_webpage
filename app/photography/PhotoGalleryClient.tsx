@@ -7,6 +7,251 @@ import Image from "next/image";
 import { useIsDark } from "@/components/InfoBubble";
 import { Section, PhotoEntry, RGB } from "@/app/photography/data";
 
+// ─── Lightbox ─────────────────────────────────────────────────────────────────
+
+function Lightbox({
+  selected,
+  photos,
+  section,
+  isDark,
+  onClose,
+  onPrev,
+  onNext,
+}: {
+  selected: { photo: PhotoEntry; gi: number };
+  photos: PhotoEntry[];
+  section: Section;
+  isDark: boolean;
+  onClose: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const { photo, gi } = selected;
+  const [w, h] = photo.ratio.split("/").map(Number);
+  const ratio = w / h || 1;
+  const baseWidth = 1600;
+  const baseHeight = Math.round(baseWidth / ratio);
+
+  const subColor = isDark ? "rgb(198, 178, 218)" : "rgb(110, 88, 128)";
+
+  const ruleColor = isDark ? "rgba(195,175,225,0.1)" : "rgba(128,72,138,0.12)";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 60,
+        background: isDark ? "rgba(5,5,8,0.88)" : "rgba(248,245,240,0.9)",
+        backdropFilter: "blur(10px)",
+        WebkitBackdropFilter: "blur(10px)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 0,
+        padding: "16px 20px",
+      }}
+      onClick={onClose}
+    >
+      {/* Prev arrow */}
+      {gi > 0 && (
+        <button
+          type="button"
+          aria-label="Previous photo"
+          onClick={(e) => { e.stopPropagation(); onPrev(); }}
+          style={{
+            position: "fixed",
+            left: 20,
+            top: "50%",
+            transform: "translateY(-50%)",
+            zIndex: 61,
+            width: 44,
+            height: 44,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 999,
+            border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
+            background: isDark ? "rgba(10,10,14,0.75)" : "rgba(248,245,240,0.85)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            cursor: "pointer",
+            color: isDark ? "#f7f1ff" : "#503c60",
+            fontSize: 22,
+            lineHeight: 1,
+          }}
+        >
+          ‹
+        </button>
+      )}
+
+      {/* Next arrow */}
+      {gi < photos.length - 1 && (
+        <button
+          type="button"
+          aria-label="Next photo"
+          onClick={(e) => { e.stopPropagation(); onNext(); }}
+          style={{
+            position: "fixed",
+            right: 20,
+            top: "50%",
+            transform: "translateY(-50%)",
+            zIndex: 61,
+            width: 44,
+            height: 44,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 999,
+            border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
+            background: isDark ? "rgba(10,10,14,0.75)" : "rgba(248,245,240,0.85)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            cursor: "pointer",
+            color: isDark ? "#f7f1ff" : "#503c60",
+            fontSize: 22,
+            lineHeight: 1,
+          }}
+        >
+          ›
+        </button>
+      )}
+
+      {/* Image card */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: "relative",
+          maxWidth: "min(1600px, 96vw)",
+          borderRadius: 4,
+          overflow: "hidden",
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
+          boxShadow: isDark
+            ? "0 18px 60px rgba(0,0,0,0.85)"
+            : "0 18px 50px rgba(0,0,0,0.35)",
+          background: isDark ? "#050507" : "#f8f5f0",
+        }}
+      >
+        {/* Close button — top right */}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close enlarged photo"
+          style={{
+            position: "absolute",
+            top: 10,
+            right: 10,
+            zIndex: 2,
+            width: 28,
+            height: 28,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 999,
+            border: "none",
+            background: isDark ? "rgba(10,10,14,0.9)" : "rgba(248,245,240,0.95)",
+            boxShadow: isDark
+              ? "0 0 0 1px rgba(255,255,255,0.18)"
+              : "0 0 0 1px rgba(0,0,0,0.12)",
+            cursor: "pointer",
+          }}
+        >
+          <span style={{ fontSize: "13px", lineHeight: 1, color: isDark ? "#f7f1ff" : "#503c60" }}>
+            ×
+          </span>
+        </button>
+
+        {/* Photo */}
+        <Image
+          src={photo.src}
+          alt={photo.alt ?? `${section.id} photo ${String(gi + 1).padStart(2, "0")}`}
+          width={baseWidth}
+          height={baseHeight}
+          sizes="(min-width: 1024px) 90vw, 100vw"
+          style={{
+            display: "block",
+            maxWidth: "min(1600px, 96vw)",
+            maxHeight: "calc(100vh - 110px)",
+            width: "auto",
+            height: "auto",
+            objectFit: "contain",
+          }}
+          priority
+        />
+      </motion.div>
+
+      {/* Caption bar — below image, outside the card */}
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxWidth: "min(1600px, 96vw)",
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingTop: 14,
+        }}
+      >
+        {/* Left: title + counter */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span
+            style={{
+              fontSize: "8px",
+              letterSpacing: "0.3em",
+              textTransform: "uppercase",
+              fontFamily: "monospace",
+              color: isDark ? "rgba(220,210,240,0.55)" : "rgba(80,60,95,0.55)",
+            }}
+          >
+            {section.title}
+          </span>
+          <div style={{ width: 1, height: 10, background: ruleColor }} />
+          <span
+            style={{
+              fontSize: "8px",
+              letterSpacing: "0.22em",
+              fontFamily: "monospace",
+              color: isDark ? "rgba(220,210,240,0.38)" : "rgba(80,60,95,0.38)",
+            }}
+          >
+            {String(gi + 1).padStart(2, "0")} / {String(photos.length).padStart(2, "0")}
+          </span>
+        </div>
+
+        {/* Right: view full category link */}
+        <Link
+          href={`/photography/${section.id}`}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 7,
+            fontSize: "8px",
+            letterSpacing: "0.38em",
+            textTransform: "uppercase",
+            color: subColor,
+            textDecoration: "none",
+            transition: "opacity 0.2s ease",
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = "0.6"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = "1"; }}
+        >
+          View {section.title}
+          <span style={{ fontSize: "10px", letterSpacing: 0, opacity: 0.7 }}>→</span>
+        </Link>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // Shared gallery tile sizing
 const PREVIEW_BASE = 300;
 
@@ -16,12 +261,14 @@ function PhotoFrame({
   accent,
   index,
   sectionId,
+  onClick,
 }: {
   photo: PhotoEntry;
   isDark: boolean;
   accent: RGB;
   index: number;
   sectionId: string;
+  onClick?: () => void;
 }) {
   const [r, g, b] = accent;
   const filterId = `grain-gallery-${sectionId}-${index}`;
@@ -35,6 +282,7 @@ function PhotoFrame({
     <motion.div
       whileHover={{ scale: 1.015, filter: "brightness(1.14)" }}
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      onClick={onClick}
       style={{
         width: displayWidth,
         height: displayHeight,
@@ -112,6 +360,7 @@ function PhotoSectionPreview({
   const inView = useInView(ref, { once: true, margin: "-5% 0px" });
   const [atStart, setAtStart] = useState(true);
   const [atEnd, setAtEnd] = useState(false);
+  const [selected, setSelected] = useState<{ photo: PhotoEntry; gi: number } | null>(null);
 
   const updateEdges = useCallback(() => {
     const el = scrollRef.current;
@@ -124,6 +373,36 @@ function PhotoSectionPreview({
   useEffect(() => {
     updateEdges();
   }, [updateEdges]);
+
+  // Scroll lock when lightbox open
+  useEffect(() => {
+    if (!selected) return;
+    const orig = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = orig; };
+  }, [selected]);
+
+  // Arrow key + Escape navigation
+  const selectedRef = useRef(selected);
+  useEffect(() => { selectedRef.current = selected; }, [selected]);
+  useEffect(() => {
+    const photos = section.photos.slice(0, 9);
+    const onKey = (e: KeyboardEvent) => {
+      const cur = selectedRef.current;
+      if (!cur) return;
+      if (e.key === "ArrowRight") {
+        const next = cur.gi + 1;
+        if (next < photos.length) setSelected({ photo: photos[next], gi: next });
+      } else if (e.key === "ArrowLeft") {
+        const prev = cur.gi - 1;
+        if (prev >= 0) setSelected({ photo: photos[prev], gi: prev });
+      } else if (e.key === "Escape") {
+        setSelected(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [section]);
 
   const accent = isDark ? section.darkAccent : section.lightAccent;
 
@@ -196,11 +475,41 @@ function PhotoSectionPreview({
               fontSize: "9.5px",
               letterSpacing: "0.42em",
               textTransform: "uppercase",
-              margin: 0,
+              margin: "0 0 16px",
             }}
           >
             {section.sub}
           </p>
+          <Link
+            href={`/photography/${section.id}`}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 7,
+              fontSize: "8px",
+              letterSpacing: "0.42em",
+              textTransform: "uppercase",
+              color: subColor,
+              textDecoration: "none",
+              padding: "7px 18px",
+              border: `0.5px solid ${ruleColor}`,
+              borderRadius: 1,
+              transition: "all 0.25s ease",
+            }}
+            onMouseEnter={(e) => {
+              const el = e.currentTarget as HTMLAnchorElement;
+              el.style.borderColor = isDark ? "rgba(200,170,255,0.32)" : "rgba(130,65,145,0.35)";
+              el.style.opacity = "0.75";
+            }}
+            onMouseLeave={(e) => {
+              const el = e.currentTarget as HTMLAnchorElement;
+              el.style.borderColor = ruleColor;
+              el.style.opacity = "1";
+            }}
+          >
+            View All
+            <span style={{ fontSize: "10px", letterSpacing: 0 }}>→</span>
+          </Link>
         </div>
       </motion.div>
 
@@ -255,6 +564,7 @@ function PhotoSectionPreview({
                     accent={accent}
                     index={gi}
                     sectionId={section.id}
+                    onClick={() => setSelected({ photo, gi })}
                   />
                 </motion.div>
               ))}
@@ -418,6 +728,26 @@ function PhotoSectionPreview({
           background: dividerColor,
         }}
       />
+
+      {/* Lightbox */}
+      {selected && (
+        <Lightbox
+          selected={selected}
+          photos={section.photos.slice(0, 9)}
+          section={section}
+          isDark={isDark}
+          onClose={() => setSelected(null)}
+          onPrev={() => {
+            const prev = selected.gi - 1;
+            if (prev >= 0) setSelected({ photo: section.photos[prev], gi: prev });
+          }}
+          onNext={() => {
+            const next = selected.gi + 1;
+            if (next < section.photos.slice(0, 9).length)
+              setSelected({ photo: section.photos[next], gi: next });
+          }}
+        />
+      )}
     </section>
   );
 }
