@@ -4,9 +4,10 @@
   "description": "",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run optimize-photos && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "optimize-photos": "find public -type f \\( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' \\) -exec sips -Z 2400 --setProperty formatOptions 85 {} --out {} \\;"
   },
   "type": "module",
   "dependencies": {
