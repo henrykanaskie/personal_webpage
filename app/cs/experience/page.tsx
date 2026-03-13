@@ -26,7 +26,7 @@ export default function ResearchPage() {
         title="Software Engineering Intern"
         company="DZYNE Technologies"
         role="Embedded Systems & Full-Stack"
-        description="Reduced embedded system development time by 23% by refactoring anti-drone software modules in C and C++ for improved modularity and reuse across future product lines.\nIncreased automated testing efficiency by over 40% by restructuring the Python-based test framework, reducing manual intervention and accelerating release cycles.\nEliminated a 3+ minute operator workflow by building a full-stack GUI in React and Flask with real-time control of power, tracking, movement, and logging — reducing test-run response time to under 30 seconds."
+        description="DZYNE builds defense systems at the intersection of autonomy and embedded hardware. I joined a small engineering team working on anti-drone software. My main role wasrefactoring C and C++ modules to be more modular, rebuilding the Python test infrastructure, and ultimately designing and shipping an internal full-stack GUI that gave operators real-time control over the entire test workflow. The goal was to make the team move faster with less friction, and every project tied directly back to that."
         svgPaths={dronesPaths}
         svgSize={60}
         svgDrawDuration={3}
@@ -42,7 +42,7 @@ export default function ResearchPage() {
         title="Undergraduate Researcher"
         company="Plasma, Energy, and Space Propulsion Laboratory"
         role="Signal Processing & ML"
-        description="Sped up impedance matching by 800% by developing an automated capacitor tuning algorithm with Google's OR-tools, dynamically maximizing power coupling and reducing reflected power in RF plasma systems.\nOutperformed the industry-standard denoising filter by 80% by engineering a high-performance Python pipeline, extracting high-fidelity thruster health data from high-noise environments.\nAccelerated plasma thruster analysis by 120% by implementing parallelized signal processing programs in MATLAB, enabling faster experimental iteration.\nBoosted cancer-focused plasma model accuracy by 33% by engineering high-dimensional features from 10M+ data points across diverse treatment parameters."
+        description="The PESP Lab applies plasma physics to problems in aerospace propulsion and cancer treatment. My work sat at the intersection of ML and signal processing. I spent time making clean diagnostic signals out of high-noise environments and building predictive models from large experimental datasets. The research mission is to make plasma systems more efficient and to make them more precisely controlled. I contributed to that across both the thruster and biomedical sides of the lab."
         svgPaths={thrusterPaths}
         svgDrawDuration={6}
         svgSize={75}
@@ -60,7 +60,7 @@ export default function ResearchPage() {
         title="Undergraduate Researcher"
         company="Jason Clark Research Group"
         role="FPGA & DSP Engineering"
-        description="Enabled nano-ampere signal acquisition for the first time in the lab by developing VHDL modules for FPGA-based DSP, unlocking precise characterization of previously unmeasurable micro-sensors.\nImproved sensor stability by integrating artificial damping algorithms via Hardware-in-the-Loop testing with Moku instrumentation, reducing mechanical noise across multiple test configurations.\nAccelerated hardware debugging by designing comprehensive VHDL testbenches that simulated and validated signal responses, enabling rapid iterative prototyping."
+        description="The Jason Clark Research Group pushes the limits of precision sensing at the micro and nano scale. I worked on the hardware side. I spent my time designing VHDL modules for FPGA-based signal processing so the lab could acquire and characterize nano-ampere signals that were previously impossible to measure. From writing testbenches to integrating damping algorithms via Hardware-in-the-Loop, the work was about giving researchers reliable, stable data they could actually trust."
         svgPaths={fpgaPaths}
         svgSize={65}
         svgOffset={{ x: -45, y: 10 }}

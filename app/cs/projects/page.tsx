@@ -2,6 +2,8 @@
 
 import GlassTitle from "@/components/GlassTitle";
 import ProjectCard, { ProjectCardProvider } from "@/components/ProjectCard";
+import { beePaths } from "@/svgs/beePaths";
+import { nnPaths } from "@/svgs/nnPaths";
 import { rocketPaths } from "@/svgs/rocketPaths";
 
 // Split children into balanced rows:
@@ -19,21 +21,41 @@ const projects = [
     title: "Bee Habitat Recommendation System",
     techStack: "Python, React, JavaScript",
     description:
-      "Built a full-stack AI recommendation engine using truncated SVD on Oregon Bee Atlas data to predict bee-flower interactions, enabling data-driven habitat restoration for land managers. Modeled complex ecological relationships via sparse matrix factorization, identifying optimal plant species for local bee populations across diverse Oregon ecosystems.",
+      "Oregon's native bee populations are declining, and the hardest part of habitat restoration is knowing which plants to actually put in the ground. This project tackled that problem by building a recommendation engine on top of the Oregon Bee Atlas that models bee-flower relationships as a sparse matrix and uses truncated SVD to surface the most ecologically relevant plant species for a given area. The goal was a tool land managers could actually use to make decisions.",
     deployment: {
       progress: 100,
     },
+    svgs: [
+      {
+        paths: beePaths,
+        corner: "top-left" as const,
+        size: 75,
+        rotate: -10,
+        offset: { x: 25, y: -20 },
+        drawDuration: 3,
+      },
+    ],
   },
   {
     title: "Character Classification Neural Network — From Scratch",
     techStack: "Python, NumPy, Pandas",
     description:
-      "Built a Feed Forward Neural Network from scratch in Python — no ML frameworks — implementing backpropagation, weight initialization, and hyperparameter tuning by hand; achieved 85% test accuracy on EMNIST.",
+      "The goal here was understanding. I didn't want to just get a model to work, but know exactly why it works. I built a feed-forward neural network entirely from scratch, implementing backpropagation, weight initialization, and the full training loop without touching any ML frameworks. Training it on EMNIST handwritten characters and hitting 85% test accuracy was the payoff, but the real value was the intuition built along the way.",
     deployment: {
       progress: 100,
     },
+    svgs: [
+      {
+        paths: nnPaths,
+        corner: "top-right" as const,
+        size: 60,
+        rotate: 0,
+        offset: { x: -10, y: 10 },
+        drawDuration: 4,
+      },
+    ],
   },
-] as const;
+];
 
 export default function ProjectsPage() {
   const rows = splitIntoRows([...projects]);
@@ -58,6 +80,7 @@ export default function ProjectsPage() {
                   description={project.description}
                   deployment={project.deployment}
                   bubbleSide={colIdx < row.length / 2 ? "left" : "right"}
+                  svgs={project.svgs}
                 />
               ))}
             </div>

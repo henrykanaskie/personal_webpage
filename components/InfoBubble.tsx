@@ -319,6 +319,7 @@ export function InfoBubble({
   popRequested,
   onVisibilityChange,
   parentInView,
+  desktopX,
 }: {
   extraInfo: BubbleInfo;
   side: "left" | "right";
@@ -327,9 +328,11 @@ export function InfoBubble({
   popRequested?: boolean;
   onVisibilityChange?: (inView: boolean) => void;
   parentInView?: boolean;
+  desktopX?: number;
 }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
   const isBubbleInView = useInView(bubbleRef, { once: false, amount: 0.4 });
+  const showBelow = isMobile;
 
   useEffect(() => {
     onVisibilityChange?.(isBubbleInView);
@@ -374,7 +377,7 @@ export function InfoBubble({
     return () => clearTimeout(timer);
   }, [isMobile]);
 
-  const sideAnchor = isMobile
+  const sideAnchor = showBelow
     ? { left: "50%" }
     : isRight
       ? { right: 0 }
@@ -386,14 +389,14 @@ export function InfoBubble({
         ref={bubbleRef}
         style={{
           position: "absolute",
-          top: isMobile ? "100%" : "50%",
+          top: showBelow ? "100%" : "50%",
           ...sideAnchor,
-          width: isMobile ? "min(260px, 85vw)" : 260,
+          width: showBelow ? "min(260px, 85vw)" : 260,
           padding: "20px 24px",
           borderRadius: "24px",
           cursor: "pointer",
           pointerEvents: "auto",
-          transformOrigin: isMobile
+          transformOrigin: showBelow
             ? "center top"
             : isRight
               ? "left center"
@@ -403,9 +406,12 @@ export function InfoBubble({
           ...glassStyle,
         }}
         className={glassBubbleClassNames}
-        onClick={handleClick}
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest("a")) return;
+          handleClick();
+        }}
         initial={
-          isMobile
+          showBelow
             ? { x: "-50%", y: "0%", scaleX: 0.5, scaleY: 0.15, opacity: 0 }
             : {
                 y: "-50%",
@@ -415,16 +421,24 @@ export function InfoBubble({
                 opacity: 0,
               }
         }
-        onMouseDown={() => setIsPressed(true)}
-        onMouseUp={handleClick}
+        onMouseDown={(e) => {
+          if ((e.target as HTMLElement).closest("a")) return;
+          setIsPressed(true);
+        }}
+        onMouseUp={(e) => {
+          if ((e.target as HTMLElement).closest("a")) return;
+          handleClick();
+        }}
         onMouseLeave={() => setIsPressed(false)}
         onTouchStart={(e) => {
+          if ((e.target as HTMLElement).closest("a")) return;
           setIsPressed(true);
           const t = e.touches[0];
           touchStartRef.current = { x: t.clientX, y: t.clientY };
         }}
         onTouchEnd={(e) => {
           setIsPressed(false);
+          if ((e.target as HTMLElement).closest("a")) return;
           if (!touchStartRef.current) return;
           const t = e.changedTouches[0];
           const dx = t.clientX - touchStartRef.current.x;
@@ -436,7 +450,7 @@ export function InfoBubble({
           touchStartRef.current = null;
         }}
         animate={
-          isMobile
+          showBelow
             ? {
                 x: "-50%",
                 y: "16px",
@@ -446,9 +460,11 @@ export function InfoBubble({
               }
             : {
                 y: "-50%",
-                x: isRight
-                  ? `calc(100% + ${BUBBLE_REST_OFFSET - 200}px)`
-                  : `calc(-100% - ${BUBBLE_REST_OFFSET - 200}px)`,
+                x: desktopX !== undefined
+                  ? desktopX
+                  : isRight
+                    ? `calc(100% + ${BUBBLE_REST_OFFSET - 200}px)`
+                    : `calc(-100% - ${BUBBLE_REST_OFFSET - 200}px)`,
                 scaleX: isPopping || isPressed ? 1.08 : 1,
                 scaleY: isPopping || isPressed ? 1.08 : 1,
                 opacity: isBubbleInView || parentInView ? 1 : 0,
@@ -582,7 +598,7 @@ export function InfoBubble({
           style={{
             position: "relative",
             zIndex: 1,
-            pointerEvents: "none",
+            pointerEvents: "auto",
             textAlign: "center",
           }}
         >
