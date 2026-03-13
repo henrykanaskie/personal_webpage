@@ -11,6 +11,10 @@ export interface PhotoEntry {
   dominantHue?: number;   // 0–360
   dominantSat?: number;   // 0–100
   dominantLight?: number; // 0–100
+  /** satWeightSum/totalPixels*100 — how much vivid color content the photo has.
+   *  > 0 means the saturation-weighted hue path was used (reliable hue signal).
+   *  0 means the photo had no colorful pixels (grey/neutral). */
+  colorScore?: number;    // 0–100+
 }
 
 export interface Section {
