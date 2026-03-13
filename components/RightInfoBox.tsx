@@ -97,7 +97,7 @@ export default function RightInfoBox({
   svgOffset = { x: 0, y: 0 },
 }: RightInfoBoxProps) {
   const boxRef = useRef<HTMLDivElement>(null);
-  const isMobile = useIsMobile();
+  const isMobile = useIsMobile(1000);
   const isInView = useInView(boxRef, {
     once: false,
     amount: isMobile ? 0.15 : 0.1,
@@ -399,6 +399,7 @@ export default function RightInfoBox({
                 marginTop: 0,
                 marginBottom: 0,
                 fontSize: "clamp(0.875rem, 1.2vw, 1.125rem)",
+                lineHeight: 1.6,
               }}
             >
               <FuzzyText className="text-black dark:text-white">
@@ -427,7 +428,7 @@ export default function RightInfoBox({
           </div>
         </motion.div>
 
-        {/* ── Info Bubble — pops out to the LEFT ── */}
+        {/* ── Info Bubble ── */}
         <motion.div
           style={{
             position: "absolute",
@@ -456,7 +457,7 @@ export default function RightInfoBox({
         </motion.div>
       </motion.div>
 
-      {/* Mobile spacer — pushes content below when bubble is open */}
+      {/* Mobile spacer — only needed for absolute-positioned mobile bubble */}
       {isMobile && (
         <motion.div
           animate={{ height: isBubbleOpen ? 340 : 0 }}

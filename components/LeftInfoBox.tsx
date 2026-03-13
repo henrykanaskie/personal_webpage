@@ -98,7 +98,7 @@ export default function LeftInfoBox({
   svgOffset = { x: 0, y: 0 },
 }: LeftInfoBoxProps) {
   const boxRef = useRef<HTMLDivElement>(null);
-  const isMobile = useIsMobile();
+  const isMobile = useIsMobile(1000);
   const isDark = useIsDark();
   const isInView = useInView(boxRef, {
     once: false,
@@ -423,6 +423,7 @@ export default function LeftInfoBox({
                 fontSize: "clamp(0.875rem, 1.2vw, 1.125rem)",
                 fontWeight: 700,
                 letterSpacing: "-0.005em",
+                lineHeight: 1.6,
               }}
             >
               <FuzzyText>
@@ -462,7 +463,7 @@ export default function LeftInfoBox({
           </div>
         </motion.div>
 
-        {/* ── Info Bubble — pops out to the RIGHT ── */}
+        {/* ── Info Bubble ── */}
         <motion.div
           style={{
             position: "absolute",
@@ -491,7 +492,7 @@ export default function LeftInfoBox({
         </motion.div>
       </motion.div>
 
-      {/* Mobile spacer — pushes content below when bubble is open */}
+      {/* Mobile spacer — only needed for absolute-positioned mobile bubble */}
       {isMobile && (
         <motion.div
           animate={{ height: isBubbleOpen ? 340 : 0 }}

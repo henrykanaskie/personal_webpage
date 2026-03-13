@@ -5,6 +5,7 @@ import {
   motion,
   useMotionValue,
   useInView,
+  useIsPresent,
   animate,
   AnimatePresence,
 } from "framer-motion";
@@ -85,7 +86,8 @@ function BubbleShell({
   popRequested,
   parentInView,
   desktopYOffset,
-  mobileYOffset,
+  desktopX,
+  mobileSide,
   children,
 }: {
   side: "left" | "right";
@@ -94,11 +96,13 @@ function BubbleShell({
   popRequested?: boolean;
   parentInView?: boolean;
   desktopYOffset?: number;
-  mobileYOffset?: number;
+  desktopX?: number;
+  mobileSide?: "left" | "center" | "right";
   children: React.ReactNode;
 }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(bubbleRef, { once: false, amount: 0.4 });
+  const showBelow = isMobile;
   const [isPopping, setIsPopping] = useState(false);
   const isRight = side === "right";
   const [isPressed, setIsPressed] = useState(false);
@@ -117,21 +121,24 @@ function BubbleShell({
   }, [popRequested, handleClick]);
 
   const dYOff = desktopYOffset ?? 0;
-  const mYOff = mobileYOffset ?? 0;
+  const mobileX = mobileSide === "left"
+    ? "calc(-100% - 4px)"
+    : mobileSide === "right"
+      ? "4px"
+      : "-50%";
 
   return (
     <motion.div
       ref={bubbleRef}
       style={{
         position: "absolute",
-        top: isMobile ? "100%" : "50%",
-        ...(isMobile ? { left: "50%" } : isRight ? { right: 0 } : { left: 0 }),
-        width: isMobile ? "min(240px, 85vw)" : 240,
+        ...(showBelow ? { left: "50%" } : isRight ? { right: 0 } : { left: 0 }),
+        width: showBelow ? "min(240px, 85vw)" : 240,
         padding: "16px 20px",
         borderRadius: "24px",
         cursor: "pointer",
         pointerEvents: "auto",
-        transformOrigin: isMobile ? "center top" : isRight ? "left center" : "right center",
+        transformOrigin: showBelow ? "center top" : isRight ? "left center" : "right center",
         zIndex: 9999999,
         ...glassStyle,
       }}
@@ -155,22 +162,26 @@ function BubbleShell({
         touchStartRef.current = null;
       }}
       initial={
-        isMobile
-          ? { x: "-50%", y: "0%", scaleX: 0.5, scaleY: 0.15, opacity: 0 }
-          : { y: "-50%", x: isRight ? "30%" : "-30%", scaleX: 0.15, scaleY: 0.3, opacity: 0 }
+        showBelow
+          ? { top: "100%", x: "-50%", y: "0%", scaleX: 0.5, scaleY: 0.15, opacity: 0 }
+          : { top: "50%", y: "-50%", x: isRight ? "30%" : "-30%", scaleX: 0.15, scaleY: 0.3, opacity: 0 }
       }
       animate={
-        isMobile
+        showBelow
           ? {
-              x: "-50%",
-              y: `${16 + mYOff}px`,
+              top: "100%",
+              x: mobileX,
+              y: "16px",
               scaleX: isPopping || isPressed ? 1.08 : 1,
               scaleY: isPopping || isPressed ? 1.08 : 1,
               opacity: isInView || parentInView ? 1 : 0,
             }
           : {
+              top: "50%",
               y: `calc(-50% + ${dYOff}px)`,
-              x: isRight ? "calc(100% + 80px)" : "calc(-100% - 80px)",
+              x: desktopX !== undefined
+                ? desktopX
+                : (isRight ? "calc(100% + 80px)" : "calc(-100% - 80px)"),
               scaleX: isPopping || isPressed ? 1.08 : 1,
               scaleY: isPopping || isPressed ? 1.08 : 1,
               opacity: isInView || parentInView ? 1 : 0,
@@ -179,7 +190,13 @@ function BubbleShell({
       transition={
         isPopping
           ? { scale: { duration: 0.08, ease: "easeOut" }, opacity: { duration: 0.08 } }
-          : { duration: 0.75, ease: [0.34, 1.56, 0.64, 1], opacity: { duration: isInView ? 0.3 : 1.4, ease: "easeInOut" } }
+          : {
+              duration: 0.75,
+              ease: [0.34, 1.56, 0.64, 1],
+              top: { duration: 0.5, ease: [0.25, 1, 0.5, 1] },
+              x: { duration: 0.5, ease: [0.25, 1, 0.5, 1] },
+              opacity: { duration: isInView ? 0.3 : 1.4, ease: "easeInOut" },
+            }
       }
       exit={{ opacity: 0, transition: { duration: 0.001 } }}
       whileHover={isPopping ? {} : { scale: 1.03, transition: { duration: 0.2 } }}
@@ -337,7 +354,6 @@ function DeploymentBubbleContent({
 // ─── Project Card ───
 
 const BUBBLE_STACK_OFFSET = 120; // px the second bubble shifts when both open
-const MOBILE_BUBBLE_STACK = 280; // px the second bubble shifts on mobile
 
 export default function ProjectCard({
   title,
@@ -349,7 +365,7 @@ export default function ProjectCard({
   bubbleSide = "right",
 }: ProjectCardProps) {
   const boxRef = useRef<HTMLDivElement>(null);
-  const isMobile = useIsMobile();
+  const isMobile = useIsMobile(1650);
   const isDark = useIsDark();
   const isInView = useInView(boxRef, { once: false, amount: isMobile ? 0.15 : 0.1 });
 
@@ -393,10 +409,9 @@ export default function ProjectCard({
     ? (thumbnailIsFirst ? -BUBBLE_STACK_OFFSET : BUBBLE_STACK_OFFSET)
     : 0;
 
-  // Mobile: the most recent bubble sits on top (closer to card),
-  // pushing the first-opened one further down.
-  const thumbnailMobileY = bothBubblesOpen && thumbnailIsFirst ? MOBILE_BUBBLE_STACK : 0;
-  const deploymentMobileY = bothBubblesOpen && !thumbnailIsFirst ? MOBILE_BUBBLE_STACK : 0;
+  // Mobile: side by side when both open
+  const thumbnailMobileSide = bothBubblesOpen ? "left" : "center";
+  const deploymentMobileSide = bothBubblesOpen ? "right" : "center";
 
   // Only spread cards apart when both bubbles are open — that's when
   // the stacked pair actually extends beyond the card bounds.
@@ -405,6 +420,16 @@ export default function ProjectCard({
   // SVG draw progress
   const svgProgress = useMotionValue(0);
   const drawTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isPresent = useIsPresent();
+
+  // Fast undraw when page exit starts
+  useEffect(() => {
+    if (!isPresent) {
+      if (drawTimer.current) clearTimeout(drawTimer.current);
+      drawTimer.current = null;
+      animate(svgProgress, 0, { duration: 0.35, ease: "easeIn" });
+    }
+  }, [isPresent, svgProgress]);
 
   const onViewportEnter = useCallback(() => {
     if (drawTimer.current) clearTimeout(drawTimer.current);
@@ -444,6 +469,7 @@ export default function ProjectCard({
 
       <motion.div
         ref={boxRef}
+        layout="position"
         initial={{ x: bubbleSide === "left" ? "-100vw" : "100vw", marginTop: 0, marginBottom: 0 }}
         animate={
           shouldShow
@@ -456,7 +482,7 @@ export default function ProjectCard({
         }}
         onViewportEnter={onViewportEnter}
         onViewportLeave={onViewportLeave}
-        transition={{ duration: 1.0, ease: [0.25, 1, 0.5, 1] }}
+        transition={{ duration: 1.0, ease: [0.25, 1, 0.5, 1], layout: { duration: 0.6, ease: [0.25, 1, 0.5, 1] } }}
         style={{
           position: "relative",
           zIndex: anyBubbleOpen ? 10 : "auto",
@@ -474,6 +500,7 @@ export default function ProjectCard({
               className="hidden md:block"
               initial={{ opacity: 0 }}
               animate={shouldShow ? { opacity: 1 } : { opacity: 0 }}
+              exit={{ opacity: 0, transition: { duration: 0.15 } }}
               transition={{ duration: 1.2, ease: "easeInOut" }}
               style={{
                 position: "absolute",
@@ -584,7 +611,7 @@ export default function ProjectCard({
           </div>
         </motion.div>
 
-        {/* Both bubbles on the same side */}
+        {/* Bubbles */}
         <motion.div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999999, pointerEvents: "none", overflow: "visible" }}>
           <AnimatePresence>
             {thumbnailBubble.isBubbleOpen && (
@@ -596,7 +623,7 @@ export default function ProjectCard({
                 popRequested={thumbnailBubble.popRequested}
                 parentInView={isInView}
                 desktopYOffset={thumbnailDesktopY}
-                mobileYOffset={thumbnailMobileY}
+                mobileSide={thumbnailMobileSide}
               >
                 <ThumbnailBubbleContent thumbnail={thumbnail} isMobile={isMobile} isDark={isDark} />
               </BubbleShell>
@@ -612,7 +639,7 @@ export default function ProjectCard({
                 popRequested={deploymentBubble.popRequested}
                 parentInView={isInView}
                 desktopYOffset={deploymentDesktopY}
-                mobileYOffset={deploymentMobileY}
+                mobileSide={deploymentMobileSide}
               >
                 <DeploymentBubbleContent deployment={deployment} isMobile={isMobile} isDark={isDark} />
               </BubbleShell>
@@ -621,18 +648,12 @@ export default function ProjectCard({
         </motion.div>
       </motion.div>
 
-      {/* Mobile spacer */}
-      {isMobile && (
-        <motion.div
-          animate={{ height: bothBubblesOpen ? 600 : anyBubbleOpen ? 300 : 0 }}
-          transition={
-            anyBubbleOpen
-              ? { duration: 0.6, ease: [0.25, 1, 0.5, 1] }
-              : { duration: 0.9, ease: [0.25, 0.1, 0.25, 1] }
-          }
-          style={{ height: 0, overflow: "hidden" }}
-        />
-      )}
+      {/* Mobile spacer — always rendered so it animates smoothly when isMobile changes */}
+      <motion.div
+        animate={{ height: isMobile && anyBubbleOpen ? 300 : 0 }}
+        transition={{ duration: 0.75, ease: [0.25, 1, 0.5, 1] }}
+        style={{ overflow: "hidden" }}
+      />
     </>
   );
 }

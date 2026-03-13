@@ -206,20 +206,16 @@ function ExperienceCard({
               >
                 ▸
               </span>
-              <FuzzyText>
-                <span
-                  className="bg-clip-text text-transparent"
-                  style={{
-                    WebkitBackgroundClip: "text",
-                    backgroundImage: isDark ? bodyDark : bodyLight,
-                    fontSize: "clamp(0.78rem, 1.05vw, 0.92rem)",
-                    fontWeight: 600,
-                    lineHeight: 1.55,
-                  }}
-                >
-                  {bullet}
-                </span>
-              </FuzzyText>
+              <span
+                className="text-black/90 dark:text-white/90"
+                style={{
+                  fontSize: "clamp(0.78rem, 1.05vw, 0.92rem)",
+                  fontWeight: 600,
+                  lineHeight: 1.55,
+                }}
+              >
+                {bullet}
+              </span>
             </li>
           ))}
         </ul>
@@ -488,21 +484,22 @@ const experiences: ExperienceData[] = [
     location: "Portland, OR",
     techStack: "Python, C, C++, SQL, React, Flask",
     bullets: [
-      "Cut embedded development time by 23% by refactoring anti-drone C/C++ modules for modularity and cross-product reuse",
-      "Boosted automated test coverage by 40%+ by rewriting the Python testing pipeline with structured reporting",
-      "Reduced operator response time by building a real-time React/Flask control GUI for power, tracking, movement, and logging",
+      "Reduced embedded system development time by 23% by refactoring anti-drone software modules in C and C++ for improved modularity and reuse across future product lines.",
+      "Increased automated testing efficiency by over 40% by restructuring the Python-based test framework, reducing manual intervention and accelerating release cycles.",
+      "Eliminated a 3+ minute operator workflow by building a full-stack GUI in React and Flask with real-time control of power, tracking, movement, and logging — reducing test-run response time to under 30 seconds.",
     ],
   },
   {
-    title: "Undergraduate Researcher",
-    company: "Plasma, Energy & Space Propulsion Lab",
+    title: "Undergraduate Researcher – Applied Machine Learning",
+    company: "Plasma, Energy, and Space Propulsion Laboratory",
     dates: "May 2024 — Jun 2026",
     location: "Corvallis, OR",
-    techStack: "Python, MATLAB, OR-tools",
+    techStack: "MATLAB, Python, OR-tools",
     bullets: [
-      "Sped up impedance-matching pipeline by 800% via a Google OR-tools capacitor-network algorithm",
-      "Extracted high-fidelity thruster diagnostic signals from noisy plasma environments with a custom Python denoising pipeline",
-      "Improved cancer-focused plasma model accuracy by 33% by engineering high-dimensional features from 10M+ data points",
+      "Sped up impedance matching by 800% by developing an automated capacitor tuning algorithm with Google's OR-tools, dynamically maximizing power coupling and reducing reflected power in RF plasma systems.",
+      "Outperformed the industry-standard denoising filter by 80% by engineering a high-performance Python pipeline, extracting high-fidelity thruster health data from high-noise environments.",
+      "Accelerated plasma thruster analysis by 120% by implementing parallelized signal processing programs in MATLAB, enabling faster experimental iteration.",
+      "Boosted cancer-focused plasma model accuracy by 33% by engineering high-dimensional features from 10M+ data points across diverse treatment parameters.",
     ],
   },
   {
@@ -512,9 +509,9 @@ const experiences: ExperienceData[] = [
     location: "Corvallis, OR",
     techStack: "VHDL, FPGA, Moku",
     bullets: [
-      "Achieved high-fidelity nano-ampere acquisition for micro-sensor characterization via FPGA-based VHDL DSP modules",
-      "Shortened hardware debug cycles by accelerating iterative prototyping with comprehensive VHDL testbenches",
-      "Improved sensor stability via artificial damping algorithms tested with Hardware-in-the-Loop Moku instrumentation",
+      "Enabled nano-ampere signal acquisition for the first time in the lab by developing VHDL modules for FPGA-based DSP, unlocking precise characterization of previously unmeasurable micro-sensors.",
+      "Improved sensor stability by integrating artificial damping algorithms via Hardware-in-the-Loop testing with Moku instrumentation, reducing mechanical noise across multiple test configurations.",
+      "Accelerated hardware debugging by designing comprehensive VHDL testbenches that simulated and validated signal responses, enabling rapid iterative prototyping.",
     ],
   },
 ];
@@ -524,26 +521,18 @@ const projects: ProjectData[] = [
     title: "Bee Habitat Recommendation System",
     techStack: "Python, React, JavaScript",
     description:
-      "ML recommendation engine using truncated SVD to match plant species with local bee populations from Oregon Bee Atlas data. Full-stack: React frontend, Python backend.",
+      "Full-stack AI recommendation engine using truncated SVD on Oregon Bee Atlas data to predict bee-flower interactions, enabling data-driven habitat restoration for land managers. Modeled complex ecological relationships via sparse matrix factorization to identify optimal plant species for local bee populations.",
     githubUrl: "#", // TODO: replace with repo URL
     siteUrl: "#", // TODO: replace with live site URL
     thumbnailType: "matrix",
   },
   {
-    title: "Character Classification Neural Net",
+    title: "Character Classification Neural Network — From Scratch",
     techStack: "Python, NumPy, Pandas",
     description:
-      "Feed-forward neural network built from scratch — custom backpropagation and gradient descent, no ML frameworks. 85% accuracy on EMNIST handwritten characters.",
+      "Feed-forward neural network built from scratch in Python — no ML frameworks — implementing backpropagation, weight initialization, and hyperparameter tuning by hand. Achieved 85% test accuracy on EMNIST handwritten characters.",
     githubUrl: "#", // TODO: replace with repo URL
     thumbnailType: "confusion",
-  },
-  {
-    title: "Small Shell",
-    techStack: "C, Linux",
-    description:
-      "Interactive POSIX shell with command execution, I/O redirection, background processes, and custom SIGINT/SIGTSTP signal handling. Systems programming from first principles.",
-    githubUrl: "#", // TODO: replace with repo URL
-    thumbnailType: "terminal",
   },
 ];
 
