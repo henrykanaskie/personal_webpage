@@ -82,6 +82,7 @@ async function getPhotosForDir(dirName: string): Promise<PhotoEntry[]> {
     let dominantHue: number | undefined;
     let dominantSat: number | undefined;
     let dominantLight: number | undefined;
+    let colorScore: number | undefined;
     try {
       // Resize to 50×50 and sample all pixels.
       // We use a saturation-weighted circular hue average so that small but
@@ -96,9 +97,12 @@ async function getPhotosForDir(dirName: string): Promise<PhotoEntry[]> {
 
       const ch = info.channels; // 3 (RGB) or 4 (RGBA)
       const n = info.width * info.height;
-      let sinSum = 0, cosSum = 0, satWeightSum = 0;
       let lightSum = 0;
       let colorSatSum = 0, colorPixels = 0;
+      // Collect pixels with meaningful saturation — sorted later so only the
+      // most vivid ones drive the hue, preventing a large dim background
+      // (e.g. night sky) from swamping a small bright subject (firework, nebula).
+      const huePixels: { s: number; h: number }[] = [];
 
       for (let i = 0; i < data.length; i += ch) {
         const r = data[i] / 255, g = data[i + 1] / 255, b = data[i + 2] / 255;
@@ -115,21 +119,31 @@ async function getPhotosForDir(dirName: string): Promise<PhotoEntry[]> {
         if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
         else if (max === g) h = ((b - r) / d + 2) / 6;
         else h = ((r - g) / d + 4) / 6;
-        const w = s; // weight by saturation so vivid pixels dominate
-        sinSum += Math.sin(h * 2 * Math.PI) * w;
-        cosSum += Math.cos(h * 2 * Math.PI) * w;
-        satWeightSum += w;
+        huePixels.push({ s, h });
       }
 
       dominantLight = Math.round((lightSum / n) * 100);
       dominantSat = colorPixels > 0 ? Math.round((colorSatSum / colorPixels) * 100) : 0;
 
-      if (satWeightSum > 0.5) {
-        // Enough colorful content — use saturation-weighted circular hue average
+      if (huePixels.length > 0) {
+        // Sort by saturation descending; use the top 10% most vivid pixels
+        // so a small colorful subject beats a large muted background.
+        huePixels.sort((a, b) => b.s - a.s);
+        const topN = Math.max(1, Math.ceil(huePixels.length * 0.1));
+        const topPixels = huePixels.slice(0, topN);
+
+        let sinSum = 0, cosSum = 0, satWeightSum = 0;
+        for (const { s, h } of topPixels) {
+          sinSum += Math.sin(h * 2 * Math.PI) * s;
+          cosSum += Math.cos(h * 2 * Math.PI) * s;
+          satWeightSum += s;
+        }
+        colorScore = Math.round((satWeightSum / n) * 100);
         const angle = Math.atan2(sinSum / satWeightSum, cosSum / satWeightSum);
         dominantHue = Math.round(((angle / (2 * Math.PI)) * 360 + 360) % 360);
       } else {
-        // Mostly neutral — fall back to the 1×1 average hue
+        colorScore = 0;
+        // No colorful pixels at all — use 1×1 average (will land in neutral bucket)
         const avg = await sharp(filePath)
           .resize(1, 1, { fit: "cover" }).toColorspace("srgb").raw()
           .toBuffer({ resolveWithObject: true });
@@ -146,6 +160,7 @@ async function getPhotosForDir(dirName: string): Promise<PhotoEntry[]> {
       dominantHue,
       dominantSat,
       dominantLight,
+      colorScore,
     };
   }));
 

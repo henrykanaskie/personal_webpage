@@ -96,7 +96,6 @@ function PhotoFrame({
       >
         {String(index + 1).padStart(2, "0")}
       </span>
-
     </motion.div>
   );
 }
@@ -117,14 +116,20 @@ export default function CategoryPageClient({ section }: { section: Section }) {
   const [sortMode, setSortMode] = useState<"date" | "color">("color");
 
   // Perceptual color sort key:
-  //   Colorful photos (sat ≥ 15) → sort 0–360 by hue
-  //   Neutral/grey/white/black (sat < 15) → sort 400–500 by lightness
-  // This keeps whites/greys/blacks together at the end instead of mixing
-  // them in with reds (hue = 0).
+  //   Photos with any vivid colorful pixels (colorScore > 0) → sort 0–360 by hue.
+  //   This covers dark shots (fireworks, nebulae) where saturation-weighted
+  //   circular averaging already isolated the vivid hue from black background.
+  //   Truly neutral/grey/white (no vivid pixels) → sort 400–500 by lightness.
   function colorSortKey(p: PhotoEntry): number {
     if (p.dominantSat === undefined) return 500;
-    if (p.dominantSat < 15) return 400 + (p.dominantLight ?? 50);
-    return p.dominantHue ?? 0;
+    if ((p.colorScore ?? 0) > 0) {
+      const hue = p.dominantHue ?? 0;
+      // Red wraps around the HSL wheel: hues 330–360 are the same visual red
+      // as 0–30, but sort at the wrong end. Shift them to −30–0 so they land
+      // at the start of the spectrum alongside other reds and oranges.
+      return hue >= 330 ? hue - 360 : hue;
+    }
+    return 400 + (p.dominantLight ?? 50);
   }
 
   const sortedPhotos =
