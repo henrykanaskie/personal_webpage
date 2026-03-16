@@ -540,7 +540,7 @@ function CSSide({
           }}
         >
           {navLinks.map((link, i) => (
-            <Fragment key={link.href}>
+            <Fragment key={link.sectionId}>
               <Link
                 href={link.href}
                 scroll={false}
