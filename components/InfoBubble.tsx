@@ -12,7 +12,7 @@ export function useIsMobile(breakpoint = 768) {
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, [breakpoint]);
-  return isMobile ?? false;
+  return isMobile; // return null until we know
 }
 
 export function useIsDark() {
@@ -361,21 +361,8 @@ export function InfoBubble({
     if (popRequested) handleClick();
   }, [popRequested, handleClick]);
 
-  // Scroll bubble into center of viewport after entrance animation (mobile only)
-  useEffect(() => {
-    if (!isMobile) return;
-    const timer = setTimeout(() => {
-      if (!bubbleRef.current) return;
-      const rect = bubbleRef.current.getBoundingClientRect();
-      const bubbleCenter = rect.top + rect.height / 2;
-      const viewportCenter = window.innerHeight / 2;
-      const offset = bubbleCenter - viewportCenter;
-      if (Math.abs(offset) > 50) {
-        window.scrollBy({ top: offset, behavior: "smooth" });
-      }
-    }, 50);
-    return () => clearTimeout(timer);
-  }, [isMobile]);
+  // NOTE: We intentionally do not auto-scroll the page on mobile.
+  // Auto-centering caused unexpected jumps on initial page load (especially on /cs).
 
   const sideAnchor = showBelow
     ? { left: "50%" }
@@ -456,7 +443,7 @@ export function InfoBubble({
                 y: "16px",
                 scaleX: isPopping || isPressed ? 1.08 : 1,
                 scaleY: isPopping || isPressed ? 1.08 : 1,
-                opacity: isBubbleInView || parentInView ? 1 : 0,
+                opacity: parentInView ? 1 : 0,
               }
             : {
                 y: "-50%",
@@ -481,7 +468,7 @@ export function InfoBubble({
                 duration: 0.75,
                 ease: [0.34, 1.56, 0.64, 1],
                 opacity: {
-                  duration: isBubbleInView ? 0.3 : 1.4,
+                  duration: showBelow ? 1.8 : isBubbleInView ? 0.3 : 1.4,
                   ease: "easeInOut",
                 },
               }

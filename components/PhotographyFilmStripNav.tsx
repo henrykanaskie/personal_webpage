@@ -47,11 +47,13 @@ export function PhotographyFilmStripNav({
   visible,
   pathname,
   bottomControls,
+  leftControls,
 }: {
   isDark: boolean;
   visible: boolean;
   pathname: string | null;
   bottomControls?: React.ReactNode;
+  leftControls?: React.ReactNode;
 }) {
   const stripItems = buildStripItems(isDark);
   const isActive = (href: string) => pathname === href;
@@ -154,6 +156,22 @@ export function PhotographyFilmStripNav({
           opacity: 0.9,
         }}
       />
+
+      {/* Left controls — pinned to the left, never scrolls away */}
+      {leftControls && (
+        <div
+          style={{
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            paddingLeft: 14,
+            paddingRight: 8,
+          }}
+        >
+          {leftControls}
+        </div>
+      )}
 
       {/* Left scroll arrow — only shown when content overflows */}
       {canScroll && (
