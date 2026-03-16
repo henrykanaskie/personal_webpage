@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, Fragment } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, Fragment } from "react";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import GlassTitle from "@/components/GlassTitle";
 import { glassClassNames, FuzzyText } from "@/components/LeftInfoBox";
@@ -319,13 +319,26 @@ export default function CSPage() {
     }
   };
 
-  // Scroll to hash section after navigating from another page
+  // Scroll to a section after navigating from another page (e.g. from /resume).
+  // Do NOT rely on URL hashes (mobile can preserve them and cause random jumps).
   useEffect(() => {
-    const hash = window.location.hash.slice(1);
-    if (hash) {
+    if (typeof window === "undefined") return;
+    history.scrollRestoration = "manual";
+
+    // Clear any stale hash so it can't trigger browser anchor behavior.
+    if (window.location.hash) {
+      history.replaceState(null, "", "/cs");
+    }
+
+    const targetId = sessionStorage.getItem("csScrollTo");
+    sessionStorage.removeItem("csScrollTo");
+
+    if (targetId) {
       setTimeout(() => {
-        document.getElementById(hash)?.scrollIntoView({ behavior: "smooth" });
+        document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth" });
       }, 350);
+    } else {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
     }
   }, []);
 
@@ -453,7 +466,7 @@ export default function CSPage() {
       <section
         id="about"
         style={{ scrollMarginTop: "80px" }}
-        className="flex flex-col items-center gap-12 md:gap-28 pb-[10vh]"
+        className="flex flex-col items-center gap-12 md:gap-28 pb-[5vh]"
       >
         {/* Single row: Photo + Name/Links + Bio */}
         <motion.div
@@ -477,122 +490,135 @@ export default function CSPage() {
             initial={{ opacity: 0 }}
             animate={contactInView ? { opacity: 1 } : { opacity: 0 }}
             transition={{ duration: 1.8, ease: "easeInOut" }}
-            className="flex flex-row items-center gap-8 md:gap-10 pt-8 md:pt-14"
+            className="flex flex-col md:flex-row items-center gap-6 md:gap-10 pt-8 md:pt-14"
           >
-            {/* Photo */}
-            <div
-              style={{
-                flexShrink: 0,
-                width: "clamp(150px, 22vw, 320px)",
-                aspectRatio: "3/4",
-                borderRadius: "16px",
-                overflow: "hidden",
-                border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.1)"}`,
-                boxShadow: isDark
-                  ? "0 4px 32px rgba(0,0,0,0.55)"
-                  : "0 2px 16px rgba(0,0,0,0.12)",
-              }}
-            >
-              <img
-                src="/photography/cs_profile/IMG_4059.jpeg"
-                alt="Henry Kanaskie"
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            </div>
+            {/* Row 1 on mobile: Photo + Name/Links side by side */}
+            <div className="flex flex-row items-center gap-6 w-full md:contents">
+              {/* Photo */}
+              <div
+                style={{
+                  flexShrink: 0,
+                  width: isMobile
+                    ? "min(180px, 42vw)"
+                    : "clamp(150px, 22vw, 320px)",
+                  aspectRatio: "3/4",
+                  borderRadius: "16px",
+                  overflow: "hidden",
+                  border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.1)"}`,
+                  boxShadow: isDark
+                    ? "0 4px 32px rgba(0,0,0,0.55)"
+                    : "0 2px 16px rgba(0,0,0,0.12)",
+                }}
+              >
+                <img
+                  src="/photography/cs_profile/IMG_4059.jpeg"
+                  alt="Henry Kanaskie"
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              </div>
 
-            {/* Name + Links */}
-            <div className="flex flex-col shrink-0" style={{ gap: "0.05em" }}>
-              {["Henry", "Kanaskie"].map((word) => (
-                <span
-                  key={word}
-                  className="font-extrabold tracking-tight leading-none bg-clip-text text-transparent"
-                  style={{
-                    fontSize: "clamp(2.8rem, 7vw, 7rem)",
-                    letterSpacing: "-0.02em",
-                    WebkitBackgroundClip: "text",
-                    backgroundImage: isDark
-                      ? `linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 15%, rgb(180,210,235) 30%, rgb(215,190,215) 45%, rgb(170,200,230) 60%, rgb(200,185,225) 75%, rgb(180,195,235) 90%, rgb(210,185,220) 100%)`
-                      : `linear-gradient(135deg, rgb(100,115,145) 0%, rgb(125,110,135) 15%, rgb(105,130,150) 30%, rgb(130,115,130) 45%, rgb(100,125,145) 60%, rgb(120,110,140) 75%, rgb(105,120,148) 90%, rgb(128,115,135) 100%)`,
-                  }}
+              {/* Name + Links */}
+              <div
+                className={`flex flex-col ${isMobile ? "items-start" : "shrink-0"}`}
+                style={{ gap: "0.05em" }}
+              >
+                {["Henry", "Kanaskie"].map((word) => (
+                  <span
+                    key={word}
+                    className="font-extrabold tracking-tight leading-none bg-clip-text text-transparent"
+                    style={{
+                      fontSize: isMobile
+                        ? "clamp(2rem, 10vw, 3.5rem)"
+                        : "clamp(2.8rem, 7vw, 7rem)",
+                      letterSpacing: "-0.02em",
+                      WebkitBackgroundClip: "text",
+                      backgroundImage: isDark
+                        ? `linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 15%, rgb(180,210,235) 30%, rgb(215,190,215) 45%, rgb(170,200,230) 60%, rgb(200,185,225) 75%, rgb(180,195,235) 90%, rgb(210,185,220) 100%)`
+                        : `linear-gradient(135deg, rgb(100,115,145) 0%, rgb(125,110,135) 15%, rgb(105,130,150) 30%, rgb(130,115,130) 45%, rgb(100,125,145) 60%, rgb(120,110,140) 75%, rgb(105,120,148) 90%, rgb(128,115,135) 100%)`,
+                    }}
+                  >
+                    {word}
+                  </span>
+                ))}
+                <div
+                  className={`flex flex-wrap ${isMobile ? "justify-center" : ""} items-center gap-4 mt-3`}
                 >
-                  {word}
-                </span>
-              ))}
-              <div className="flex items-center gap-5 mt-3">
-                {[
-                  {
-                    label: "Email",
-                    href: undefined,
-                    action: () => {
-                      setEmailOpen(true);
-                      setEmailStatus("idle");
+                  {[
+                    {
+                      label: "Email",
+                      href: undefined,
+                      action: () => {
+                        setEmailOpen(true);
+                        setEmailStatus("idle");
+                      },
                     },
-                  },
-                  {
-                    label: "LinkedIn",
-                    href: "https://linkedin.com/in/henry-kanaskie",
-                    action: undefined,
-                  },
-                  {
-                    label: "Resume",
-                    href: undefined,
-                    action: () => setResumeOpen(true),
-                  },
-                ].map((item, i, arr) => {
-                  const inner = (
-                    <span
-                      className="bg-clip-text text-transparent"
-                      style={{
-                        WebkitBackgroundClip: "text",
-                        backgroundImage: isDark
-                          ? `linear-gradient(135deg, rgb(180,200,255), rgb(210,185,230))`
-                          : `linear-gradient(135deg, rgb(100,115,145), rgb(125,110,135))`,
-                        fontSize: "clamp(0.9rem, 1.3vw, 1.2rem)",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {item.label}
-                    </span>
-                  );
-                  return (
-                    <Fragment key={item.label}>
-                      {item.href ? (
-                        <a
-                          href={item.href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:opacity-70 transition-opacity"
-                        >
-                          {inner}
-                        </a>
-                      ) : (
-                        <button
-                          onClick={item.action}
-                          className="hover:opacity-70 transition-opacity cursor-pointer"
-                        >
-                          {inner}
-                        </button>
-                      )}
-                      {i < arr.length - 1 && (
-                        <span
-                          style={{
-                            width: 1,
-                            height: "1em",
-                            display: "inline-block",
-                            background: isDark
-                              ? "linear-gradient(180deg, transparent, rgba(180,200,255,0.3), transparent)"
-                              : "linear-gradient(180deg, transparent, rgba(100,115,145,0.25), transparent)",
-                          }}
-                        />
-                      )}
-                    </Fragment>
-                  );
-                })}
+                    {
+                      label: "LinkedIn",
+                      href: "https://linkedin.com/in/henry-kanaskie",
+                      action: undefined,
+                    },
+                    {
+                      label: "Resume",
+                      href: undefined,
+                      action: () => setResumeOpen(true),
+                    },
+                  ].map((item, i, arr) => {
+                    const inner = (
+                      <span
+                        className="bg-clip-text text-transparent"
+                        style={{
+                          WebkitBackgroundClip: "text",
+                          backgroundImage: isDark
+                            ? `linear-gradient(135deg, rgb(180,200,255), rgb(210,185,230))`
+                            : `linear-gradient(135deg, rgb(100,115,145), rgb(125,110,135))`,
+                          fontSize: "clamp(0.9rem, 1.3vw, 1.2rem)",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {item.label}
+                      </span>
+                    );
+                    return (
+                      <Fragment key={item.label}>
+                        {item.href ? (
+                          <a
+                            href={item.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:opacity-70 transition-opacity"
+                          >
+                            {inner}
+                          </a>
+                        ) : (
+                          <button
+                            onClick={item.action}
+                            className="hover:opacity-70 transition-opacity cursor-pointer"
+                          >
+                            {inner}
+                          </button>
+                        )}
+                        {i < arr.length - 1 && (
+                          <span
+                            style={{
+                              width: 1,
+                              height: "1em",
+                              display: "inline-block",
+                              background: isDark
+                                ? "linear-gradient(180deg, transparent, rgba(180,200,255,0.3), transparent)"
+                                : "linear-gradient(180deg, transparent, rgba(100,115,145,0.25), transparent)",
+                            }}
+                          />
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </div>
               </div>
             </div>
+            {/* end mobile row 1 */}
 
             {/* Bio */}
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 w-full">
               <GlassBlurb>
                 <FuzzyText>
                   <p
@@ -630,7 +656,7 @@ export default function CSPage() {
         <motion.div
           animate={{ opacity: hasScrolled ? 0 : 1 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="flex flex-col items-center gap-1 pointer-events-none select-none"
+          className="flex flex-col items-center gap-1 pointer-events-none select-none -mt-6 md:-mt-14"
           style={{ opacity: 1 }}
         >
           <span

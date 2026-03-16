@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useState, useEffect } from "react";
+import { useRef, useCallback, useState, useEffect, RefObject } from "react";
 import {
   motion,
   useMotionValue,
@@ -19,6 +19,33 @@ import {
   glassBubbleClassNames,
 } from "./InfoBubble";
 import { glassClassNames, FuzzyText } from "./LeftInfoBox";
+
+// ─── useInView with hysteresis (different enter/leave thresholds) ───
+
+function useInViewHysteresis(
+  ref: RefObject<Element | null>,
+  { enterAmount, leaveAmount }: { enterAmount: number; leaveAmount: number }
+) {
+  const [inView, setInView] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const thresholds = Array.from({ length: 21 }, (_, i) => i / 20);
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const ratio = entry.intersectionRatio;
+        if (ratio >= enterAmount) setInView(true);
+        else if (ratio < leaveAmount) setInView(false);
+      },
+      { threshold: thresholds }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref, enterAmount, leaveAmount]);
+
+  return inView;
+}
 
 // ─── Provider (pass-through wrapper for page layout) ───
 
@@ -367,7 +394,10 @@ export default function ProjectCard({
   const boxRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile(1650);
   const isDark = useIsDark();
-  const isInView = useInView(boxRef, { once: false, amount: isMobile ? 0.4 : 0.35 });
+  const isInView = useInViewHysteresis(boxRef, {
+    enterAmount: isMobile ? 0.4 : 0.35,
+    leaveAmount: 0.08,
+  });
 
   const thumbnailBubble = useInfoBubble();
   const deploymentBubble = useInfoBubble();

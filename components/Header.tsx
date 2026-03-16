@@ -10,10 +10,10 @@ import { glassStyle, glassBubbleClassNames } from "./InfoBubble";
 // ─── Navigation links ─────────────────────────────────────────────────────────
 
 const csNavLinks = [
-  { name: "About", href: "/cs#about", sectionId: "about" },
-  { name: "Experience", href: "/cs#experience", sectionId: "experience" },
-  { name: "Projects", href: "/cs#projects", sectionId: "projects" },
-  { name: "Education", href: "/cs#education", sectionId: "education" },
+  { name: "About", href: "/cs", sectionId: "about" },
+  { name: "Experience", href: "/cs", sectionId: "experience" },
+  { name: "Projects", href: "/cs", sectionId: "projects" },
+  { name: "Education", href: "/cs", sectionId: "education" },
   { name: "Resume", href: "/resume", sectionId: null },
 ];
 
@@ -326,58 +326,58 @@ export default function Header() {
         isDark={isDark}
         visible={visible}
         pathname={pathname}
+        leftControls={
+          <Link
+            href="/"
+            scroll={false}
+            title="Home"
+            aria-label="Home"
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: "50%",
+              background: isDark
+                ? "rgba(20,16,32,0.9)"
+                : "rgba(248,245,240,0.95)",
+              border: `1px solid ${photoBorder}`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              textDecoration: "none",
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 20 20" fill="none">
+              <rect
+                x="2"
+                y="3"
+                width="7"
+                height="14"
+                rx="1.5"
+                fill={
+                  isDark ? "rgba(200,185,230,0.8)" : "rgba(120,85,145,0.7)"
+                }
+              />
+              <rect
+                x="11"
+                y="3"
+                width="7"
+                height="14"
+                rx="1.5"
+                fill={
+                  isDark ? "rgba(200,185,230,0.5)" : "rgba(120,85,145,0.45)"
+                }
+              />
+            </svg>
+          </Link>
+        }
         bottomControls={
-          <>
-            <ThemeToggleButton
-              isDark={isDark}
-              mounted={mounted}
-              maskId={maskId}
-              onToggle={toggleDarkMode}
-              photoMode
-            />
-            <Link
-              href="/"
-              scroll={false}
-              title="Home"
-              aria-label="Home"
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: "50%",
-                background: isDark
-                  ? "rgba(20,16,32,0.9)"
-                  : "rgba(248,245,240,0.95)",
-                border: `1px solid ${photoBorder}`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                textDecoration: "none",
-              }}
-            >
-              <svg width="12" height="12" viewBox="0 0 20 20" fill="none">
-                <rect
-                  x="2"
-                  y="3"
-                  width="7"
-                  height="14"
-                  rx="1.5"
-                  fill={
-                    isDark ? "rgba(200,185,230,0.8)" : "rgba(120,85,145,0.7)"
-                  }
-                />
-                <rect
-                  x="11"
-                  y="3"
-                  width="7"
-                  height="14"
-                  rx="1.5"
-                  fill={
-                    isDark ? "rgba(200,185,230,0.5)" : "rgba(120,85,145,0.45)"
-                  }
-                />
-              </svg>
-            </Link>
-          </>
+          <ThemeToggleButton
+            isDark={isDark}
+            mounted={mounted}
+            maskId={maskId}
+            onToggle={toggleDarkMode}
+            photoMode
+          />
         }
       />
     );
@@ -453,6 +453,13 @@ export default function Header() {
                     document
                       .getElementById(link.sectionId)
                       ?.scrollIntoView({ behavior: "smooth" });
+                  } else if (link.sectionId) {
+                    // Navigating into /cs (e.g. from /resume): remember target section
+                    try {
+                      sessionStorage.setItem("csScrollTo", link.sectionId);
+                    } catch {
+                      // ignore (private mode, etc.)
+                    }
                   }
                 }}
                 className={`${glassBubbleClassNames} px-7 py-3 rounded-full font-semibold text-lg transition-all duration-200`}
@@ -545,6 +552,12 @@ export default function Header() {
                           document
                             .getElementById(link.sectionId)
                             ?.scrollIntoView({ behavior: "smooth" });
+                        } else if (link.sectionId) {
+                          try {
+                            sessionStorage.setItem("csScrollTo", link.sectionId);
+                          } catch {
+                            // ignore
+                          }
                         }
                       }}
                       className={`${glassBubbleClassNames} block px-6 py-2.5 rounded-full text-center text-lg font-semibold transition-all duration-200`}

@@ -4,7 +4,7 @@ import { useRef, useState, useCallback, useEffect } from "react";
 import { motion, useInView } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
-import { useIsDark } from "@/components/InfoBubble";
+import { useIsDark, useIsMobile } from "@/components/InfoBubble";
 import { Section, PhotoEntry, RGB } from "@/app/photography/data";
 
 // ─── Lightbox ─────────────────────────────────────────────────────────────────
@@ -33,220 +33,194 @@ function Lightbox({
   const baseHeight = Math.round(baseWidth / ratio);
 
   const subColor = isDark ? "rgb(198, 178, 218)" : "rgb(110, 88, 128)";
-
   const ruleColor = isDark ? "rgba(195,175,225,0.1)" : "rgba(128,72,138,0.12)";
+
+  // Touch swipe support
+  const touchStartX = useRef<number | null>(null);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(dx) > 50) {
+      if (dx < 0) onNext();
+      else onPrev();
+    }
+    touchStartX.current = null;
+  };
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
       style={{
         position: "fixed",
         inset: 0,
         zIndex: 60,
-        background: isDark ? "rgba(5,5,8,0.88)" : "rgba(248,245,240,0.9)",
+        background: isDark ? "rgba(5,5,8,0.92)" : "rgba(248,245,240,0.94)",
         backdropFilter: "blur(10px)",
         WebkitBackdropFilter: "blur(10px)",
         display: "flex",
-        flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        gap: 0,
-        padding: "16px 20px",
       }}
       onClick={onClose}
     >
-      {/* Prev arrow */}
-      {gi > 0 && (
-        <button
-          type="button"
-          aria-label="Previous photo"
-          onClick={(e) => { e.stopPropagation(); onPrev(); }}
-          style={{
-            position: "fixed",
-            left: 20,
-            top: "50%",
-            transform: "translateY(-50%)",
-            zIndex: 61,
-            width: 44,
-            height: 44,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 999,
-            border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
-            background: isDark ? "rgba(10,10,14,0.75)" : "rgba(248,245,240,0.85)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-            cursor: "pointer",
-            color: isDark ? "#f7f1ff" : "#503c60",
-            fontSize: 22,
-            lineHeight: 1,
-          }}
-        >
-          ‹
-        </button>
-      )}
-
-      {/* Next arrow */}
-      {gi < photos.length - 1 && (
-        <button
-          type="button"
-          aria-label="Next photo"
-          onClick={(e) => { e.stopPropagation(); onNext(); }}
-          style={{
-            position: "fixed",
-            right: 20,
-            top: "50%",
-            transform: "translateY(-50%)",
-            zIndex: 61,
-            width: 44,
-            height: 44,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 999,
-            border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
-            background: isDark ? "rgba(10,10,14,0.75)" : "rgba(248,245,240,0.85)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-            cursor: "pointer",
-            color: isDark ? "#f7f1ff" : "#503c60",
-            fontSize: 22,
-            lineHeight: 1,
-          }}
-        >
-          ›
-        </button>
-      )}
-
-      {/* Image card */}
+      {/* Image — fills as much of the viewport as possible */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 12 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+        initial={{ opacity: 0, scale: 0.97 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
         onClick={(e) => e.stopPropagation()}
-        style={{
-          position: "relative",
-          maxWidth: "min(1600px, 96vw)",
-          borderRadius: 4,
-          overflow: "hidden",
-          border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
-          boxShadow: isDark
-            ? "0 18px 60px rgba(0,0,0,0.85)"
-            : "0 18px 50px rgba(0,0,0,0.35)",
-          background: isDark ? "#050507" : "#f8f5f0",
-        }}
+        style={{ position: "relative", lineHeight: 0 }}
       >
-        {/* Close button — top right */}
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close enlarged photo"
-          style={{
-            position: "absolute",
-            top: 10,
-            right: 10,
-            zIndex: 2,
-            width: 28,
-            height: 28,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 999,
-            border: "none",
-            background: isDark ? "rgba(10,10,14,0.9)" : "rgba(248,245,240,0.95)",
-            boxShadow: isDark
-              ? "0 0 0 1px rgba(255,255,255,0.18)"
-              : "0 0 0 1px rgba(0,0,0,0.12)",
-            cursor: "pointer",
-          }}
-        >
-          <span style={{ fontSize: "13px", lineHeight: 1, color: isDark ? "#f7f1ff" : "#503c60" }}>
-            ×
-          </span>
-        </button>
-
-        {/* Photo */}
         <Image
           src={photo.src}
           alt={photo.alt ?? `${section.id} photo ${String(gi + 1).padStart(2, "0")}`}
           width={baseWidth}
           height={baseHeight}
-          sizes="(min-width: 1024px) 90vw, 100vw"
+          sizes="100vw"
           style={{
             display: "block",
-            maxWidth: "min(1600px, 96vw)",
-            maxHeight: "calc(100vh - 110px)",
+            maxWidth: "100vw",
+            maxHeight: "100dvh",
             width: "auto",
             height: "auto",
             objectFit: "contain",
           }}
           priority
         />
-      </motion.div>
 
-      {/* Caption bar — below image, outside the card */}
-      <motion.div
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          maxWidth: "min(1600px, 96vw)",
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          paddingTop: 14,
-        }}
-      >
-        {/* Left: title + counter */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span
-            style={{
-              fontSize: "8px",
-              letterSpacing: "0.3em",
-              textTransform: "uppercase",
-              fontFamily: "monospace",
-              color: isDark ? "rgba(220,210,240,0.55)" : "rgba(80,60,95,0.55)",
-            }}
-          >
-            {section.title}
-          </span>
-          <div style={{ width: 1, height: 10, background: ruleColor }} />
-          <span
-            style={{
-              fontSize: "8px",
-              letterSpacing: "0.22em",
-              fontFamily: "monospace",
-              color: isDark ? "rgba(220,210,240,0.38)" : "rgba(80,60,95,0.38)",
-            }}
-          >
-            {String(gi + 1).padStart(2, "0")} / {String(photos.length).padStart(2, "0")}
-          </span>
-        </div>
-
-        {/* Right: view full category link */}
-        <Link
-          href={`/photography/${section.id}`}
+        {/* Close button — overlaid top-right on the image */}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close enlarged photo"
           style={{
-            display: "inline-flex",
+            position: "absolute",
+            top: 12,
+            right: 12,
+            zIndex: 2,
+            width: 32,
+            height: 32,
+            display: "flex",
             alignItems: "center",
-            gap: 7,
-            fontSize: "8px",
-            letterSpacing: "0.38em",
-            textTransform: "uppercase",
-            color: subColor,
-            textDecoration: "none",
-            transition: "opacity 0.2s ease",
+            justifyContent: "center",
+            borderRadius: 999,
+            border: "none",
+            background: isDark ? "rgba(5,5,8,0.72)" : "rgba(248,245,240,0.82)",
+            backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
+            cursor: "pointer",
           }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = "0.6"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = "1"; }}
         >
-          View {section.title}
-          <span style={{ fontSize: "10px", letterSpacing: 0, opacity: 0.7 }}>→</span>
-        </Link>
+          <span style={{ fontSize: "14px", lineHeight: 1, color: isDark ? "#f7f1ff" : "#503c60" }}>
+            ×
+          </span>
+        </button>
+
+        {/* Prev arrow — overlaid left edge of image */}
+        {gi > 0 && (
+          <button
+            type="button"
+            aria-label="Previous photo"
+            onClick={(e) => { e.stopPropagation(); onPrev(); }}
+            style={{
+              position: "absolute",
+              left: 12,
+              top: "50%",
+              transform: "translateY(-50%)",
+              zIndex: 2,
+              width: 44,
+              height: 44,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 999,
+              border: "none",
+              background: isDark ? "rgba(5,5,8,0.55)" : "rgba(248,245,240,0.65)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+              cursor: "pointer",
+              color: isDark ? "#f7f1ff" : "#503c60",
+              fontSize: 24,
+              lineHeight: 1,
+            }}
+          >
+            ‹
+          </button>
+        )}
+
+        {/* Next arrow — overlaid right edge of image */}
+        {gi < photos.length - 1 && (
+          <button
+            type="button"
+            aria-label="Next photo"
+            onClick={(e) => { e.stopPropagation(); onNext(); }}
+            style={{
+              position: "absolute",
+              right: 12,
+              top: "50%",
+              transform: "translateY(-50%)",
+              zIndex: 2,
+              width: 44,
+              height: 44,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 999,
+              border: "none",
+              background: isDark ? "rgba(5,5,8,0.55)" : "rgba(248,245,240,0.65)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+              cursor: "pointer",
+              color: isDark ? "#f7f1ff" : "#503c60",
+              fontSize: 24,
+              lineHeight: 1,
+            }}
+          >
+            ›
+          </button>
+        )}
+
+        {/* Caption — overlaid bottom of image */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: "20px 16px 12px",
+            background: isDark
+              ? "linear-gradient(to top, rgba(5,5,8,0.6), transparent)"
+              : "linear-gradient(to top, rgba(248,245,240,0.55), transparent)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "space-between",
+            pointerEvents: "none",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: "8px", letterSpacing: "0.3em", textTransform: "uppercase", fontFamily: "monospace", color: isDark ? "rgba(220,210,240,0.6)" : "rgba(80,60,95,0.6)" }}>
+              {section.title}
+            </span>
+            <div style={{ width: 1, height: 10, background: ruleColor }} />
+            <span style={{ fontSize: "8px", letterSpacing: "0.22em", fontFamily: "monospace", color: isDark ? "rgba(220,210,240,0.42)" : "rgba(80,60,95,0.42)" }}>
+              {String(gi + 1).padStart(2, "0")} / {String(photos.length).padStart(2, "0")}
+            </span>
+          </div>
+          <Link
+            href={`/photography/${section.id}`}
+            onClick={(e) => e.stopPropagation()}
+            style={{ pointerEvents: "auto", display: "inline-flex", alignItems: "center", gap: 6, fontSize: "8px", letterSpacing: "0.35em", textTransform: "uppercase", color: subColor, textDecoration: "none" }}
+          >
+            View All
+            <span style={{ fontSize: "10px", letterSpacing: 0, opacity: 0.7 }}>→</span>
+          </Link>
+        </div>
       </motion.div>
     </motion.div>
   );
@@ -355,6 +329,7 @@ function PhotoSectionPreview({
   section: Section;
   isDark: boolean;
 }) {
+  const isMobile = useIsMobile();
   const ref = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-5% 0px" });
@@ -518,8 +493,8 @@ function PhotoSectionPreview({
         style={{
           width: "100vw",
           marginLeft: "calc(50% - 50vw)",
-          paddingLeft: "clamp(40px, 10vw, 160px)",
-          paddingRight: "clamp(40px, 10vw, 160px)",
+          paddingLeft: "clamp(16px, 10vw, 160px)",
+          paddingRight: "clamp(16px, 10vw, 160px)",
           boxSizing: "border-box",
         }}
       >
@@ -627,7 +602,7 @@ function PhotoSectionPreview({
                 : "linear-gradient(90deg, rgba(252,249,255,1) 0%, rgba(252,249,255,0.97) 10%, rgba(252,249,255,0.91) 20%, rgba(252,249,255,0.82) 32%, rgba(252,249,255,0.68) 45%, rgba(252,249,255,0.5) 58%, rgba(252,249,255,0.3) 72%, rgba(252,249,255,0.12) 86%, transparent 100%)",
               opacity: atStart ? 0 : 1,
               transition: "opacity 0.25s ease",
-              display: "flex",
+              display: isMobile ? "none" : "flex",
               alignItems: "center",
               justifyContent: "flex-start",
               paddingLeft: 16,
@@ -679,7 +654,7 @@ function PhotoSectionPreview({
                 : "linear-gradient(270deg, rgba(252,249,255,1) 0%, rgba(252,249,255,0.97) 10%, rgba(252,249,255,0.91) 20%, rgba(252,249,255,0.82) 32%, rgba(252,249,255,0.68) 45%, rgba(252,249,255,0.5) 58%, rgba(252,249,255,0.3) 72%, rgba(252,249,255,0.12) 86%, transparent 100%)",
               opacity: atEnd ? 0 : 1,
               transition: "opacity 0.25s ease",
-              display: "flex",
+              display: isMobile ? "none" : "flex",
               alignItems: "center",
               justifyContent: "flex-end",
               paddingRight: 16,

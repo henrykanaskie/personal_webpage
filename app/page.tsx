@@ -7,10 +7,10 @@ import { useRouter } from "next/navigation";
 import { useIsDark } from "@/components/InfoBubble";
 
 const navLinks = [
-  { name: "About", href: "/cs#about" },
-  { name: "Experience", href: "/cs#experience" },
-  { name: "Projects", href: "/cs#projects" },
-  { name: "Education", href: "/cs#education" },
+  { name: "About", href: "/cs", sectionId: "about" },
+  { name: "Experience", href: "/cs", sectionId: "experience" },
+  { name: "Projects", href: "/cs", sectionId: "projects" },
+  { name: "Education", href: "/cs", sectionId: "education" },
 ];
 
 const BOKEH = [
@@ -434,7 +434,15 @@ function PhotoSide({ active, isDark }: { active: boolean; isDark: boolean }) {
 
 // ─── CS / Tech panel ─────────────────────────────────────────────────────────
 
-function CSSide({ active, isDark }: { active: boolean; isDark: boolean }) {
+function CSSide({
+  active,
+  isDark,
+  isMobile,
+}: {
+  active: boolean;
+  isDark: boolean;
+  isMobile: boolean;
+}) {
   const titleGrad = isDark
     ? "linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 40%, rgb(180,210,235) 70%, rgb(210,185,220) 100%)"
     : "linear-gradient(135deg, rgb(75,92,132) 0%, rgb(108,88,118) 40%, rgb(80,112,138) 70%, rgb(112,95,124) 100%)";
@@ -484,7 +492,7 @@ function CSSide({ active, isDark }: { active: boolean; isDark: boolean }) {
           left: "50%",
           transform: "translate(-50%,-50%)",
           textAlign: "center",
-          whiteSpace: "nowrap",
+          width: "90%",
         }}
       >
         <h1
@@ -492,9 +500,12 @@ function CSSide({ active, isDark }: { active: boolean; isDark: boolean }) {
           style={{
             WebkitBackgroundClip: "text",
             backgroundImage: titleGrad,
-            fontSize: "clamp(2.8rem, 5.5vw, 5rem)",
+            fontSize: isMobile
+              ? "clamp(1.4rem, 7vw, 2.6rem)"
+              : "clamp(2.8rem, 5.5vw, 5rem)",
             letterSpacing: "-0.02em",
             margin: 0,
+            lineHeight: 1.1,
           }}
         >
           Computer Science
@@ -514,53 +525,60 @@ function CSSide({ active, isDark }: { active: boolean; isDark: boolean }) {
         }}
       />
 
-      {/* Horizontal nav */}
-      <div
-        style={{
-          position: "absolute",
-          top: "calc(50% + 72px)",
-          left: "50%",
-          transform: "translate(-50%,-50%)",
-          display: "flex",
-          alignItems: "center",
-          gap: 2,
-          whiteSpace: "nowrap",
-        }}
-      >
-        {navLinks.map((link, i) => (
-          <Fragment key={link.href}>
-            <Link
-              href={link.href}
-              scroll={false}
-              className="px-3 py-1.5 rounded-full font-semibold tracking-wide transition-colors duration-200 hover:bg-white/[0.05] dark:hover:bg-white/[0.06]"
-              style={{ fontSize: "15px" }}
-            >
-              <span
-                className="bg-clip-text text-transparent"
-                style={{
-                  WebkitBackgroundClip: "text",
-                  backgroundImage: titleGrad,
-                  opacity: 0.72,
+      {/* Horizontal nav — hidden on mobile */}
+      {!isMobile && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(50% + 72px)",
+            left: "50%",
+            transform: "translate(-50%,-50%)",
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {navLinks.map((link, i) => (
+            <Fragment key={link.href}>
+              <Link
+                href={link.href}
+                scroll={false}
+                onClick={() => {
+                  if ("sectionId" in link && link.sectionId) {
+                    sessionStorage.setItem("csScrollTo", link.sectionId);
+                  }
                 }}
+                className="px-3 py-1.5 rounded-full font-semibold tracking-wide transition-colors duration-200 hover:bg-white/[0.05] dark:hover:bg-white/[0.06]"
+                style={{ fontSize: "15px" }}
               >
-                {link.name}
-              </span>
-            </Link>
-            {i < navLinks.length - 1 && (
-              <span
-                style={{
-                  color: dotColor,
-                  fontSize: "9px",
-                  lineHeight: 1,
-                  userSelect: "none",
-                }}
-              >
-                ·
-              </span>
-            )}
-          </Fragment>
-        ))}
-      </div>
+                <span
+                  className="bg-clip-text text-transparent"
+                  style={{
+                    WebkitBackgroundClip: "text",
+                    backgroundImage: titleGrad,
+                    opacity: 0.72,
+                  }}
+                >
+                  {link.name}
+                </span>
+              </Link>
+              {i < navLinks.length - 1 && (
+                <span
+                  style={{
+                    color: dotColor,
+                    fontSize: "9px",
+                    lineHeight: 1,
+                    userSelect: "none",
+                  }}
+                >
+                  ·
+                </span>
+              )}
+            </Fragment>
+          ))}
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -605,7 +623,12 @@ export default function HomePage() {
           filter: hovered === "right" ? inactiveDim : "brightness(1)",
         }}
         transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
-        style={{ minWidth: 0, minHeight: 0, overflow: "hidden", cursor: "pointer" }}
+        style={{
+          minWidth: 0,
+          minHeight: 0,
+          overflow: "hidden",
+          cursor: "pointer",
+        }}
         onMouseEnter={() => !isMobile && setHovered("left")}
         onClick={() => router.push("/photography")}
       >
@@ -626,13 +649,22 @@ export default function HomePage() {
           filter: hovered === "left" ? inactiveDim : "brightness(1)",
         }}
         transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
-        style={{ minWidth: 0, minHeight: 0, overflow: "hidden", cursor: "pointer" }}
+        style={{
+          minWidth: 0,
+          minHeight: 0,
+          overflow: "hidden",
+          cursor: "pointer",
+        }}
         onMouseEnter={() => !isMobile && setHovered("right")}
         onClick={(e) => {
           if (!(e.target as Element).closest("a")) router.push("/cs");
         }}
       >
-        <CSSide active={hovered === "right"} isDark={isDark} />
+        <CSSide
+          active={hovered === "right"}
+          isDark={isDark}
+          isMobile={isMobile}
+        />
       </motion.div>
     </div>
   );

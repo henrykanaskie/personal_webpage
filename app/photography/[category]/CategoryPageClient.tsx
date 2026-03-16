@@ -159,6 +159,8 @@ export default function CategoryPageClient({ section }: { section: Section }) {
   const selectedRef = useRef(selected);
   useEffect(() => { selectedRef.current = selected; }, [selected]);
 
+  const touchStartX = useRef<number | null>(null);
+
   const displayOrderRef = useRef<PhotoEntry[]>([]);
 
   // Arrow key navigation
@@ -424,174 +426,186 @@ export default function CategoryPageClient({ section }: { section: Section }) {
             position: "fixed",
             inset: 0,
             zIndex: 60,
-            background: isDark ? "rgba(5,5,8,0.88)" : "rgba(248,245,240,0.9)",
+            background: isDark ? "rgba(5,5,8,0.92)" : "rgba(248,245,240,0.94)",
             backdropFilter: "blur(10px)",
             WebkitBackdropFilter: "blur(10px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            padding: "8px 72px",
           }}
           onClick={() => setSelected(null)}
-        >
-          {/* Prev arrow */}
-          {selected.gi > 0 && (
-            <button
-              type="button"
-              aria-label="Previous photo"
-              onClick={(e) => {
-                e.stopPropagation();
-                const prev = selected.gi - 1;
-                setSelected({ photo: displayOrderRef.current[prev], gi: prev });
-              }}
-              style={{
-                position: "fixed",
-                left: 20,
-                top: "50%",
-                transform: "translateY(-50%)",
-                zIndex: 61,
-                width: 44,
-                height: 44,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: 999,
-                border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
-                background: isDark ? "rgba(10,10,14,0.75)" : "rgba(248,245,240,0.85)",
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
-                cursor: "pointer",
-                color: isDark ? "#f7f1ff" : "#503c60",
-                fontSize: 22,
-                lineHeight: 1,
-              }}
-            >
-              ‹
-            </button>
-          )}
-
-          {/* Next arrow */}
-          {selected.gi < displayOrderRef.current.length - 1 && (
-            <button
-              type="button"
-              aria-label="Next photo"
-              onClick={(e) => {
-                e.stopPropagation();
+          onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
+          onTouchEnd={(e) => {
+            if (touchStartX.current === null) return;
+            const dx = e.changedTouches[0].clientX - touchStartX.current;
+            if (Math.abs(dx) > 50) {
+              if (dx < 0) {
                 const next = selected.gi + 1;
-                setSelected({ photo: displayOrderRef.current[next], gi: next });
-              }}
-              style={{
-                position: "fixed",
-                right: 20,
-                top: "50%",
-                transform: "translateY(-50%)",
-                zIndex: 61,
-                width: 44,
-                height: 44,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: 999,
-                border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
-                background: isDark ? "rgba(10,10,14,0.75)" : "rgba(248,245,240,0.85)",
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
-                cursor: "pointer",
-                color: isDark ? "#f7f1ff" : "#503c60",
-                fontSize: 22,
-                lineHeight: 1,
-              }}
-            >
-              ›
-            </button>
-          )}
-
+                if (next < displayOrderRef.current.length)
+                  setSelected({ photo: displayOrderRef.current[next], gi: next });
+              } else {
+                const prev = selected.gi - 1;
+                if (prev >= 0)
+                  setSelected({ photo: displayOrderRef.current[prev], gi: prev });
+              }
+            }
+            touchStartX.current = null;
+          }}
+        >
           <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: 12 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
+            key={selected.gi}
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            style={{ position: "relative" }}
+            style={{ position: "relative", lineHeight: 0 }}
+            onClick={(e) => e.stopPropagation()}
           >
-            {/* Close button + label */}
-            <div
+            {/* Close button */}
+            <button
+              type="button"
+              onClick={() => setSelected(null)}
+              aria-label="Close enlarged photo"
               style={{
                 position: "absolute",
-                top: 10,
+                top: 12,
                 right: 12,
                 zIndex: 2,
+                width: 32,
+                height: 32,
                 display: "flex",
                 alignItems: "center",
-                gap: 10,
+                justifyContent: "center",
+                borderRadius: 999,
+                border: "none",
+                background: isDark ? "rgba(10,10,14,0.75)" : "rgba(248,245,240,0.85)",
+                boxShadow: isDark
+                  ? "0 0 0 1px rgba(255,255,255,0.18)"
+                  : "0 0 0 1px rgba(0,0,0,0.12)",
+                cursor: "pointer",
               }}
             >
-              <span
-                style={{
-                  fontSize: "8px",
-                  letterSpacing: "0.3em",
-                  textTransform: "uppercase",
-                  fontFamily: "monospace",
-                  color: isDark
-                    ? "rgba(220,210,240,0.75)"
-                    : "rgba(80,60,95,0.75)",
-                }}
-              >
-                {section.title} ·{" "}
-                {String((selected?.gi ?? 0) + 1).padStart(2, "0")}
-              </span>
+              <span style={{ fontSize: "15px", lineHeight: 1, color: isDark ? "#f7f1ff" : "#503c60" }}>×</span>
+            </button>
+
+            {/* Prev arrow */}
+            {selected.gi > 0 && (
               <button
                 type="button"
-                onClick={() => setSelected(null)}
-                aria-label="Close enlarged photo"
+                aria-label="Previous photo"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const prev = selected.gi - 1;
+                  setSelected({ photo: displayOrderRef.current[prev], gi: prev });
+                }}
                 style={{
-                  width: 28,
-                  height: 28,
+                  position: "absolute",
+                  left: 12,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  zIndex: 2,
+                  width: 44,
+                  height: 44,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   borderRadius: 999,
-                  border: "none",
-                  background: isDark
-                    ? "rgba(10,10,14,0.9)"
-                    : "rgba(248,245,240,0.95)",
-                  boxShadow: isDark
-                    ? "0 0 0 1px rgba(255,255,255,0.18)"
-                    : "0 0 0 1px rgba(0,0,0,0.12)",
+                  border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
+                  background: isDark ? "rgba(10,10,14,0.75)" : "rgba(248,245,240,0.85)",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
                   cursor: "pointer",
+                  color: isDark ? "#f7f1ff" : "#503c60",
+                  fontSize: 22,
+                  lineHeight: 1,
                 }}
               >
-                <span style={{ fontSize: "13px", lineHeight: 1, color: isDark ? "#f7f1ff" : "#503c60" }}>
-                  ×
-                </span>
+                ‹
               </button>
+            )}
+
+            {/* Next arrow */}
+            {selected.gi < displayOrderRef.current.length - 1 && (
+              <button
+                type="button"
+                aria-label="Next photo"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const next = selected.gi + 1;
+                  setSelected({ photo: displayOrderRef.current[next], gi: next });
+                }}
+                style={{
+                  position: "absolute",
+                  right: 12,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  zIndex: 2,
+                  width: 44,
+                  height: 44,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: 999,
+                  border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
+                  background: isDark ? "rgba(10,10,14,0.75)" : "rgba(248,245,240,0.85)",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                  cursor: "pointer",
+                  color: isDark ? "#f7f1ff" : "#503c60",
+                  fontSize: 22,
+                  lineHeight: 1,
+                }}
+              >
+                ›
+              </button>
+            )}
+
+            {/* Caption */}
+            <div
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                zIndex: 2,
+                background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 100%)",
+                padding: "32px 16px 12px",
+                pointerEvents: "none",
+              }}
+            >
+              <p style={{
+                color: "rgba(255,255,255,0.82)",
+                fontSize: "9px",
+                letterSpacing: "0.35em",
+                textTransform: "uppercase",
+                fontFamily: "monospace",
+                margin: 0,
+                textAlign: "center",
+              }}>
+                {section.title} · {String(selected.gi + 1).padStart(2, "0")}
+              </p>
             </div>
 
+            {/* Image */}
             {(() => {
               const { photo, gi } = selected;
+              const [w, h] = photo.ratio.split("/").map(Number);
               return (
-                <div
+                <Image
+                  src={photo.src}
+                  alt={photo.alt ?? `${section.id} photo ${String(gi + 1).padStart(2, "0")}`}
+                  width={1600}
+                  height={Math.round(1600 / (w / h))}
+                  sizes="100vw"
                   style={{
-                    position: "relative",
-                    width: "calc(100vw - 160px)",
-                    height: "calc(100vh - 32px)",
-                    borderRadius: 4,
-                    overflow: "hidden",
-                    boxShadow: isDark
-                      ? "0 18px 60px rgba(0,0,0,0.85)"
-                      : "0 18px 50px rgba(0,0,0,0.35)",
+                    display: "block",
+                    maxWidth: "100vw",
+                    maxHeight: "100dvh",
+                    width: "auto",
+                    height: "auto",
+                    objectFit: "contain",
                   }}
-                >
-                  <Image
-                    src={photo.src}
-                    alt={
-                      photo.alt ??
-                      `${section.id} photo ${String(gi + 1).padStart(2, "0")}`
-                    }
-                    fill
-                    sizes="95vw"
-                    style={{ objectFit: "contain" }}
-                    priority
-                  />
-                </div>
+                  priority
+                />
               );
             })()}
           </motion.div>
