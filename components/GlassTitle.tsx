@@ -30,7 +30,7 @@ export default function GlassTitle({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const isDark = useIsDark();
-  const isInView = useInView(ref, { once: true, amount: 0.3 });
+  const isInView = useInView(ref, { once: false, amount: 0.3 });
 
   const svgProgress = useMotionValue(0);
   const drawTimer = useRef<ReturnType<typeof setTimeout> | null>(null);

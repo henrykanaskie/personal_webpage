@@ -28,7 +28,8 @@ export default function AnimatedSvg({
         width: size,
         height: size,
         position: "relative",
-        transform: rotate ? `rotate(${rotate}deg)` : undefined,
+        transform: rotate ? `rotate(${rotate}deg) translateZ(0)` : "translateZ(0)",
+        willChange: "transform",
       }}
     >
       <svg
@@ -47,7 +48,7 @@ export default function AnimatedSvg({
               key={index}
               d={path}
               initial={{ pathLength: 0 }}
-              style={{ pathLength: scrollProgress }}
+              style={{ pathLength: scrollProgress, willChange: "stroke-dashoffset" }}
             />
           ))}
         </g>

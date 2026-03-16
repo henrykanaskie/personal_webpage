@@ -7,10 +7,10 @@ import { useRouter } from "next/navigation";
 import { useIsDark } from "@/components/InfoBubble";
 
 const navLinks = [
-  { name: "About", href: "/about" },
-  { name: "Experience", href: "/cs/experience" },
-  { name: "Projects", href: "/cs/projects" },
-  { name: "Education", href: "/cs/education" },
+  { name: "About", href: "/cs#about" },
+  { name: "Experience", href: "/cs#experience" },
+  { name: "Projects", href: "/cs#projects" },
+  { name: "Education", href: "/cs#education" },
 ];
 
 const BOKEH = [
@@ -629,7 +629,7 @@ export default function HomePage() {
         style={{ minWidth: 0, minHeight: 0, overflow: "hidden", cursor: "pointer" }}
         onMouseEnter={() => !isMobile && setHovered("right")}
         onClick={(e) => {
-          if (!(e.target as Element).closest("a")) router.push("/about");
+          if (!(e.target as Element).closest("a")) router.push("/cs");
         }}
       >
         <CSSide active={hovered === "right"} isDark={isDark} />
