@@ -420,7 +420,7 @@ export default function CategoryPageClient({ section }: { section: Section }) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            padding: "16px 20px",
+            padding: "8px 72px",
           }}
           onClick={() => setSelected(null)}
         >
@@ -500,21 +500,9 @@ export default function CategoryPageClient({ section }: { section: Section }) {
             initial={{ opacity: 0, scale: 0.96, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: "relative",
-              maxWidth: "min(1600px, 96vw)",
-              borderRadius: 4,
-              overflow: "visible",
-              border: `1px solid ${
-                isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"
-              }`,
-              boxShadow: isDark
-                ? "0 18px 60px rgba(0,0,0,0.85)"
-                : "0 18px 50px rgba(0,0,0,0.35)",
-              background: isDark ? "#050507" : "#f8f5f0",
-            }}
+            style={{ position: "relative" }}
           >
+            {/* Close button + label */}
             <div
               style={{
                 position: "absolute",
@@ -561,13 +549,7 @@ export default function CategoryPageClient({ section }: { section: Section }) {
                   cursor: "pointer",
                 }}
               >
-                <span
-                  style={{
-                    fontSize: "13px",
-                    lineHeight: 1,
-                    color: isDark ? "#f7f1ff" : "#503c60",
-                  }}
-                >
+                <span style={{ fontSize: "13px", lineHeight: 1, color: isDark ? "#f7f1ff" : "#503c60" }}>
                   ×
                 </span>
               </button>
@@ -575,19 +557,17 @@ export default function CategoryPageClient({ section }: { section: Section }) {
 
             {(() => {
               const { photo, gi } = selected;
-              const [w, h] = photo.ratio.split("/").map(Number);
-              const ratio = w / h || 1;
-              const baseWidth = 1600;
-              const baseHeight = Math.round(baseWidth / ratio);
-
               return (
                 <div
                   style={{
-                    maxWidth: "min(1600px, 96vw)",
-                    maxHeight: "calc(100vh - 64px)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
+                    position: "relative",
+                    width: "calc(100vw - 160px)",
+                    height: "calc(100vh - 32px)",
+                    borderRadius: 4,
+                    overflow: "hidden",
+                    boxShadow: isDark
+                      ? "0 18px 60px rgba(0,0,0,0.85)"
+                      : "0 18px 50px rgba(0,0,0,0.35)",
                   }}
                 >
                   <Image
@@ -596,17 +576,9 @@ export default function CategoryPageClient({ section }: { section: Section }) {
                       photo.alt ??
                       `${section.id} photo ${String(gi + 1).padStart(2, "0")}`
                     }
-                    width={baseWidth}
-                    height={baseHeight}
-                    sizes="(min-width: 1024px) 90vw, 100vw"
-                    style={{
-                      display: "block",
-                      maxWidth: "min(1600px, 96vw)",
-                      maxHeight: "calc(100vh - 64px)",
-                      width: "auto",
-                      height: "auto",
-                      objectFit: "contain",
-                    }}
+                    fill
+                    sizes="95vw"
+                    style={{ objectFit: "contain" }}
                     priority
                   />
                 </div>
