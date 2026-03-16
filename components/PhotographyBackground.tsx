@@ -27,6 +27,22 @@ export default function PhotographyBackground() {
     return () => clearTimeout(timerRef.current);
   }, [isPhoto]);
 
+  // Suppress the body's grid background on photography pages so it can't
+  // bleed through at the bottom on mobile (avoids z-index/stacking issues).
+  useEffect(() => {
+    if (visible) {
+      document.body.style.backgroundImage = "none";
+      document.body.style.backgroundColor = "transparent";
+    } else {
+      document.body.style.backgroundImage = "";
+      document.body.style.backgroundColor = "";
+    }
+    return () => {
+      document.body.style.backgroundImage = "";
+      document.body.style.backgroundColor = "";
+    };
+  }, [visible]);
+
   if (!visible) return null;
 
   return (
