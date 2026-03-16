@@ -159,8 +159,7 @@ export default function CategoryPageClient({ section }: { section: Section }) {
   const selectedRef = useRef(selected);
   useEffect(() => { selectedRef.current = selected; }, [selected]);
 
-  const sortedPhotosRef = useRef(sortedPhotos);
-  useEffect(() => { sortedPhotosRef.current = sortedPhotos; }, [sortedPhotos]);
+  const displayOrderRef = useRef<PhotoEntry[]>([]);
 
   // Arrow key navigation
   useEffect(() => {
@@ -169,12 +168,12 @@ export default function CategoryPageClient({ section }: { section: Section }) {
       if (!cur) return;
       if (e.key === "ArrowRight") {
         const next = cur.gi + 1;
-        if (next < sortedPhotosRef.current.length)
-          setSelected({ photo: sortedPhotosRef.current[next], gi: next });
+        if (next < displayOrderRef.current.length)
+          setSelected({ photo: displayOrderRef.current[next], gi: next });
       } else if (e.key === "ArrowLeft") {
         const prev = cur.gi - 1;
         if (prev >= 0)
-          setSelected({ photo: sortedPhotosRef.current[prev], gi: prev });
+          setSelected({ photo: displayOrderRef.current[prev], gi: prev });
       } else if (e.key === "Escape") {
         setSelected(null);
       }
@@ -292,22 +291,20 @@ export default function CategoryPageClient({ section }: { section: Section }) {
         {/* Photo grid — flex-column masonry */}
         {(() => {
 
-          const indexed = sortedPhotos.map((photo, gi) => ({ photo, gi }));
-
-          const cols: { photo: PhotoEntry; gi: number }[][] = Array.from(
+          const cols: { photo: PhotoEntry }[][] = Array.from(
             { length: numCols },
             () => [],
           );
 
-          const portraits = indexed.filter(({ photo }) => {
+          const portraits = sortedPhotos.filter((photo) => {
             const [w, h] = photo.ratio.split("/").map(Number);
             return h > w;
           });
-          const landscapes = indexed.filter(({ photo }) => {
+          const landscapes = sortedPhotos.filter((photo) => {
             const [w, h] = photo.ratio.split("/").map(Number);
             return w >= h;
           });
-          const interleaved: { photo: PhotoEntry; gi: number }[] = [];
+          const interleaved: PhotoEntry[] = [];
           let pi = 0, li = 0, pickPortrait = true;
           while (pi < portraits.length || li < landscapes.length) {
             if (pickPortrait && pi < portraits.length) interleaved.push(portraits[pi++]);
@@ -316,12 +313,22 @@ export default function CategoryPageClient({ section }: { section: Section }) {
             pickPortrait = !pickPortrait;
           }
           const heights = new Array(numCols).fill(0);
-          interleaved.forEach((item) => {
+          interleaved.forEach((photo) => {
             const shortest = heights.indexOf(Math.min(...heights));
-            cols[shortest].push(item);
-            const [w, h] = item.photo.ratio.split("/").map(Number);
+            cols[shortest].push({ photo });
+            const [w, h] = photo.ratio.split("/").map(Number);
             heights[shortest] += h / w;
           });
+
+          // Build display order row-by-row: top-left, top-middle, top-right, second-left, ...
+          const maxRows = Math.max(...cols.map((col) => col.length));
+          const displayOrder: PhotoEntry[] = [];
+          for (let row = 0; row < maxRows; row++) {
+            for (let col = 0; col < cols.length; col++) {
+              if (row < cols[col].length) displayOrder.push(cols[col][row].photo);
+            }
+          }
+          displayOrderRef.current = displayOrder;
 
           const colAvgAspect = cols.map((col) => {
             if (col.length === 0) return 1;
@@ -353,27 +360,30 @@ export default function CategoryPageClient({ section }: { section: Section }) {
                     gap: 10,
                   }}
                 >
-                  {col.map(({ photo, gi }) => (
-                    <motion.div
-                      key={gi}
-                      initial={{ opacity: 0, y: 28 }}
-                      animate={gridInView ? { opacity: 1, y: 0 } : {}}
-                      transition={{
-                        duration: 0.55,
-                        delay: ENTER_DELAY + 0.12 + gi * 0.045,
-                        ease: [0.22, 1, 0.36, 1],
-                      }}
-                    >
-                      <PhotoFrame
-                        photo={photo}
-                        isDark={isDark}
-                        accent={accent}
-                        index={gi}
-                        sectionId={section.id}
-                        onClick={() => setSelected({ photo, gi })}
-                      />
-                    </motion.div>
-                  ))}
+                  {col.map(({ photo }) => {
+                    const di = displayOrder.indexOf(photo);
+                    return (
+                      <motion.div
+                        key={di}
+                        initial={{ opacity: 0, y: 28 }}
+                        animate={gridInView ? { opacity: 1, y: 0 } : {}}
+                        transition={{
+                          duration: 0.55,
+                          delay: ENTER_DELAY + 0.12 + di * 0.045,
+                          ease: [0.22, 1, 0.36, 1],
+                        }}
+                      >
+                        <PhotoFrame
+                          photo={photo}
+                          isDark={isDark}
+                          accent={accent}
+                          index={di}
+                          sectionId={section.id}
+                          onClick={() => setSelected({ photo, gi: di })}
+                        />
+                      </motion.div>
+                    );
+                  })}
                 </div>
               ))}
             </div>
@@ -384,8 +394,8 @@ export default function CategoryPageClient({ section }: { section: Section }) {
       {/* Preload adjacent lightbox images */}
       {selected && ([-1, 1].map((offset) => {
         const idx = selected.gi + offset;
-        if (idx < 0 || idx >= sortedPhotos.length) return null;
-        const p = sortedPhotos[idx];
+        if (idx < 0 || idx >= displayOrderRef.current.length) return null;
+        const p = displayOrderRef.current[idx];
         const [w, h] = p.ratio.split("/").map(Number);
         return (
           <div
@@ -432,7 +442,7 @@ export default function CategoryPageClient({ section }: { section: Section }) {
               onClick={(e) => {
                 e.stopPropagation();
                 const prev = selected.gi - 1;
-                setSelected({ photo: sortedPhotos[prev], gi: prev });
+                setSelected({ photo: displayOrderRef.current[prev], gi: prev });
               }}
               style={{
                 position: "fixed",
@@ -461,14 +471,14 @@ export default function CategoryPageClient({ section }: { section: Section }) {
           )}
 
           {/* Next arrow */}
-          {selected.gi < sortedPhotos.length - 1 && (
+          {selected.gi < displayOrderRef.current.length - 1 && (
             <button
               type="button"
               aria-label="Next photo"
               onClick={(e) => {
                 e.stopPropagation();
                 const next = selected.gi + 1;
-                setSelected({ photo: sortedPhotos[next], gi: next });
+                setSelected({ photo: displayOrderRef.current[next], gi: next });
               }}
               style={{
                 position: "fixed",
