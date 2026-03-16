@@ -1,10 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  experimental: {
-    outputFileTracingExcludes: {
-      "/photography/[category]": ["./public/photography/**/*"],
-    },
+  outputFileTracingExcludes: {
+    "/photography/[category]": ["./public/photography/**/*"],
   },
 };
 
