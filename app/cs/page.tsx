@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, Fragment } from "react";
+import { useEffect, useRef, useState, Fragment } from "react";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import GlassTitle from "@/components/GlassTitle";
 import { glassClassNames, FuzzyText } from "@/components/LeftInfoBox";
