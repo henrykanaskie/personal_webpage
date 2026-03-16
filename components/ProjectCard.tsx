@@ -118,7 +118,7 @@ function BubbleShell({
   children,
 }: {
   side: "left" | "right";
-  isMobile: boolean;
+  isMobile: boolean | null;
   onPop: (x: number, y: number, w: number, h: number) => void;
   popRequested?: boolean;
   parentInView?: boolean;
@@ -248,7 +248,7 @@ function ThumbnailBubbleContent({
   isDark,
 }: {
   thumbnail?: string;
-  isMobile: boolean;
+  isMobile: boolean | null;
   isDark: boolean;
 }) {
   return (
@@ -295,7 +295,7 @@ function DeploymentBubbleContent({
   isDark,
 }: {
   deployment: DeploymentInfo;
-  isMobile: boolean;
+  isMobile: boolean | null;
   isDark: boolean;
 }) {
   const LinkOrPlaceholder = ({ url, label }: { url?: string; label: string }) => {

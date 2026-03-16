@@ -324,7 +324,7 @@ export function InfoBubble({
   extraInfo: BubbleInfo;
   side: "left" | "right";
   onPop: (x: number, y: number, w: number, h: number) => void;
-  isMobile: boolean;
+  isMobile: boolean | null;
   popRequested?: boolean;
   onVisibilityChange?: (inView: boolean) => void;
   parentInView?: boolean;
