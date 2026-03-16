@@ -29,19 +29,25 @@ export default function PhotographyBackground() {
 
   // Suppress the body's grid background on photography pages so it can't
   // bleed through at the bottom on mobile (avoids z-index/stacking issues).
+  // Also set html/body background-color directly so any uncovered areas
+  // (e.g. below the fixed element on mobile) show the correct solid color.
   useEffect(() => {
+    const bgColor = isDark ? "#050507" : "#f8f5f0";
     if (visible) {
+      document.documentElement.style.backgroundColor = bgColor;
       document.body.style.backgroundImage = "none";
-      document.body.style.backgroundColor = "transparent";
+      document.body.style.backgroundColor = bgColor;
     } else {
+      document.documentElement.style.backgroundColor = "";
       document.body.style.backgroundImage = "";
       document.body.style.backgroundColor = "";
     }
     return () => {
+      document.documentElement.style.backgroundColor = "";
       document.body.style.backgroundImage = "";
       document.body.style.backgroundColor = "";
     };
-  }, [visible]);
+  }, [visible, isDark]);
 
   if (!visible) return null;
 
