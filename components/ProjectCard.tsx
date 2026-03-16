@@ -174,7 +174,7 @@ function BubbleShell({
               y: "16px",
               scaleX: isPopping || isPressed ? 1.08 : 1,
               scaleY: isPopping || isPressed ? 1.08 : 1,
-              opacity: isInView || parentInView ? 1 : 0,
+              opacity: parentInView ? 1 : 0,
             }
           : {
               top: "50%",
@@ -195,7 +195,7 @@ function BubbleShell({
               ease: [0.34, 1.56, 0.64, 1],
               top: { duration: 0.5, ease: [0.25, 1, 0.5, 1] },
               x: { duration: 0.5, ease: [0.25, 1, 0.5, 1] },
-              opacity: { duration: isInView ? 0.3 : 1.4, ease: "easeInOut" },
+              opacity: { duration: 0.9, ease: "easeInOut" },
             }
       }
       exit={{ opacity: 0, transition: { duration: 0.001 } }}
@@ -367,7 +367,7 @@ export default function ProjectCard({
   const boxRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile(1650);
   const isDark = useIsDark();
-  const isInView = useInView(boxRef, { once: false, amount: isMobile ? 0.15 : 0.1 });
+  const isInView = useInView(boxRef, { once: false, amount: isMobile ? 0.4 : 0.35 });
 
   const thumbnailBubble = useInfoBubble();
   const deploymentBubble = useInfoBubble();
@@ -396,8 +396,6 @@ export default function ProjectCard({
 
   const anyBubbleOpen = thumbnailBubble.isBubbleOpen || deploymentBubble.isBubbleOpen;
   const bothBubblesOpen = thumbnailBubble.isBubbleOpen && deploymentBubble.isBubbleOpen;
-  const shouldShow = isMobile ? isInView : isInView || anyBubbleOpen;
-
   // When both are open, the first-opened gets pushed down, the newer one sits on top
   const thumbnailIsFirst = firstOpenedRef.current === "thumbnail";
 
@@ -412,10 +410,6 @@ export default function ProjectCard({
   // Mobile: side by side when both open
   const thumbnailMobileSide = bothBubblesOpen ? "left" : "center";
   const deploymentMobileSide = bothBubblesOpen ? "right" : "center";
-
-  // Only spread cards apart when both bubbles are open — that's when
-  // the stacked pair actually extends beyond the card bounds.
-  const desktopMarginY = bothBubblesOpen ? 60 : 0;
 
   // SVG draw progress
   const svgProgress = useMotionValue(0);
@@ -469,12 +463,11 @@ export default function ProjectCard({
 
       <motion.div
         ref={boxRef}
-        layout="position"
-        initial={{ x: bubbleSide === "left" ? "-100vw" : "100vw", marginTop: 0, marginBottom: 0 }}
+        initial={{ x: bubbleSide === "left" ? "-100vw" : "100vw" }}
         animate={
-          shouldShow
-            ? { x: 0, y: 0, marginTop: isMobile ? 0 : desktopMarginY, marginBottom: isMobile ? 0 : desktopMarginY }
-            : { x: 0, y: 15, marginTop: 0, marginBottom: 0 }
+          isInView
+            ? { x: 0, y: 0 }
+            : { x: isMobile ? 0 : (bubbleSide === "left" ? -20 : 20), y: isMobile ? 15 : 10 }
         }
         exit={{
           x: bubbleSide === "left" ? "-100vw" : "100vw",
@@ -482,7 +475,7 @@ export default function ProjectCard({
         }}
         onViewportEnter={onViewportEnter}
         onViewportLeave={onViewportLeave}
-        transition={{ duration: 1.0, ease: [0.25, 1, 0.5, 1], layout: { duration: 0.6, ease: [0.25, 1, 0.5, 1] } }}
+        transition={{ duration: 0.7, ease: [0.25, 1, 0.5, 1] }}
         style={{
           position: "relative",
           zIndex: anyBubbleOpen ? 10 : "auto",
@@ -499,7 +492,7 @@ export default function ProjectCard({
               key={i}
               className="hidden md:block"
               initial={{ opacity: 0 }}
-              animate={shouldShow ? { opacity: 1 } : { opacity: 0 }}
+              animate={isInView ? { opacity: 1 } : { opacity: 0 }}
               exit={{ opacity: 0, transition: { duration: 0.15 } }}
               transition={{ duration: 1.2, ease: "easeInOut" }}
               style={{
@@ -523,8 +516,8 @@ export default function ProjectCard({
         {/* Glass box */}
         <motion.div
           initial={{ opacity: 0 }}
-          animate={shouldShow ? { opacity: 1 } : { opacity: 0 }}
-          transition={{ duration: 1.8, ease: "easeInOut" }}
+          animate={isInView ? { opacity: 1 } : { opacity: 0 }}
+          transition={{ duration: 0.9, ease: "easeInOut" }}
           style={{ position: "relative", borderRadius: "24px", flex: 1, ...glassStyle }}
           className={`${glassClassNames} p-5 md:p-8`}
         >

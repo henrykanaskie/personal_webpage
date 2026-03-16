@@ -293,55 +293,26 @@ export default function PhotographyAboutPage() {
             <div
               style={{
                 aspectRatio: "2/3",
-                background: photoBg,
                 borderRadius: 2,
                 border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)"}`,
                 boxShadow: isDark
-                  ? "inset 0 0 40px rgba(0,0,0,0.35), 0 4px 24px rgba(0,0,0,0.5)"
-                  : "inset 0 0 20px rgba(0,0,0,0.04), 0 2px 12px rgba(0,0,0,0.1)",
+                  ? "0 4px 24px rgba(0,0,0,0.5)"
+                  : "0 2px 12px rgba(0,0,0,0.1)",
                 position: "relative",
                 overflow: "hidden",
               }}
             >
-              <svg
-                className="absolute inset-0 w-full h-full pointer-events-none"
-                style={{
-                  opacity: isDark ? 0.07 : 0.05,
-                  mixBlendMode: "overlay",
-                }}
-              >
-                <defs>
-                  <filter id="photo-grain-about">
-                    <feTurbulence
-                      type="fractalNoise"
-                      baseFrequency="0.72"
-                      numOctaves="4"
-                      stitchTiles="stitch"
-                    />
-                  </filter>
-                </defs>
-                <rect
-                  width="100%"
-                  height="100%"
-                  filter="url(#photo-grain-about)"
-                />
-              </svg>
-              <span
+              <img
+                src="/photography/photo_profile/IMG_8692.jpeg"
+                alt="Henry Kanaskie"
                 style={{
                   position: "absolute",
-                  bottom: 12,
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  fontSize: "7px",
-                  letterSpacing: "0.35em",
-                  textTransform: "uppercase",
-                  fontFamily: "monospace",
-                  color: mutedColor,
-                  whiteSpace: "nowrap",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
                 }}
-              >
-                portrait
-              </span>
+              />
             </div>
           </motion.div>
 

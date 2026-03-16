@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion, useInView } from "framer-motion";
 import { useIsDark } from "@/components/InfoBubble";
-import { Section, PhotoEntry, RGB } from "../data";
+import { Section, RGB } from "../data";
 
 // ─── Photo frame ──────────────────────────────────────────────────────────────
 
@@ -113,29 +113,7 @@ export default function CategoryPageClient({ section }: { section: Section }) {
     gi: number;
   } | null>(null);
   const [numCols, setNumCols] = useState(2);
-  const [sortMode, setSortMode] = useState<"date" | "color">("color");
-
-  // Perceptual color sort key:
-  //   Photos with any vivid colorful pixels (colorScore > 0) → sort 0–360 by hue.
-  //   This covers dark shots (fireworks, nebulae) where saturation-weighted
-  //   circular averaging already isolated the vivid hue from black background.
-  //   Truly neutral/grey/white (no vivid pixels) → sort 400–500 by lightness.
-  function colorSortKey(p: PhotoEntry): number {
-    if (p.dominantSat === undefined) return 500;
-    if ((p.colorScore ?? 0) > 0) {
-      const hue = p.dominantHue ?? 0;
-      // Red wraps around the HSL wheel: hues 330–360 are the same visual red
-      // as 0–30, but sort at the wrong end. Shift them to −30–0 so they land
-      // at the start of the spectrum alongside other reds and oranges.
-      return hue >= 330 ? hue - 360 : hue;
-    }
-    return 400 + (p.dominantLight ?? 50);
-  }
-
-  const sortedPhotos =
-    sortMode === "color"
-      ? [...section.photos].sort((a, b) => colorSortKey(a) - colorSortKey(b))
-      : section.photos;
+  const sortedPhotos = section.photos;
 
   useEffect(() => {
     // Find the most portrait-oriented photo (tallest h/w ratio)
@@ -310,53 +288,6 @@ export default function CategoryPageClient({ section }: { section: Section }) {
             {section.sub}
           </p>
         </motion.div>
-
-        {/* Sort toggle */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: 2,
-            marginBottom: 20,
-          }}
-        >
-          {(["date", "color"] as const).map((mode) => {
-            const isActive = sortMode === mode;
-            const [r, g, b] = accent;
-            return (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setSortMode(mode)}
-                style={{
-                  fontSize: "7.5px",
-                  letterSpacing: "0.3em",
-                  textTransform: "uppercase",
-                  fontFamily: "monospace",
-                  padding: "5px 12px",
-                  border: `0.5px solid ${
-                    isActive
-                      ? `rgba(${r},${g},${b},0.55)`
-                      : isDark
-                        ? "rgba(255,255,255,0.1)"
-                        : "rgba(0,0,0,0.1)"
-                  }`,
-                  borderRadius: 1,
-                  background: isActive
-                    ? `rgba(${r},${g},${b},${isDark ? 0.15 : 0.1})`
-                    : "transparent",
-                  color: isActive
-                    ? `rgba(${r},${g},${b},${isDark ? 0.9 : 0.8})`
-                    : subColor,
-                  cursor: "pointer",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                {mode === "date" ? "RECENT" : "COLOR"}
-              </button>
-            );
-          })}
-        </div>
 
         {/* Photo grid — flex-column masonry */}
         {(() => {

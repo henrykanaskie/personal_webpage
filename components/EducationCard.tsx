@@ -1,8 +1,9 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useRef } from "react";
+import { motion, useInView } from "framer-motion";
 import { glassClassNames, FuzzyText } from "./LeftInfoBox";
-import { glassStyle, useIsDark } from "./InfoBubble";
+import { glassStyle, useIsDark, useIsMobile } from "./InfoBubble";
 
 interface EducationCardProps {
   school: string;
@@ -22,16 +23,26 @@ export default function EducationCard({
   extras,
 }: EducationCardProps) {
   const isDark = useIsDark();
+  const isMobile = useIsMobile(1000);
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: false, amount: isMobile ? 0.15 : 0.1 });
 
   return (
     <motion.div
+      ref={ref}
       initial={{ x: "-70vw" }}
-      animate={{ x: 0, y: 0 }}
+      animate={
+        isInView
+          ? { x: 0, y: 0 }
+          : isMobile
+            ? { x: 0, y: 15 }
+            : { x: -20, y: 10 }
+      }
       exit={{
         x: "-70vw",
         transition: { duration: 0.55, ease: [0.5, 0, 0.75, 0] },
       }}
-      transition={{ duration: 0.8, ease: "easeOut" }}
+      transition={{ duration: 1.2, ease: "easeInOut" }}
       style={{
         position: "relative",
         width: "100%",
@@ -40,7 +51,10 @@ export default function EducationCard({
       className="px-4 md:px-12 lg:px-20 mx-auto max-w-[1400px]"
     >
       {/* Glass box */}
-      <div
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={isInView ? { opacity: 1 } : { opacity: 0 }}
+        transition={{ duration: 1.8, ease: "easeInOut" }}
         style={{
           position: "relative",
           borderRadius: "24px",
@@ -350,7 +364,7 @@ export default function EducationCard({
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
     </motion.div>
   );
 }

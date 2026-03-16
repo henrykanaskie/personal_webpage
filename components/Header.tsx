@@ -10,11 +10,11 @@ import { glassStyle, glassBubbleClassNames } from "./InfoBubble";
 // ─── Navigation links ─────────────────────────────────────────────────────────
 
 const csNavLinks = [
-  { name: "About", href: "/about" },
-  { name: "Experience", href: "/cs/experience" },
-  { name: "Projects", href: "/cs/projects" },
-  { name: "Education", href: "/cs/education" },
-  { name: "Resume", href: "/resume" },
+  { name: "About", href: "/cs#about", sectionId: "about" },
+  { name: "Experience", href: "/cs#experience", sectionId: "experience" },
+  { name: "Projects", href: "/cs#projects", sectionId: "projects" },
+  { name: "Education", href: "/cs#education", sectionId: "education" },
+  { name: "Resume", href: "/resume", sectionId: null },
 ];
 
 // ─── CS Gradients (cool iridescent) ──────────────────────────────────────────
@@ -211,10 +211,44 @@ export default function Header() {
 
   const isHome = pathname === "/";
   const isPhotoSide = pathname?.startsWith("/photography");
+  const isCSPage = pathname === "/cs";
+
+  // Track which section is in view when on the single-page CS view
+  const [activeSection, setActiveSection] = useState<string | null>(null);
 
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
+
+  // Track active section by scroll position when on the single-page CS view
+  useEffect(() => {
+    if (!isCSPage) {
+      setActiveSection(null);
+      return;
+    }
+    const sectionIds = ["about", "experience", "projects", "education"];
+    let rafId: number | null = null;
+    const handleScroll = () => {
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        let current = sectionIds[0];
+        for (const id of sectionIds) {
+          const el = document.getElementById(id);
+          if (el && el.getBoundingClientRect().top <= 100) {
+            current = id;
+          }
+        }
+        setActiveSection(current);
+      });
+    };
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+  }, [isCSPage]);
 
   // Hide nav when a photo lightbox is open
   useEffect(() => {
@@ -405,12 +439,22 @@ export default function Header() {
         {/* ── Desktop nav bubbles — evenly spaced ── */}
         <div className="hidden md:flex flex-1 items-center justify-evenly">
           {csNavLinks.map((link) => {
-            const active = pathname === link.href;
+            const active = link.sectionId
+              ? isCSPage && activeSection === link.sectionId
+              : pathname === link.href;
             return (
               <Link
                 key={link.name}
                 href={link.href}
                 scroll={false}
+                onClick={(e) => {
+                  if (link.sectionId && isCSPage) {
+                    e.preventDefault();
+                    document
+                      .getElementById(link.sectionId)
+                      ?.scrollIntoView({ behavior: "smooth" });
+                  }
+                }}
                 className={`${glassBubbleClassNames} px-7 py-3 rounded-full font-semibold text-lg transition-all duration-200`}
                 style={active ? activeBubbleStyle : glassStyle}
               >
@@ -481,7 +525,9 @@ export default function Header() {
           >
             <div className="pt-3 pb-1 flex flex-col gap-2 px-1">
               {csNavLinks.map((link, i) => {
-                const active = pathname === link.href;
+                const active = link.sectionId
+                  ? isCSPage && activeSection === link.sectionId
+                  : pathname === link.href;
                 return (
                   <motion.div
                     key={link.name}
@@ -493,7 +539,14 @@ export default function Header() {
                     <Link
                       href={link.href}
                       scroll={false}
-                      onClick={() => setMenuOpen(false)}
+                      onClick={() => {
+                        setMenuOpen(false);
+                        if (link.sectionId && isCSPage) {
+                          document
+                            .getElementById(link.sectionId)
+                            ?.scrollIntoView({ behavior: "smooth" });
+                        }
+                      }}
                       className={`${glassBubbleClassNames} block px-6 py-2.5 rounded-full text-center text-lg font-semibold transition-all duration-200`}
                       style={active ? activeBubbleStyle : glassStyle}
                     >

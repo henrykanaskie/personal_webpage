@@ -16,6 +16,7 @@ import {
   VaporCloud,
   useInfoBubble,
   useIsMobile,
+  useIsDark,
   type BubbleInfo,
 } from "./InfoBubble";
 
@@ -98,6 +99,7 @@ export default function RightInfoBox({
 }: RightInfoBoxProps) {
   const boxRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile(1000);
+  const isDark = useIsDark();
   const isInView = useInView(boxRef, {
     once: false,
     amount: isMobile ? 0.15 : 0.1,
@@ -351,19 +353,12 @@ export default function RightInfoBox({
             >
               <FuzzyText>
                 <span
-                  className="bg-clip-text text-transparent dark:hidden"
+                  className="bg-clip-text text-transparent"
                   style={{
                     WebkitBackgroundClip: "text",
-                    backgroundImage: `linear-gradient(135deg, rgb(100,115,145) 0%, rgb(125,110,135) 15%, rgb(105,130,150) 30%, rgb(130,115,130) 45%, rgb(100,125,145) 60%, rgb(120,110,140) 75%, rgb(105,120,148) 90%, rgb(128,115,135) 100%)`,
-                  }}
-                >
-                  {title}
-                </span>
-                <span
-                  className="bg-clip-text text-transparent hidden dark:inline"
-                  style={{
-                    WebkitBackgroundClip: "text",
-                    backgroundImage: `linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 15%, rgb(180,210,235) 30%, rgb(215,190,215) 45%, rgb(170,200,230) 60%, rgb(200,185,225) 75%, rgb(180,195,235) 90%, rgb(210,185,220) 100%)`,
+                    backgroundImage: isDark
+                      ? `linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 15%, rgb(180,210,235) 30%, rgb(215,190,215) 45%, rgb(170,200,230) 60%, rgb(200,185,225) 75%, rgb(180,195,235) 90%, rgb(210,185,220) 100%)`
+                      : `linear-gradient(135deg, rgb(100,115,145) 0%, rgb(125,110,135) 15%, rgb(105,130,150) 30%, rgb(130,115,130) 45%, rgb(100,125,145) 60%, rgb(120,110,140) 75%, rgb(105,120,148) 90%, rgb(128,115,135) 100%)`,
                   }}
                 >
                   {title}
@@ -371,39 +366,78 @@ export default function RightInfoBox({
               </FuzzyText>
             </h2>
             <h3
+              className="font-[family-name:var(--font-elevated)]"
               style={{
                 marginTop: 0,
                 marginBottom: "4px",
                 fontSize: "clamp(1.0625rem, 1.6vw, 1.375rem)",
+                fontWeight: 700,
                 textAlign: "center",
+                letterSpacing: "-0.01em",
               }}
             >
-              <FuzzyText className="text-black dark:text-gray-200">
-                {company}
+              <FuzzyText>
+                <span
+                  className="bg-clip-text text-transparent"
+                  style={{
+                    WebkitBackgroundClip: "text",
+                    backgroundImage: isDark
+                      ? `linear-gradient(135deg, rgba(248,250,255,0.96) 0%, rgba(255,248,255,0.93) 15%, rgba(248,252,255,0.95) 30%, rgba(255,250,255,0.92) 45%, rgba(245,250,255,0.94) 60%, rgba(255,248,255,0.93) 75%, rgba(248,250,255,0.95) 90%, rgba(255,248,255,0.93) 100%)`
+                      : `linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(25,15,35,0.92) 15%, rgba(10,20,30,0.94) 30%, rgba(30,15,25,0.9) 45%, rgba(10,20,28,0.93) 60%, rgba(22,12,32,0.91) 75%, rgba(12,18,30,0.94) 90%, rgba(28,15,28,0.91) 100%)`,
+                  }}
+                >
+                  {company}
+                </span>
               </FuzzyText>
             </h3>
             <h4
+              className="font-[family-name:var(--font-elevated)]"
               style={{
                 marginTop: 0,
                 marginBottom: "16px",
                 fontSize: "clamp(0.9375rem, 1.4vw, 1.25rem)",
+                fontWeight: 700,
                 textAlign: "center",
+                letterSpacing: "-0.01em",
               }}
             >
-              <FuzzyText className="text-[#555] dark:text-gray-300">
-                {role}
+              <FuzzyText>
+                <span
+                  className="bg-clip-text text-transparent"
+                  style={{
+                    WebkitBackgroundClip: "text",
+                    backgroundImage: isDark
+                      ? `linear-gradient(135deg, rgba(248,250,255,0.96) 0%, rgba(255,248,255,0.93) 15%, rgba(248,252,255,0.95) 30%, rgba(255,250,255,0.92) 45%, rgba(245,250,255,0.94) 60%, rgba(255,248,255,0.93) 75%, rgba(248,250,255,0.95) 90%, rgba(255,248,255,0.93) 100%)`
+                      : `linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(25,15,35,0.92) 15%, rgba(10,20,30,0.94) 30%, rgba(30,15,25,0.9) 45%, rgba(10,20,28,0.93) 60%, rgba(22,12,32,0.91) 75%, rgba(12,18,30,0.94) 90%, rgba(28,15,28,0.91) 100%)`,
+                  }}
+                >
+                  {role}
+                </span>
               </FuzzyText>
             </h4>
             <p
+              className="font-[family-name:var(--font-elevated)]"
               style={{
                 marginTop: 0,
                 marginBottom: 0,
                 fontSize: "clamp(0.875rem, 1.2vw, 1.125rem)",
+                fontWeight: 700,
+                letterSpacing: "-0.005em",
                 lineHeight: 1.6,
               }}
             >
-              <FuzzyText className="text-black dark:text-white">
-                {description}
+              <FuzzyText>
+                <span
+                  className="bg-clip-text text-transparent"
+                  style={{
+                    WebkitBackgroundClip: "text",
+                    backgroundImage: isDark
+                      ? `linear-gradient(135deg, rgba(248,250,255,0.96) 0%, rgba(255,248,255,0.93) 15%, rgba(248,252,255,0.95) 30%, rgba(255,250,255,0.92) 45%, rgba(245,250,255,0.94) 60%, rgba(255,248,255,0.93) 75%, rgba(248,250,255,0.95) 90%, rgba(255,248,255,0.93) 100%)`
+                      : `linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(25,15,35,0.92) 15%, rgba(10,20,30,0.94) 30%, rgba(30,15,25,0.9) 45%, rgba(10,20,28,0.93) 60%, rgba(22,12,32,0.91) 75%, rgba(12,18,30,0.94) 90%, rgba(28,15,28,0.91) 100%)`,
+                  }}
+                >
+                  {description}
+                </span>
               </FuzzyText>
             </p>
 
@@ -415,8 +449,9 @@ export default function RightInfoBox({
                   className="
                   group relative px-4 py-2 rounded-full text-sm font-medium
                   text-black dark:text-white
-                  bg-white/10 hover:bg-white/20 dark:bg-white/5 dark:hover:bg-white/10
-                  border border-white/10 transition-all duration-300
+                  bg-blue-500/3 hover:bg-blue-500/5 dark:bg-white/5 dark:hover:bg-white/10
+                  border border-[rgba(100,130,200,0.2)]
+                  dark:border-[rgba(255,255,255,0.05)] transition-all duration-300
                 "
                 >
                   <span className="relative z-10">

@@ -203,7 +203,7 @@ export function VaporCloud({
   const [particles] = useState(() => {
     const mobile = typeof window !== "undefined" && window.innerWidth < 768;
     return generateBorderParticles(
-      mobile ? 120 : 450,
+      mobile ? 120 : 320,
       bubbleWidth,
       bubbleHeight,
     );
@@ -254,7 +254,7 @@ export function VaporCloud({
             height: p.size,
             borderRadius: "50%",
           }}
-          className="bg-[radial-gradient(circle,_rgba(40,70,180,0.95)_0%,_rgba(50,80,170,0.4)_50%,_transparent_100%)] dark:bg-[radial-gradient(circle,_rgba(255,255,255,0.8)_0%,_rgba(200,220,255,0.3)_50%,_transparent_100%)]"
+          className="bg-[radial-gradient(circle,_rgba(0,0,0,0.95)_0%,_rgba(50,80,170,0.4)_50%,_transparent_100%)] dark:bg-[radial-gradient(circle,_rgba(255,255,255,0.8)_0%,_rgba(200,220,255,0.3)_50%,_transparent_100%)]"
         />
       ))}
     </div>
@@ -460,11 +460,12 @@ export function InfoBubble({
               }
             : {
                 y: "-50%",
-                x: desktopX !== undefined
-                  ? desktopX
-                  : isRight
-                    ? `calc(100% + ${BUBBLE_REST_OFFSET - 200}px)`
-                    : `calc(-100% - ${BUBBLE_REST_OFFSET - 200}px)`,
+                x:
+                  desktopX !== undefined
+                    ? desktopX
+                    : isRight
+                      ? `calc(100% + ${BUBBLE_REST_OFFSET - 200}px)`
+                      : `calc(-100% - ${BUBBLE_REST_OFFSET - 200}px)`,
                 scaleX: isPopping || isPressed ? 1.08 : 1,
                 scaleY: isPopping || isPressed ? 1.08 : 1,
                 opacity: isBubbleInView || parentInView ? 1 : 0,
@@ -743,7 +744,7 @@ export function InfoBubble({
 }
 // ─── Hook for managing bubble state ───
 export function useInfoBubble() {
-  const [isBubbleOpen, setIsBubbleOpen] = useState(false);
+  const [isBubbleOpen, setIsBubbleOpen] = useState(true);
   const [isBubbleVisible, setIsBubbleVisible] = useState(false);
   const [popRequested, setPopRequested] = useState(false);
   const [vaporOrigin, setVaporOrigin] = useState<{

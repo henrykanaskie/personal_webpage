@@ -4,7 +4,6 @@
 import fs from "fs";
 import path from "path";
 import sizeOf from "image-size";
-import sharp from "sharp";
 import { SECTION_META, Section, PhotoEntry } from "./data";
 
 const IMAGE_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp", ".JPG", ".JPEG", ".PNG", ".WEBP"]);
@@ -32,21 +31,6 @@ function deterministicAngle(filename: string): number {
   return 130 + (hash % 40); // range: 130–169
 }
 
-/** Convert RGB (0–255 each) to HSL { h: 0–360, s: 0–100, l: 0–100 }. */
-function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
-  r /= 255; g /= 255; b /= 255;
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
-  const l = (max + min) / 2;
-  if (max === min) return { h: 0, s: 0, l: Math.round(l * 100) };
-  const d = max - min;
-  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-  let h = 0;
-  if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-  else if (max === g) h = ((b - r) / d + 2) / 6;
-  else h = ((r - g) / d + 4) / 6;
-  return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
-}
-
 async function getPhotosForDir(dirName: string): Promise<PhotoEntry[]> {
   if (photoCache.has(dirName)) return photoCache.get(dirName)!;
 
@@ -56,15 +40,12 @@ async function getPhotosForDir(dirName: string): Promise<PhotoEntry[]> {
     return [];
   }
 
+  // Sort alphabetically by filename — camera filenames (DSC####) are sequential
+  // so this preserves the order photos were added to the folder.
   const files = fs
     .readdirSync(dir)
     .filter((f) => IMAGE_EXTS.has(path.extname(f)))
-    .sort((a, b) => {
-      // Newest files first — drop a photo in and it appears at the top
-      const mtimeA = fs.statSync(path.join(dir, a)).mtimeMs;
-      const mtimeB = fs.statSync(path.join(dir, b)).mtimeMs;
-      return mtimeB - mtimeA;
-    });
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
 
   const result = await Promise.all(files.map(async (filename) => {
     const filePath = path.join(dir, filename);
@@ -79,88 +60,10 @@ async function getPhotosForDir(dirName: string): Promise<PhotoEntry[]> {
       // If image-size can't read a file, fall back to default ratio
     }
 
-    let dominantHue: number | undefined;
-    let dominantSat: number | undefined;
-    let dominantLight: number | undefined;
-    let colorScore: number | undefined;
-    try {
-      // Resize to 50×50 and sample all pixels.
-      // We use a saturation-weighted circular hue average so that small but
-      // colorful areas (e.g. Milky Way in an astro shot) dominate over the large
-      // black sky. Near-black pixels are skipped for hue/sat but included in the
-      // overall lightness average.
-      const { data, info } = await sharp(filePath)
-        .resize(50, 50, { fit: "cover" })
-        .toColorspace("srgb")
-        .raw()
-        .toBuffer({ resolveWithObject: true });
-
-      const ch = info.channels; // 3 (RGB) or 4 (RGBA)
-      const n = info.width * info.height;
-      let lightSum = 0;
-      let colorSatSum = 0, colorPixels = 0;
-      // Collect pixels with meaningful saturation — sorted later so only the
-      // most vivid ones drive the hue, preventing a large dim background
-      // (e.g. night sky) from swamping a small bright subject (firework, nebula).
-      const huePixels: { s: number; h: number }[] = [];
-
-      for (let i = 0; i < data.length; i += ch) {
-        const r = data[i] / 255, g = data[i + 1] / 255, b = data[i + 2] / 255;
-        const max = Math.max(r, g, b), min = Math.min(r, g, b);
-        const l = (max + min) / 2;
-        lightSum += l;
-        if (l < 0.05) continue; // skip near-black pixels entirely
-        const d = max - min;
-        const s = max === min ? 0 : (l > 0.5 ? d / (2 - max - min) : d / (max + min));
-        colorSatSum += s;
-        colorPixels++;
-        if (s < 0.06) continue; // skip near-neutral pixels for hue
-        let h = 0;
-        if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-        else if (max === g) h = ((b - r) / d + 2) / 6;
-        else h = ((r - g) / d + 4) / 6;
-        huePixels.push({ s, h });
-      }
-
-      dominantLight = Math.round((lightSum / n) * 100);
-      dominantSat = colorPixels > 0 ? Math.round((colorSatSum / colorPixels) * 100) : 0;
-
-      if (huePixels.length > 0) {
-        // Sort by saturation descending; use the top 10% most vivid pixels
-        // so a small colorful subject beats a large muted background.
-        huePixels.sort((a, b) => b.s - a.s);
-        const topN = Math.max(1, Math.ceil(huePixels.length * 0.1));
-        const topPixels = huePixels.slice(0, topN);
-
-        let sinSum = 0, cosSum = 0, satWeightSum = 0;
-        for (const { s, h } of topPixels) {
-          sinSum += Math.sin(h * 2 * Math.PI) * s;
-          cosSum += Math.cos(h * 2 * Math.PI) * s;
-          satWeightSum += s;
-        }
-        colorScore = Math.round((satWeightSum / n) * 100);
-        const angle = Math.atan2(sinSum / satWeightSum, cosSum / satWeightSum);
-        dominantHue = Math.round(((angle / (2 * Math.PI)) * 360 + 360) % 360);
-      } else {
-        colorScore = 0;
-        // No colorful pixels at all — use 1×1 average (will land in neutral bucket)
-        const avg = await sharp(filePath)
-          .resize(1, 1, { fit: "cover" }).toColorspace("srgb").raw()
-          .toBuffer({ resolveWithObject: true });
-        dominantHue = rgbToHsl(avg.data[0], avg.data[1], avg.data[2]).h;
-      }
-    } catch {
-      // leave color fields undefined
-    }
-
     return {
       src: `/photography/${dirName}/${filename}`,
       ratio,
       angle: deterministicAngle(filename),
-      dominantHue,
-      dominantSat,
-      dominantLight,
-      colorScore,
     };
   }));
 
