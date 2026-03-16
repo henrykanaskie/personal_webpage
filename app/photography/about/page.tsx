@@ -252,20 +252,12 @@ export default function PhotographyAboutPage() {
     }
   };
 
-  const accent: [number, number, number] = isDark
-    ? [110, 140, 255]
-    : [210, 60, 110];
-  const [r, g, b] = accent;
-
   const titleColor = isDark ? "rgb(218, 198, 228)" : "rgb(100, 80, 115)";
   const subColor = isDark ? "rgb(198, 178, 218)" : "rgb(110, 88, 128)";
   const mutedColor = isDark ? "rgb(185, 165, 210)" : "rgb(120, 95, 135)";
   const ruleColor = isDark ? "rgba(195,175,225,0.12)" : "rgba(128,72,138,0.15)";
   const bodyColor = isDark ? "rgba(238,232,224,0.52)" : "rgba(28,22,16,0.58)";
 
-  const photoBg = isDark
-    ? `linear-gradient(155deg, #050507 0%, rgba(${r},${g},${b},0.22) 65%, #060508 100%)`
-    : `linear-gradient(155deg, #f2ede6 0%, rgba(${r},${g},${b},0.16) 65%, #ece7e0 100%)`;
 
   return (
     <>
