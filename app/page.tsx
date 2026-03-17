@@ -492,7 +492,7 @@ function CSSide({
           left: "50%",
           transform: "translate(-50%,-50%)",
           textAlign: "center",
-          width: "90%",
+          whiteSpace: "nowrap",
         }}
       >
         <h1
