@@ -598,8 +598,8 @@ export default function CategoryPageClient({ section }: { section: Section }) {
                   sizes="100vw"
                   style={{
                     display: "block",
-                    maxWidth: "100vw",
-                    maxHeight: "100dvh",
+                    maxWidth: "calc(100vw - 32px)",
+                    maxHeight: "calc(100dvh - 32px)",
                     width: "auto",
                     height: "auto",
                     objectFit: "contain",

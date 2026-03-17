@@ -28,9 +28,21 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
-                if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (prefersDark) {
                   document.documentElement.classList.add('dark');
                 }
+                // Prevent white flash on photography routes before React hydrates
+                try {
+                  var path = window.location.pathname || "";
+                  if (path.indexOf("/photography") === 0) {
+                    var bg = prefersDark ? "#050507" : "#f8f5f0";
+                    document.documentElement.classList.add('photography-boot');
+                    document.documentElement.style.backgroundColor = bg;
+                    document.body.style.backgroundColor = bg;
+                    document.body.style.backgroundImage = "none";
+                  }
+                } catch (e) {}
               })();
             `,
           }}
@@ -40,7 +52,7 @@ export default function RootLayout({
         <PhotographyBackground />
         <div className="w-full">
           <Header />
-          <main className="px-3">
+          <main className="px-3 pt-10 md:pt-0">
             <PageTransition>{children}</PageTransition>
           </main>
         </div>
