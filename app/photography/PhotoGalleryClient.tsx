@@ -122,70 +122,6 @@ function Lightbox({
           </span>
         </button>
 
-        {/* Prev arrow — overlaid left edge of image */}
-        {gi > 0 && (
-          <button
-            type="button"
-            aria-label="Previous photo"
-            onClick={(e) => { e.stopPropagation(); onPrev(); }}
-            style={{
-              position: "absolute",
-              left: 12,
-              top: "50%",
-              transform: "translateY(-50%)",
-              zIndex: 2,
-              width: 44,
-              height: 44,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: 999,
-              border: "none",
-              background: isDark ? "rgba(5,5,8,0.55)" : "rgba(248,245,240,0.65)",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-              cursor: "pointer",
-              color: isDark ? "#f7f1ff" : "#503c60",
-              fontSize: 24,
-              lineHeight: 1,
-            }}
-          >
-            ‹
-          </button>
-        )}
-
-        {/* Next arrow — overlaid right edge of image */}
-        {gi < photos.length - 1 && (
-          <button
-            type="button"
-            aria-label="Next photo"
-            onClick={(e) => { e.stopPropagation(); onNext(); }}
-            style={{
-              position: "absolute",
-              right: 12,
-              top: "50%",
-              transform: "translateY(-50%)",
-              zIndex: 2,
-              width: 44,
-              height: 44,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: 999,
-              border: "none",
-              background: isDark ? "rgba(5,5,8,0.55)" : "rgba(248,245,240,0.65)",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-              cursor: "pointer",
-              color: isDark ? "#f7f1ff" : "#503c60",
-              fontSize: 24,
-              lineHeight: 1,
-            }}
-          >
-            ›
-          </button>
-        )}
-
         {/* Caption — overlaid bottom of image */}
         <div
           style={{
@@ -222,6 +158,70 @@ function Lightbox({
           </Link>
         </div>
       </motion.div>
+
+      {/* Prev arrow — outside the photo, fixed to viewport left */}
+      {gi > 0 && (
+        <button
+          type="button"
+          aria-label="Previous photo"
+          onClick={(e) => { e.stopPropagation(); onPrev(); }}
+          style={{
+            position: "fixed",
+            left: 16,
+            top: "50%",
+            transform: "translateY(-50%)",
+            zIndex: 2,
+            width: 44,
+            height: 44,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 999,
+            border: "none",
+            background: isDark ? "rgba(5,5,8,0.55)" : "rgba(248,245,240,0.65)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            cursor: "pointer",
+            color: isDark ? "#f7f1ff" : "#503c60",
+            fontSize: 24,
+            lineHeight: 1,
+          }}
+        >
+          ‹
+        </button>
+      )}
+
+      {/* Next arrow — outside the photo, fixed to viewport right */}
+      {gi < photos.length - 1 && (
+        <button
+          type="button"
+          aria-label="Next photo"
+          onClick={(e) => { e.stopPropagation(); onNext(); }}
+          style={{
+            position: "fixed",
+            right: 16,
+            top: "50%",
+            transform: "translateY(-50%)",
+            zIndex: 2,
+            width: 44,
+            height: 44,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 999,
+            border: "none",
+            background: isDark ? "rgba(5,5,8,0.55)" : "rgba(248,245,240,0.65)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            cursor: "pointer",
+            color: isDark ? "#f7f1ff" : "#503c60",
+            fontSize: 24,
+            lineHeight: 1,
+          }}
+        >
+          ›
+        </button>
+      )}
     </motion.div>
   );
 }
