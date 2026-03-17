@@ -114,7 +114,7 @@ function BubbleShell({
   parentInView,
   desktopYOffset,
   desktopX,
-  mobileSide,
+  mobileYOffset,
   children,
 }: {
   side: "left" | "right";
@@ -124,7 +124,7 @@ function BubbleShell({
   parentInView?: boolean;
   desktopYOffset?: number;
   desktopX?: number;
-  mobileSide?: "left" | "center" | "right";
+  mobileYOffset?: number;
   children: React.ReactNode;
 }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
@@ -148,11 +148,7 @@ function BubbleShell({
   }, [popRequested, handleClick]);
 
   const dYOff = desktopYOffset ?? 0;
-  const mobileX = mobileSide === "left"
-    ? "calc(-100% - 4px)"
-    : mobileSide === "right"
-      ? "4px"
-      : "-50%";
+  const mYOff = mobileYOffset ?? 0;
 
   return (
     <motion.div
@@ -197,11 +193,11 @@ function BubbleShell({
         showBelow
           ? {
               top: "100%",
-              x: mobileX,
-              y: "16px",
+              x: "-50%",
+              y: `${16 + mYOff}px`,
               scaleX: isPopping || isPressed ? 1.08 : 1,
               scaleY: isPopping || isPressed ? 1.08 : 1,
-              opacity: parentInView ? 1 : 0,
+              opacity: isInView || parentInView ? 1 : 0,
             }
           : {
               top: "50%",
@@ -437,9 +433,9 @@ export default function ProjectCard({
     ? (thumbnailIsFirst ? -BUBBLE_STACK_OFFSET : BUBBLE_STACK_OFFSET)
     : 0;
 
-  // Mobile: side by side when both open
-  const thumbnailMobileSide = bothBubblesOpen ? "left" : "center";
-  const deploymentMobileSide = bothBubblesOpen ? "right" : "center";
+  // Mobile: stacked vertically when both open (~280px per bubble)
+  const thumbnailMobileYOffset = 0;
+  const deploymentMobileYOffset = bothBubblesOpen ? 200 : 0;
 
   // SVG draw progress
   const svgProgress = useMotionValue(0);
@@ -646,7 +642,7 @@ export default function ProjectCard({
                 popRequested={thumbnailBubble.popRequested}
                 parentInView={isInView}
                 desktopYOffset={thumbnailDesktopY}
-                mobileSide={thumbnailMobileSide}
+                mobileYOffset={thumbnailMobileYOffset}
               >
                 <ThumbnailBubbleContent thumbnail={thumbnail} isMobile={isMobile} isDark={isDark} />
               </BubbleShell>
@@ -662,7 +658,7 @@ export default function ProjectCard({
                 popRequested={deploymentBubble.popRequested}
                 parentInView={isInView}
                 desktopYOffset={deploymentDesktopY}
-                mobileSide={deploymentMobileSide}
+                mobileYOffset={deploymentMobileYOffset}
               >
                 <DeploymentBubbleContent deployment={deployment} isMobile={isMobile} isDark={isDark} />
               </BubbleShell>
@@ -673,7 +669,7 @@ export default function ProjectCard({
 
       {/* Mobile spacer — always rendered so it animates smoothly when isMobile changes */}
       <motion.div
-        animate={{ height: isMobile && anyBubbleOpen ? 300 : 0 }}
+        animate={{ height: isMobile && anyBubbleOpen ? (bothBubblesOpen ? 450 : 300) : 0 }}
         transition={{ duration: 0.75, ease: [0.25, 1, 0.5, 1] }}
         style={{ overflow: "hidden" }}
       />

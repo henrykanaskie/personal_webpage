@@ -443,7 +443,7 @@ export function InfoBubble({
                 y: "16px",
                 scaleX: isPopping || isPressed ? 1.08 : 1,
                 scaleY: isPopping || isPressed ? 1.08 : 1,
-                opacity: parentInView ? 1 : 0,
+                opacity: isBubbleInView || parentInView ? 1 : 0,
               }
             : {
                 y: "-50%",

@@ -588,18 +588,15 @@ function PhotoSectionPreview({
               </motion.div>
             </div>
           </div>
-          {/* Left fade + arrow */}
+          {/* Left arrow */}
           <div
             style={{
               position: "absolute",
               left: 0,
               top: 0,
               bottom: 4,
-              width: 180,
+              width: 64,
               pointerEvents: "none",
-              background: isDark
-                ? "linear-gradient(90deg, rgba(14,11,22,1) 0%, rgba(14,11,22,0.97) 10%, rgba(14,11,22,0.91) 20%, rgba(14,11,22,0.82) 32%, rgba(14,11,22,0.68) 45%, rgba(14,11,22,0.5) 58%, rgba(14,11,22,0.3) 72%, rgba(14,11,22,0.12) 86%, transparent 100%)"
-                : "linear-gradient(90deg, rgba(252,249,255,1) 0%, rgba(252,249,255,0.97) 10%, rgba(252,249,255,0.91) 20%, rgba(252,249,255,0.82) 32%, rgba(252,249,255,0.68) 45%, rgba(252,249,255,0.5) 58%, rgba(252,249,255,0.3) 72%, rgba(252,249,255,0.12) 86%, transparent 100%)",
               opacity: atStart ? 0 : 1,
               transition: "opacity 0.25s ease",
               display: isMobile ? "none" : "flex",
@@ -640,18 +637,15 @@ function PhotoSectionPreview({
             </button>
           </div>
 
-          {/* Right fade + arrow */}
+          {/* Right arrow */}
           <div
             style={{
               position: "absolute",
               right: 0,
               top: 0,
               bottom: 4,
-              width: 180,
+              width: 64,
               pointerEvents: "none",
-              background: isDark
-                ? "linear-gradient(270deg, rgba(14,11,22,1) 0%, rgba(14,11,22,0.97) 10%, rgba(14,11,22,0.91) 20%, rgba(14,11,22,0.82) 32%, rgba(14,11,22,0.68) 45%, rgba(14,11,22,0.5) 58%, rgba(14,11,22,0.3) 72%, rgba(14,11,22,0.12) 86%, transparent 100%)"
-                : "linear-gradient(270deg, rgba(252,249,255,1) 0%, rgba(252,249,255,0.97) 10%, rgba(252,249,255,0.91) 20%, rgba(252,249,255,0.82) 32%, rgba(252,249,255,0.68) 45%, rgba(252,249,255,0.5) 58%, rgba(252,249,255,0.3) 72%, rgba(252,249,255,0.12) 86%, transparent 100%)",
               opacity: atEnd ? 0 : 1,
               transition: "opacity 0.25s ease",
               display: isMobile ? "none" : "flex",

@@ -18,10 +18,33 @@ body {
 
 /* Dark mode inverted colors */
 .dark body {
-  background-color: #1a1a1a;
+  background-color: #0d0d0d;
   background-image:
     linear-gradient(to right, #2a2a2a 1px, transparent 1px),
     linear-gradient(to bottom, #2a2a2a 1px, transparent 1px);
+}
+
+/* First-paint curtain on photography reloads (before React hydrates) */
+.photography-boot body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background-color: inherit;
+  pointer-events: none;
+  animation: photographyBootCurtain 1.4s ease-out forwards;
+}
+
+@keyframes photographyBootCurtain {
+  0% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 /* Prevent Tailwind's display transition from delaying dark mode swaps */

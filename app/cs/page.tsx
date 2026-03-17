@@ -335,10 +335,16 @@ export default function CSPage() {
 
     if (targetId) {
       setTimeout(() => {
-        document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth" });
+        document
+          .getElementById(targetId)
+          ?.scrollIntoView({ behavior: "smooth" });
       }, 350);
     } else {
-      window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: "instant" as ScrollBehavior,
+      });
     }
   }, []);
 
@@ -1291,7 +1297,12 @@ export default function CSPage() {
           title="Software Engineering Intern"
           company="DZYNE Technologies"
           role="Embedded Systems & Full-Stack"
-          description="DZYNE builds defense systems at the intersection of autonomy and embedded hardware. I joined a small engineering team working on anti-drone software. My main role wasrefactoring C and C++ modules to be more modular, rebuilding the Python test infrastructure, and ultimately designing and shipping an internal full-stack GUI that gave operators real-time control over the entire test workflow. The goal was to make the team move faster with less friction, and every project tied directly back to that."
+          description={[
+            "DZYNE builds defense systems at the intersection of autonomy and embedded hardware. I joined a small engineering team working on anti-drone software.",
+            "Refactored C and C++ modules to be more modular and maintainable.",
+            "Rebuilt the Python test infrastructure to improve reliability and speed.",
+            "Designed and shipped an internal full-stack GUI giving operators real-time control over the entire test workflow.",
+          ]}
           svgPaths={dronesPaths}
           svgSize={60}
           svgDrawDuration={3}

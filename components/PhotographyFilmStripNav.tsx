@@ -112,11 +112,15 @@ export function PhotographyFilmStripNav({
     setTimeout(() => { hasMoved.current = false; }, 0);
   };
 
-  const labelColor = isDark ? "rgb(238, 225, 248)" : "rgb(80, 62, 95)";
-  const subColor = isDark ? "rgba(220,210,245,0.7)" : "rgba(90,65,120,0.7)";
+  // Align with the photography surface colors:
+  //   dark bg = #050507, light bg = #f8f5f0
+  //   accent palette = rose (255,100,155) ↔ periwinkle (110,140,255) in dark
+  //                     rose (158,68,112) ↔ periwinkle (85,100,162) in light
+  const labelColor = isDark ? "rgb(228, 208, 238)" : "rgb(95, 68, 112)";
+  const subColor = isDark ? "rgba(205,188,225,0.62)" : "rgba(110,80,138,0.62)";
   const stripBg = isDark
-    ? "linear-gradient(180deg, rgba(12,10,18,0.75) 0%, rgba(8,6,14,0.8) 100%)"
-    : "linear-gradient(180deg, rgba(252,248,244,0.78) 0%, rgba(248,244,238,0.82) 100%)";
+    ? "linear-gradient(180deg, rgba(5,5,7,0.84) 0%, rgba(7,6,12,0.92) 100%)"
+    : "linear-gradient(180deg, rgba(250,247,242,0.84) 0%, rgba(246,242,236,0.92) 100%)";
 
   return (
     <header
@@ -150,8 +154,8 @@ export function PhotographyFilmStripNav({
           height: 2,
           pointerEvents: "none",
           background: isDark
-            ? "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(200,185,230,0.18) 20%, rgba(110,140,255,0.16) 50%, rgba(200,185,230,0.18) 80%, rgba(255,255,255,0) 100%)"
-            : "linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(120,85,145,0.14) 20%, rgba(70,85,115,0.12) 50%, rgba(120,85,145,0.14) 80%, rgba(0,0,0,0) 100%)",
+            ? "linear-gradient(90deg, transparent 0%, rgba(255,100,155,0.14) 20%, rgba(110,140,255,0.16) 50%, rgba(255,100,155,0.14) 80%, transparent 100%)"
+            : "linear-gradient(90deg, transparent 0%, rgba(158,68,112,0.10) 20%, rgba(85,100,162,0.12) 50%, rgba(158,68,112,0.10) 80%, transparent 100%)",
           filter: "blur(0.2px)",
           opacity: 0.9,
         }}
@@ -185,7 +189,7 @@ export function PhotographyFilmStripNav({
             border: "none",
             cursor: "pointer",
             padding: "0 4px 0 8px",
-            color: isDark ? "rgba(220,210,245,0.45)" : "rgba(90,65,120,0.4)",
+            color: isDark ? "rgba(200,182,220,0.45)" : "rgba(110,80,135,0.4)",
             fontSize: 16,
             lineHeight: 1,
             display: "flex",
@@ -235,11 +239,11 @@ export function PhotographyFilmStripNav({
           const active = isActive(item.href);
           const hovered = hoveredIndex === i;
           const viewBoxColor = isDark
-            ? "rgba(238,225,248,0.35)"
-            : "rgba(80,62,95,0.26)";
+            ? "rgba(215,185,240,0.32)"
+            : "rgba(120,72,138,0.24)";
           const viewBoxShadow = isDark
-            ? "rgba(238,225,248,0.14)"
-            : "rgba(80,62,95,0.10)";
+            ? "rgba(180,150,220,0.12)"
+            : "rgba(100,60,120,0.08)";
 
           return (
             <Link
@@ -345,7 +349,7 @@ export function PhotographyFilmStripNav({
             border: "none",
             cursor: "pointer",
             padding: "0 4px",
-            color: isDark ? "rgba(220,210,245,0.45)" : "rgba(90,65,120,0.4)",
+            color: isDark ? "rgba(200,182,220,0.45)" : "rgba(110,80,135,0.4)",
             fontSize: 16,
             lineHeight: 1,
             display: "flex",

@@ -203,8 +203,8 @@ export default function Header() {
   const pathname = usePathname();
   const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [visible, setVisible] = useState(true);
+  const navRef = useRef<HTMLElement>(null);
   const lastScrollY = useRef(0);
   const maskId = useId();
   const maskIdMobile = useId();
@@ -216,9 +216,6 @@ export default function Header() {
   // Track which section is in view when on the single-page CS view
   const [activeSection, setActiveSection] = useState<string | null>(null);
 
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [pathname]);
 
   // Track active section by scroll position when on the single-page CS view
   useEffect(() => {
@@ -316,6 +313,68 @@ export default function Header() {
     );
   }
 
+  const mobileControls = (
+    <div
+      className="md:hidden fixed top-3 left-3 right-3"
+      style={{
+        zIndex: 9999,
+        pointerEvents: "none",
+      }}
+    >
+      <div className="flex items-center justify-between">
+        <Link
+          href="/"
+          scroll={false}
+          aria-label="Return to split view"
+          title="Return to split view"
+          className={`${glassBubbleClassNames} flex items-center justify-center w-12 h-12 rounded-full shrink-0`}
+          style={{ ...glassStyle, pointerEvents: "auto" }}
+        >
+          {/* Reuse the CS home icon — it matches the split motif */}
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <rect
+              x="2"
+              y="3"
+              width="7"
+              height="14"
+              rx="1.5"
+              fill={isDark ? "rgba(220,235,255,0.9)" : "rgba(100,115,145,0.85)"}
+              opacity={0.9}
+            />
+            <rect
+              x="11"
+              y="3"
+              width="7"
+              height="14"
+              rx="1.5"
+              fill={isDark ? "rgba(245,220,250,0.8)" : "rgba(120,95,135,0.8)"}
+              opacity={0.9}
+            />
+          </svg>
+        </Link>
+
+        <div
+          className={`${glassBubbleClassNames} flex items-center justify-center w-12 h-12 rounded-full shrink-0`}
+          style={{ ...glassStyle, pointerEvents: "auto" }}
+        >
+          <ThemeToggleButton
+            isDark={isDark}
+            mounted={mounted}
+            maskId={maskIdMobile}
+            onToggle={toggleDarkMode}
+            photoMode={isPhotoSide}
+          />
+        </div>
+      </div>
+    </div>
+  );
+
   // ── Photography side: bottom film strip nav ──
   if (isPhotoSide) {
     const photoBorder = isDark
@@ -336,9 +395,7 @@ export default function Header() {
               width: 28,
               height: 28,
               borderRadius: "50%",
-              background: isDark
-                ? "rgba(20,16,32,0.9)"
-                : "rgba(248,245,240,0.95)",
+              background: isDark ? "rgba(20,16,32,0.9)" : "rgba(248,245,240,0.95)",
               border: `1px solid ${photoBorder}`,
               display: "flex",
               alignItems: "center",
@@ -353,9 +410,7 @@ export default function Header() {
                 width="7"
                 height="14"
                 rx="1.5"
-                fill={
-                  isDark ? "rgba(200,185,230,0.8)" : "rgba(120,85,145,0.7)"
-                }
+                fill={isDark ? "rgba(200,185,230,0.8)" : "rgba(120,85,145,0.7)"}
               />
               <rect
                 x="11"
@@ -415,10 +470,12 @@ export default function Header() {
     </svg>
   );
 
-  return (
+  const header = (
     <header
-      className="sticky top-2 z-50 mx-2 mt-2 p-3"
+      ref={navRef}
+      className="sticky top-2 mx-2 mt-2 p-3 hidden md:block"
       style={{
+        zIndex: 9999,
         transform: visible ? "translateY(0)" : "translateY(-120%)",
         transition: "transform 0.35s ease",
       }}
@@ -485,95 +542,15 @@ export default function Header() {
             onToggle={toggleDarkMode}
           />
         </div>
-
-        {/* ── Mobile: spacer + theme toggle + hamburger ── */}
-        <div className="flex md:hidden flex-1 items-center justify-end gap-2">
-          <div
-            className={`${glassBubbleClassNames} flex items-center justify-center w-12 h-12 rounded-full`}
-            style={glassStyle}
-          >
-            <ThemeToggleButton
-              isDark={isDark}
-              mounted={mounted}
-              maskId={maskIdMobile}
-              onToggle={toggleDarkMode}
-            />
-          </div>
-          <button
-            onClick={() => setMenuOpen((o) => !o)}
-            className={`${glassBubbleClassNames} flex items-center justify-center w-12 h-12 rounded-full transition-all duration-200`}
-            style={menuOpen ? activeBubbleStyle : glassStyle}
-            aria-label="Toggle menu"
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20" className="text-black dark:text-white">
-              <motion.line x1="3" x2="17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
-                animate={menuOpen ? { y1: 10, y2: 10, rotate: 45 } : { y1: 5, y2: 5, rotate: 0 }}
-                transition={{ duration: 0.3, ease: "easeInOut" }} style={{ transformOrigin: "center" }} />
-              <motion.line x1="3" y1="10" x2="17" y2="10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
-                animate={{ opacity: menuOpen ? 0 : 1, scaleX: menuOpen ? 0 : 1 }}
-                transition={{ duration: 0.2 }} style={{ transformOrigin: "center" }} />
-              <motion.line x1="3" x2="17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
-                animate={menuOpen ? { y1: 10, y2: 10, rotate: -45 } : { y1: 15, y2: 15, rotate: 0 }}
-                transition={{ duration: 0.3, ease: "easeInOut" }} style={{ transformOrigin: "center" }} />
-            </svg>
-          </button>
-        </div>
       </nav>
 
-      {/* ── Mobile dropdown ── */}
-      <AnimatePresence>
-        {menuOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.35, ease: [0.25, 0.8, 0.25, 1] }}
-            className="md:hidden overflow-hidden"
-          >
-            <div className="pt-3 pb-1 flex flex-col gap-2 px-1">
-              {csNavLinks.map((link, i) => {
-                const active = link.sectionId
-                  ? isCSPage && activeSection === link.sectionId
-                  : pathname === link.href;
-                return (
-                  <motion.div
-                    key={link.name}
-                    initial={{ opacity: 0, y: -8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ delay: i * 0.05 + 0.1, duration: 0.3, ease: "easeOut" }}
-                  >
-                    <Link
-                      href={link.href}
-                      scroll={false}
-                      onClick={() => {
-                        setMenuOpen(false);
-                        if (link.sectionId && isCSPage) {
-                          document
-                            .getElementById(link.sectionId)
-                            ?.scrollIntoView({ behavior: "smooth" });
-                        } else if (link.sectionId) {
-                          try {
-                            sessionStorage.setItem("csScrollTo", link.sectionId);
-                          } catch {
-                            // ignore
-                          }
-                        }
-                      }}
-                      className={`${glassBubbleClassNames} block px-6 py-2.5 rounded-full text-center text-lg font-semibold transition-all duration-200`}
-                      style={active ? activeBubbleStyle : glassStyle}
-                    >
-                      <IridescentText active={active} isDark={isDark}>
-                        {link.name}
-                      </IridescentText>
-                    </Link>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </header>
+  );
+
+  return (
+    <>
+      {mobileControls}
+      {header}
+    </>
   );
 }
