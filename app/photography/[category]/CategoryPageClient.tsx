@@ -487,78 +487,6 @@ export default function CategoryPageClient({ section }: { section: Section }) {
               <span style={{ fontSize: "15px", lineHeight: 1, color: isDark ? "#f7f1ff" : "#503c60" }}>×</span>
             </button>
 
-            {/* Prev arrow */}
-            {selected.gi > 0 && (
-              <button
-                type="button"
-                aria-label="Previous photo"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const prev = selected.gi - 1;
-                  setSelected({ photo: displayOrderRef.current[prev], gi: prev });
-                }}
-                style={{
-                  position: "absolute",
-                  left: 12,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  zIndex: 2,
-                  width: 44,
-                  height: 44,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: 999,
-                  border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
-                  background: isDark ? "rgba(10,10,14,0.75)" : "rgba(248,245,240,0.85)",
-                  backdropFilter: "blur(8px)",
-                  WebkitBackdropFilter: "blur(8px)",
-                  cursor: "pointer",
-                  color: isDark ? "#f7f1ff" : "#503c60",
-                  fontSize: 22,
-                  lineHeight: 1,
-                }}
-              >
-                ‹
-              </button>
-            )}
-
-            {/* Next arrow */}
-            {selected.gi < displayOrderRef.current.length - 1 && (
-              <button
-                type="button"
-                aria-label="Next photo"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const next = selected.gi + 1;
-                  setSelected({ photo: displayOrderRef.current[next], gi: next });
-                }}
-                style={{
-                  position: "absolute",
-                  right: 12,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  zIndex: 2,
-                  width: 44,
-                  height: 44,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: 999,
-                  border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
-                  background: isDark ? "rgba(10,10,14,0.75)" : "rgba(248,245,240,0.85)",
-                  backdropFilter: "blur(8px)",
-                  WebkitBackdropFilter: "blur(8px)",
-                  cursor: "pointer",
-                  color: isDark ? "#f7f1ff" : "#503c60",
-                  fontSize: 22,
-                  lineHeight: 1,
-                }}
-              >
-                ›
-              </button>
-            )}
-
             {/* Caption */}
             <div
               style={{
@@ -609,6 +537,78 @@ export default function CategoryPageClient({ section }: { section: Section }) {
               );
             })()}
           </motion.div>
+
+          {/* Prev arrow — outside the photo, fixed to viewport left */}
+          {selected.gi > 0 && (
+            <button
+              type="button"
+              aria-label="Previous photo"
+              onClick={(e) => {
+                e.stopPropagation();
+                const prev = selected.gi - 1;
+                setSelected({ photo: displayOrderRef.current[prev], gi: prev });
+              }}
+              style={{
+                position: "fixed",
+                left: 16,
+                top: "50%",
+                transform: "translateY(-50%)",
+                zIndex: 2,
+                width: 44,
+                height: 44,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: 999,
+                border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
+                background: isDark ? "rgba(10,10,14,0.75)" : "rgba(248,245,240,0.85)",
+                backdropFilter: "blur(8px)",
+                WebkitBackdropFilter: "blur(8px)",
+                cursor: "pointer",
+                color: isDark ? "#f7f1ff" : "#503c60",
+                fontSize: 22,
+                lineHeight: 1,
+              }}
+            >
+              ‹
+            </button>
+          )}
+
+          {/* Next arrow — outside the photo, fixed to viewport right */}
+          {selected.gi < displayOrderRef.current.length - 1 && (
+            <button
+              type="button"
+              aria-label="Next photo"
+              onClick={(e) => {
+                e.stopPropagation();
+                const next = selected.gi + 1;
+                setSelected({ photo: displayOrderRef.current[next], gi: next });
+              }}
+              style={{
+                position: "fixed",
+                right: 16,
+                top: "50%",
+                transform: "translateY(-50%)",
+                zIndex: 2,
+                width: 44,
+                height: 44,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: 999,
+                border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
+                background: isDark ? "rgba(10,10,14,0.75)" : "rgba(248,245,240,0.85)",
+                backdropFilter: "blur(8px)",
+                WebkitBackdropFilter: "blur(8px)",
+                cursor: "pointer",
+                color: isDark ? "#f7f1ff" : "#503c60",
+                fontSize: 22,
+                lineHeight: 1,
+              }}
+            >
+              ›
+            </button>
+          )}
         </motion.div>
       )}
     </>
