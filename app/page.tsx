@@ -4,7 +4,7 @@ import { useState, Fragment, useEffect } from "react";
 import { motion, useMotionValue, animate } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useIsDark } from "@/components/InfoBubble";
+import { useIsDark } from "@/lib/glass";
 
 const navLinks = [
   { name: "About", href: "/cs", sectionId: "about" },

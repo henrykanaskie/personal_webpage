@@ -5,7 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { PhotographyFilmStripNav } from "./PhotographyFilmStripNav";
-import { glassStyle, glassBubbleClassNames } from "./InfoBubble";
+import { glassStyle } from "../lib/glass";
+import { glassBubbleClassNames, cs, photo } from "../lib/tokens";
 
 // ─── Navigation links ─────────────────────────────────────────────────────────
 
@@ -19,11 +20,11 @@ const csNavLinks = [
 
 // ─── CS Gradients (cool iridescent) ──────────────────────────────────────────
 
-const csLightGrad = `linear-gradient(135deg, rgb(100,115,145) 0%, rgb(125,110,135) 15%, rgb(105,130,150) 30%, rgb(130,115,130) 45%, rgb(100,125,145) 60%, rgb(120,110,140) 75%, rgb(105,120,148) 90%, rgb(128,115,135) 100%)`;
-const csDarkGrad = `linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 15%, rgb(180,210,235) 30%, rgb(215,190,215) 45%, rgb(170,200,230) 60%, rgb(200,185,225) 75%, rgb(180,195,235) 90%, rgb(210,185,220) 100%)`;
+const csLightGrad = cs.iridescent.light;
+const csDarkGrad = cs.iridescent.dark;
 
-const csLightGradActive = `linear-gradient(135deg, rgb(70,85,115) 0%, rgb(95,80,105) 15%, rgb(75,100,120) 30%, rgb(100,85,100) 45%, rgb(70,95,115) 60%, rgb(90,80,110) 75%, rgb(75,90,118) 90%, rgb(98,85,105) 100%)`;
-const csDarkGradActive = `linear-gradient(135deg, rgb(220,235,255) 0%, rgb(245,230,250) 15%, rgb(220,245,255) 30%, rgb(250,235,245) 45%, rgb(215,240,255) 60%, rgb(240,230,250) 75%, rgb(220,238,255) 90%, rgb(245,230,248) 100%)`;
+const csLightGradActive = cs.iridescentActive.light;
+const csDarkGradActive = cs.iridescentActive.dark;
 
 // ─── Iridescent text (CS nav) ──────────────────────────────────────────────────
 
@@ -60,12 +61,12 @@ function IridescentText({
 // ─── Theme toggle ─────────────────────────────────────────────────────────────
 
 // Photography palette for toggle
-const photoToggleLight = "rgb(100, 80, 115)";
-const photoToggleDark = "rgb(218, 198, 228)";
+const photoToggleLight = photo.toggle.light;
+const photoToggleDark = photo.toggle.dark;
 
 // CS palette for toggle (matches IridescentText / glass nav)
-const csToggleLight = "rgb(100, 115, 145)";
-const csToggleDark = "rgb(195, 210, 240)";
+const csToggleLight = cs.toggle.light;
+const csToggleDark = cs.toggle.dark;
 
 function ThemeToggleButton({
   isDark,
@@ -101,12 +102,12 @@ function ThemeToggleButton({
       onMouseEnter={(e) => {
         if (photoMode) {
           e.currentTarget.style.background = isDark
-            ? "rgba(195,175,225,0.06)"
-            : "rgba(128,72,138,0.06)";
+            ? photo.toggleHover.dark
+            : photo.toggleHover.light;
         } else {
           e.currentTarget.style.background = isDark
-            ? "rgba(180,200,255,0.08)"
-            : "rgba(100,115,145,0.08)";
+            ? cs.toggleHover.dark
+            : cs.toggleHover.light;
         }
       }}
       onMouseLeave={(e) => {
@@ -441,10 +442,8 @@ export default function Header() {
   // ── CS side: individual glass bubble nav ──
   const activeBubbleStyle: React.CSSProperties = {
     ...glassStyle,
-    border: isDark ? "1px solid rgba(180,200,255,0.3)" : "1px solid rgba(100,115,145,0.25)",
-    boxShadow: isDark
-      ? "inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 16px rgba(180,200,255,0.1)"
-      : "inset 0 1px 0 rgba(255,255,255,0.5), 0 4px 16px rgba(100,115,145,0.1)",
+    border: isDark ? cs.navActiveBorder.dark : cs.navActiveBorder.light,
+    boxShadow: isDark ? cs.navActiveShadow.dark : cs.navActiveShadow.light,
   };
 
   const homeSvg = (

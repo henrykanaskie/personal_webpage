@@ -5,15 +5,8 @@ import { motion, useInView } from "framer-motion";
 import Link from "next/link";
 import GlassTitle from "@/components/GlassTitle";
 import EducationCard from "@/components/EducationCard";
-import { glassClassNames, FuzzyText } from "@/components/LeftInfoBox";
-import { glassStyle, useIsDark } from "@/components/InfoBubble";
-
-// ─── Gradient constants ───────────────────────────────────────────────────────
-
-const iriDark = `linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 15%, rgb(180,210,235) 30%, rgb(215,190,215) 45%, rgb(170,200,230) 60%, rgb(200,185,225) 75%, rgb(180,195,235) 90%, rgb(210,185,220) 100%)`;
-const iriLight = `linear-gradient(135deg, rgb(100,115,145) 0%, rgb(125,110,135) 15%, rgb(105,130,150) 30%, rgb(130,115,130) 45%, rgb(100,125,145) 60%, rgb(120,110,140) 75%, rgb(105,120,148) 90%, rgb(128,115,135) 100%)`;
-const bodyDark = `linear-gradient(135deg, rgba(248,250,255,0.96) 0%, rgba(255,248,255,0.93) 50%, rgba(248,250,255,0.95) 100%)`;
-const bodyLight = `linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(25,15,35,0.92) 50%, rgba(12,18,30,0.94) 100%)`;
+import { cs, themed, glassBoxClassNames } from "@/lib/tokens";
+import { GlassLayers, glassStyle, FuzzyText, useIsDark } from "@/lib/glass";
 
 // ─── Glass card shell ─────────────────────────────────────────────────────────
 
@@ -27,32 +20,9 @@ function GlassCard({
   return (
     <div
       style={{ position: "relative", borderRadius: "24px", ...glassStyle }}
-      className={`${glassClassNames} ${className}`}
+      className={`${glassBoxClassNames} ${className}`}
     >
-      {/* Specular top */}
-      <div
-        className="dark:hidden"
-        style={{ position: "absolute", top: 0, left: "10%", right: "10%", height: "1px", background: "linear-gradient(90deg, transparent, rgba(0,0,0,0.08) 30%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.08) 70%, transparent)", borderRadius: "inherit", pointerEvents: "none", zIndex: 1 }}
-      />
-      <div
-        className="hidden dark:block"
-        style={{ position: "absolute", top: 0, left: "10%", right: "10%", height: "1px", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)", borderRadius: "inherit", pointerEvents: "none", zIndex: 1 }}
-      />
-      {/* Specular bottom */}
-      <div
-        className="dark:hidden"
-        style={{ position: "absolute", bottom: 0, left: "10%", right: "10%", height: "1px", background: "linear-gradient(90deg, transparent, rgba(0,0,0,0.04) 30%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.04) 70%, transparent)", borderRadius: "inherit", pointerEvents: "none", zIndex: 1 }}
-      />
-      <div
-        className="hidden dark:block"
-        style={{ position: "absolute", bottom: 0, left: "10%", right: "10%", height: "1px", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2) 30%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.2) 70%, transparent)", borderRadius: "inherit", pointerEvents: "none", zIndex: 1 }}
-      />
-      {/* Chromatic aberration */}
-      <div style={{ position: "absolute", top: -1, left: -1, right: -1, bottom: -1, borderRadius: "inherit", pointerEvents: "none", zIndex: 0, boxShadow: "inset 2px 0 8px rgba(255,0,80,0.04), inset -2px 0 8px rgba(0,100,255,0.04), inset 0 2px 8px rgba(255,200,0,0.03), inset 0 -2px 8px rgba(0,200,255,0.03)" }} />
-      {/* Internal refraction */}
-      <div style={{ position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none", zIndex: 0, background: "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.02) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(200,220,255,0.05) 0%, transparent 50%)" }} />
-      {/* Edge distortion */}
-      <div style={{ position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none", zIndex: 0, WebkitMaskImage: "radial-gradient(ellipse at center, transparent 55%, black 100%)", maskImage: "radial-gradient(ellipse at center, transparent 55%, black 100%)", backdropFilter: "blur(3px) saturate(1.1)", WebkitBackdropFilter: "blur(3px) saturate(1.1)" }} />
+      <GlassLayers />
       {/* Content */}
       <div style={{ position: "relative", zIndex: 1 }}>{children}</div>
     </div>
@@ -69,7 +39,7 @@ function SectionLabel({ label, isDark }: { label: string; isDark: boolean }) {
           className="bg-clip-text text-transparent"
           style={{
             WebkitBackgroundClip: "text",
-            backgroundImage: isDark ? iriDark : iriLight,
+            backgroundImage: themed(isDark, cs.iridescent.dark, cs.iridescent.light),
             fontSize: "clamp(0.62rem, 0.85vw, 0.75rem)",
             fontWeight: 700,
             textTransform: "uppercase",
@@ -146,7 +116,7 @@ function ExperienceCard({
                 className="bg-clip-text text-transparent"
                 style={{
                   WebkitBackgroundClip: "text",
-                  backgroundImage: isDark ? iriDark : iriLight,
+                  backgroundImage: themed(isDark, cs.iridescent.dark, cs.iridescent.light),
                   fontSize: "clamp(1rem, 1.5vw, 1.2rem)",
                   fontWeight: 700,
                 }}
@@ -160,7 +130,7 @@ function ExperienceCard({
                   className="bg-clip-text text-transparent"
                   style={{
                     WebkitBackgroundClip: "text",
-                    backgroundImage: isDark ? bodyDark : bodyLight,
+                    backgroundImage: themed(isDark, cs.bodyShort.dark, cs.bodyShort.light),
                     fontSize: "clamp(0.82rem, 1.1vw, 0.95rem)",
                     fontWeight: 600,
                   }}
@@ -291,7 +261,7 @@ function Thumbnail({ type, isDark }: { type: ThumbnailType; isDark: boolean }) {
         <svg width="100%" height="90" viewBox="0 0 160 90" preserveAspectRatio="xMidYMid meet">
           <defs>
             <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor={isDark ? "rgb(180,200,255)" : "rgb(100,115,145)"} />
+              <stop offset="0%" stopColor={themed(isDark, cs.color.dark, cs.color.light)} />
               <stop offset="100%" stopColor={isDark ? "rgb(210,185,230)" : "rgb(125,110,135)"} />
             </linearGradient>
           </defs>
@@ -396,7 +366,7 @@ function ResumeProjectCard({
               className="bg-clip-text text-transparent"
               style={{
                 WebkitBackgroundClip: "text",
-                backgroundImage: isDark ? iriDark : iriLight,
+                backgroundImage: themed(isDark, cs.iridescent.dark, cs.iridescent.light),
                 fontSize: "clamp(0.88rem, 1.3vw, 1.05rem)",
                 fontWeight: 700,
               }}
@@ -419,7 +389,7 @@ function ResumeProjectCard({
             className="bg-clip-text text-transparent"
             style={{
               WebkitBackgroundClip: "text",
-              backgroundImage: isDark ? bodyDark : bodyLight,
+              backgroundImage: themed(isDark, cs.bodyShort.dark, cs.bodyShort.light),
               fontSize: "clamp(0.76rem, 1vw, 0.86rem)",
               fontWeight: 600,
               lineHeight: 1.55,
@@ -559,7 +529,7 @@ export default function ResumePage() {
             className="bg-clip-text text-transparent text-center block"
             style={{
               WebkitBackgroundClip: "text",
-              backgroundImage: isDark ? bodyDark : bodyLight,
+              backgroundImage: themed(isDark, cs.bodyShort.dark, cs.bodyShort.light),
               fontSize: "clamp(0.88rem, 1.3vw, 1.05rem)",
               fontWeight: 500,
             }}
@@ -588,9 +558,7 @@ export default function ResumePage() {
                     className="bg-clip-text text-transparent"
                     style={{
                       WebkitBackgroundClip: "text",
-                      backgroundImage: isDark
-                        ? "linear-gradient(135deg, rgb(180,200,255), rgb(210,185,230))"
-                        : "linear-gradient(135deg, rgb(100,115,145), rgb(125,110,135))",
+                      backgroundImage: themed(isDark, cs.iridescentShort.dark, cs.iridescentShort.light),
                     }}
                   >
                     {item.label}
@@ -607,9 +575,7 @@ export default function ResumePage() {
                     className="bg-clip-text text-transparent"
                     style={{
                       WebkitBackgroundClip: "text",
-                      backgroundImage: isDark
-                        ? "linear-gradient(135deg, rgb(180,200,255), rgb(210,185,230))"
-                        : "linear-gradient(135deg, rgb(100,115,145), rgb(125,110,135))",
+                      backgroundImage: themed(isDark, cs.iridescentShort.dark, cs.iridescentShort.light),
                     }}
                   >
                     {item.label}

@@ -1,8 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { FuzzyText } from "./LeftInfoBox";
-import { useIsDark } from "./InfoBubble";
+import { FuzzyText, useIsDark } from "../lib/glass";
+import { cs, themed } from "../lib/tokens";
 
 interface SkillBarProps {
   name: string;
@@ -21,9 +21,7 @@ export default function SkillBar({ name, level }: SkillBarProps) {
             className="bg-clip-text text-transparent font-[family-name:var(--font-elevated)]"
             style={{
               WebkitBackgroundClip: "text",
-              backgroundImage: isDark
-                ? `linear-gradient(135deg, rgba(248,250,255,0.96) 0%, rgba(255,248,255,0.93) 50%, rgba(248,250,255,0.95) 100%)`
-                : `linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(25,15,35,0.92) 50%, rgba(12,18,30,0.94) 100%)`,
+              backgroundImage: themed(isDark, cs.bodyShort.dark, cs.bodyShort.light),
               fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)",
               fontWeight: 600,
               letterSpacing: "-0.01em",
@@ -48,12 +46,8 @@ export default function SkillBar({ name, level }: SkillBarProps) {
           animate={{ width: `${level}%` }}
           transition={{ duration: 1.2, ease: [0.25, 1, 0.5, 1], delay: 0.3 }}
           style={{
-            backgroundImage: isDark
-              ? "linear-gradient(90deg, rgb(180,200,255) 0%, rgb(210,185,230) 15%, rgb(180,210,235) 30%, rgb(215,190,215) 45%, rgb(170,200,230) 60%, rgb(200,185,225) 75%, rgb(180,195,235) 90%, rgb(210,185,220) 100%)"
-              : "linear-gradient(90deg, rgb(100,115,145) 0%, rgb(125,110,135) 15%, rgb(105,130,150) 30%, rgb(130,115,130) 45%, rgb(100,125,145) 60%, rgb(120,110,140) 75%, rgb(105,120,148) 90%, rgb(128,115,135) 100%)",
-            boxShadow: isDark
-              ? "0 0 10px rgba(180,200,255,0.25), inset 0 1px 0 rgba(255,255,255,0.2)"
-              : "0 0 8px rgba(100,115,145,0.2), inset 0 1px 0 rgba(255,255,255,0.3)",
+            backgroundImage: themed(isDark, cs.iridescentHorizontal.dark, cs.iridescentHorizontal.light),
+            boxShadow: themed(isDark, cs.skillBarShadow.dark, cs.skillBarShadow.light),
           }}
         />
       </div>

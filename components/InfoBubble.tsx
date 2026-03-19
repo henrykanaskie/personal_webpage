@@ -2,51 +2,12 @@
 
 import { useRef, useCallback, useState, useEffect } from "react";
 import { motion, useInView } from "framer-motion";
-import { FuzzyText } from "./LeftInfoBox";
+import { FuzzyText, useIsMobile, useIsDark, glassStyle, GlassLayers } from "../lib/glass";
+import { glassBubbleClassNames } from "../lib/tokens";
 
-export function useIsMobile(breakpoint = 768) {
-  const [isMobile, setIsMobile] = useState<boolean | null>(null);
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < breakpoint);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, [breakpoint]);
-  return isMobile; // return null until we know
-}
-
-export function useIsDark() {
-  const [isDark, setIsDark] = useState(false);
-  useEffect(() => {
-    const el = document.documentElement;
-    setIsDark(el.classList.contains("dark"));
-    const observer = new MutationObserver(() => {
-      setIsDark(el.classList.contains("dark"));
-    });
-    observer.observe(el, { attributes: true, attributeFilter: ["class"] });
-    return () => observer.disconnect();
-  }, []);
-  return isDark;
-}
-
-// ─── Shared glass styling ───
-export const glassStyle: React.CSSProperties = {
-  backdropFilter: "blur(1.3px) saturate(1.15)",
-  WebkitBackdropFilter: "blur(1.3px) saturate(1.15)",
-};
-
-export const glassBubbleClassNames = `
-  bg-white/[0.35]
-  border border-[rgba(80,150,255,0.18)]
-  shadow-[inset_0_1px_0_rgba(80,150,255,0.12)]
-  shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]
-
-  dark:bg-white/[0.02]
-  dark:border-[rgba(255,255,255,0.06)]
-  dark:border-t-[rgba(255,255,255,0.1)]
-  dark:border-r-[rgba(255,255,255,0.04)]
-  dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]
-`;
+// Re-export for backward compatibility with existing consumers
+export { useIsMobile, useIsDark, glassStyle, GlassLayers, FuzzyText };
+export { glassBubbleClassNames } from "../lib/tokens";
 
 // ─── Border Vapor Particle ───
 interface BorderParticle {
@@ -478,108 +439,7 @@ export function InfoBubble({
           isPopping ? {} : { scale: 1.03, transition: { duration: 0.2 } }
         }
       >
-        {/* Internal refraction gradient (Matches the Box) */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            borderRadius: "inherit",
-            pointerEvents: "none",
-            zIndex: 0,
-            background: isRight
-              ? "radial-gradient(ellipse at 70% 20%, rgba(255,255,255,0.02) 30%, transparent 50%), radial-gradient(ellipse at 30% 80%, rgba(200,220,255,0.05) 0%, transparent 50%)"
-              : "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.02) 30%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(200,220,255,0.05) 0%, transparent 50%)",
-          }}
-        />
-
-        {/* Edge distortion layer (Matches the Box) */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            borderRadius: "inherit",
-            pointerEvents: "none",
-            zIndex: 0,
-            WebkitMaskImage:
-              "radial-gradient(ellipse at center, transparent 55%, black 100%)",
-            maskImage:
-              "radial-gradient(ellipse at center, transparent 55%, black 100%)",
-            backdropFilter: "blur(3px) saturate(1.1)",
-            WebkitBackdropFilter: "blur(3px) saturate(1.1)",
-          }}
-        />
-
-        {/* Specular highlight */}
-        <div
-          className="dark:hidden"
-          style={{
-            position: "absolute",
-            top: 0,
-            left: "15%",
-            right: "15%",
-            height: "1px",
-            borderRadius: "inherit",
-            pointerEvents: "none",
-            background:
-              "linear-gradient(90deg, transparent, rgba(0,0,0,0.08) 30%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.08) 70%, transparent)",
-          }}
-        />
-        <div
-          className="hidden dark:block"
-          style={{
-            position: "absolute",
-            top: 0,
-            left: "15%",
-            right: "15%",
-            height: "1px",
-            borderRadius: "inherit",
-            pointerEvents: "none",
-            background:
-              "linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)",
-          }}
-        />
-
-        {/* Bottom specular highlight */}
-        <div
-          className="dark:hidden"
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: "15%",
-            right: "15%",
-            height: "1px",
-            borderRadius: "inherit",
-            pointerEvents: "none",
-            background:
-              "linear-gradient(90deg, transparent, rgba(0,0,0,0.04) 30%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.04) 70%, transparent)",
-          }}
-        />
-        <div
-          className="hidden dark:block"
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: "15%",
-            right: "15%",
-            height: "1px",
-            borderRadius: "inherit",
-            pointerEvents: "none",
-            background:
-              "linear-gradient(90deg, transparent, rgba(255,255,255,0.2) 30%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.2) 70%, transparent)",
-          }}
-        />
-
-        {/* Chromatic aberration */}
-        <div
-          style={{
-            position: "absolute",
-            inset: -1,
-            borderRadius: "inherit",
-            pointerEvents: "none",
-            boxShadow:
-              "inset 2px 0 8px rgba(255,0,80,0.04), inset -2px 0 8px rgba(0,100,255,0.04), inset 0 2px 8px rgba(255,200,0,0.03), inset 0 -2px 8px rgba(0,200,255,0.03)",
-          }}
-        />
+        <GlassLayers refractionSide={isRight ? "right" : "left"} specularInset="15%" />
 
         {/* Content */}
         <div

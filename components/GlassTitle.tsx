@@ -3,7 +3,8 @@
 import { useRef, useEffect } from "react";
 import { motion, useInView, useMotionValue, animate } from "framer-motion";
 import AnimatedSvg from "./AnimatedSvg";
-import { useIsDark } from "./InfoBubble";
+import { useIsDark } from "../lib/glass";
+import { cs, themed } from "../lib/tokens";
 
 export default function GlassTitle({
   text = "experience",
@@ -91,44 +92,8 @@ export default function GlassTitle({
           className="relative bg-clip-text text-transparent"
           style={{
             WebkitBackgroundClip: "text",
-            backgroundImage: isDark
-              ? `linear-gradient(
-                  135deg,
-                  rgb(180,200,255) 0%,
-                  rgb(210,185,230) 15%,
-                  rgb(180,210,235) 30%,
-                  rgb(215,190,215) 45%,
-                  rgb(170,200,230) 60%,
-                  rgb(200,185,225) 75%,
-                  rgb(180,195,235) 90%,
-                  rgb(210,185,220) 100%
-                )`
-              : `linear-gradient(
-                  135deg,
-                  rgb(100,115,145) 0%,
-                  rgb(125,110,135) 15%,
-                  rgb(105,130,150) 30%,
-                  rgb(130,115,130) 45%,
-                  rgb(100,125,145) 60%,
-                  rgb(120,110,140) 75%,
-                  rgb(105,120,148) 90%,
-                  rgb(128,115,135) 100%
-                )`,
-            textShadow: isDark
-              ? `
-                0 1px 2px rgba(0,0,0,0.2),
-                0 4px 8px rgba(0,0,0,0.1),
-                0 1px 0 rgba(255,255,255,0.05)
-              `
-              : `
-                0 1px 2px rgba(0,0,0,0.06),
-                0 4px 8px rgba(0,0,0,0.04),
-                0 1px 0 rgba(255,255,255,0.15),
-                2px 0 8px rgba(255,0,80,0.04),
-                -2px 0 8px rgba(0,100,255,0.04),
-                0 2px 8px rgba(255,200,0,0.03),
-                0 -2px 8px rgba(0,200,255,0.03)
-              `,
+            backgroundImage: themed(isDark, cs.iridescent.dark, cs.iridescent.light),
+            textShadow: themed(isDark, cs.titleShadow.dark, cs.titleShadow.light),
           }}
         >
           {text}
