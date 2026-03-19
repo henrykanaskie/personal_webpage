@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState, Fragment } from "react";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import GlassTitle from "@/components/GlassTitle";
-import { glassClassNames, FuzzyText } from "@/components/LeftInfoBox";
-import { glassStyle, useIsDark, useIsMobile } from "@/components/InfoBubble";
+import { GlassLayers, glassStyle, FuzzyText, useIsDark, useIsMobile } from "@/lib/glass";
+import { cs, themed, glassBoxClassNames } from "@/lib/tokens";
 import LeftInfoBox from "@/components/LeftInfoBox";
 import RightInfoBox from "@/components/RightInfoBox";
 import ProjectCard, { ProjectCardProvider } from "@/components/ProjectCard";
@@ -33,114 +33,9 @@ function GlassBlurb({
     >
       <div
         style={{ position: "relative", borderRadius: "24px", ...glassStyle }}
-        className={`${glassClassNames} p-5 md:p-10 lg:p-12 h-full`}
+        className={`${glassBoxClassNames} p-5 md:p-10 lg:p-12 h-full`}
       >
-        <div
-          className="dark:hidden"
-          style={{
-            position: "absolute",
-            top: 0,
-            left: "10%",
-            right: "10%",
-            height: "1px",
-            background:
-              "linear-gradient(90deg, transparent, rgba(0,0,0,0.08) 30%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.08) 70%, transparent)",
-            borderRadius: "inherit",
-            pointerEvents: "none",
-            zIndex: 1,
-          }}
-        />
-        <div
-          className="hidden dark:block"
-          style={{
-            position: "absolute",
-            top: 0,
-            left: "10%",
-            right: "10%",
-            height: "1px",
-            background:
-              "linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)",
-            borderRadius: "inherit",
-            pointerEvents: "none",
-            zIndex: 1,
-          }}
-        />
-        <div
-          className="dark:hidden"
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: "10%",
-            right: "10%",
-            height: "1px",
-            background:
-              "linear-gradient(90deg, transparent, rgba(0,0,0,0.04) 30%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.04) 70%, transparent)",
-            borderRadius: "inherit",
-            pointerEvents: "none",
-            zIndex: 1,
-          }}
-        />
-        <div
-          className="hidden dark:block"
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: "10%",
-            right: "10%",
-            height: "1px",
-            background:
-              "linear-gradient(90deg, transparent, rgba(255,255,255,0.2) 30%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.2) 70%, transparent)",
-            borderRadius: "inherit",
-            pointerEvents: "none",
-            zIndex: 1,
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            top: -1,
-            left: -1,
-            right: -1,
-            bottom: -1,
-            borderRadius: "inherit",
-            pointerEvents: "none",
-            zIndex: 0,
-            boxShadow:
-              "inset 2px 0 8px rgba(255,0,80,0.04), inset -2px 0 8px rgba(0,100,255,0.04), inset 0 2px 8px rgba(255,200,0,0.03), inset 0 -2px 8px rgba(0,200,255,0.03)",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            borderRadius: "inherit",
-            pointerEvents: "none",
-            zIndex: 0,
-            background:
-              "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.02) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(200,220,255,0.05) 0%, transparent 50%)",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            borderRadius: "inherit",
-            pointerEvents: "none",
-            zIndex: 0,
-            WebkitMaskImage:
-              "radial-gradient(ellipse at center, transparent 55%, black 100%)",
-            maskImage:
-              "radial-gradient(ellipse at center, transparent 55%, black 100%)",
-            backdropFilter: "blur(3px) saturate(1.1)",
-            WebkitBackdropFilter: "blur(3px) saturate(1.1)",
-          }}
-        />
+        <GlassLayers />
         <div style={{ position: "relative", zIndex: 1 }}>
           {title && (
             <div style={{ textAlign: "center", marginBottom: 20 }}>
@@ -149,9 +44,7 @@ function GlassBlurb({
                   className="bg-clip-text text-transparent"
                   style={{
                     WebkitBackgroundClip: "text",
-                    backgroundImage: isDark
-                      ? `linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 15%, rgb(180,210,235) 30%, rgb(215,190,215) 45%, rgb(170,200,230) 60%, rgb(200,185,225) 75%, rgb(180,195,235) 90%, rgb(210,185,220) 100%)`
-                      : `linear-gradient(135deg, rgb(100,115,145) 0%, rgb(125,110,135) 15%, rgb(105,130,150) 30%, rgb(130,115,130) 45%, rgb(100,125,145) 60%, rgb(120,110,140) 75%, rgb(105,120,148) 90%, rgb(128,115,135) 100%)`,
+                    backgroundImage: themed(isDark, cs.iridescent.dark, cs.iridescent.light),
                     fontSize: "clamp(1.1rem, 1.8vw, 1.5rem)",
                     fontWeight: 700,
                   }}
@@ -388,9 +281,7 @@ export default function CSPage() {
                 letterSpacing: "0.22em",
                 textTransform: "uppercase",
                 fontWeight: 700,
-                backgroundImage: isDark
-                  ? "linear-gradient(180deg, rgb(180,200,255), rgb(210,185,230), rgb(180,210,235))"
-                  : "linear-gradient(180deg, rgb(100,115,145), rgb(125,110,135), rgb(105,130,150))",
+                backgroundImage: themed(isDark, cs.iridescentVertical.dark, cs.iridescentVertical.light),
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
@@ -456,9 +347,7 @@ export default function CSPage() {
                     transition={{ duration: 0.35, ease: "easeInOut" }}
                     style={{
                       borderRadius: "50%",
-                      backgroundImage: isDark
-                        ? "linear-gradient(135deg, rgb(180,200,255), rgb(210,185,230))"
-                        : "linear-gradient(135deg, rgb(100,115,145), rgb(125,110,135))",
+                      backgroundImage: themed(isDark, cs.iridescentShort.dark, cs.iridescentShort.light),
                     }}
                   />
                 </button>
@@ -538,9 +427,7 @@ export default function CSPage() {
                         : "clamp(2.8rem, 7vw, 7rem)",
                       letterSpacing: "-0.02em",
                       WebkitBackgroundClip: "text",
-                      backgroundImage: isDark
-                        ? `linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 15%, rgb(180,210,235) 30%, rgb(215,190,215) 45%, rgb(170,200,230) 60%, rgb(200,185,225) 75%, rgb(180,195,235) 90%, rgb(210,185,220) 100%)`
-                        : `linear-gradient(135deg, rgb(100,115,145) 0%, rgb(125,110,135) 15%, rgb(105,130,150) 30%, rgb(130,115,130) 45%, rgb(100,125,145) 60%, rgb(120,110,140) 75%, rgb(105,120,148) 90%, rgb(128,115,135) 100%)`,
+                      backgroundImage: themed(isDark, cs.iridescent.dark, cs.iridescent.light),
                     }}
                   >
                     {word}
@@ -574,9 +461,7 @@ export default function CSPage() {
                         className="bg-clip-text text-transparent"
                         style={{
                           WebkitBackgroundClip: "text",
-                          backgroundImage: isDark
-                            ? `linear-gradient(135deg, rgb(180,200,255), rgb(210,185,230))`
-                            : `linear-gradient(135deg, rgb(100,115,145), rgb(125,110,135))`,
+                          backgroundImage: themed(isDark, cs.iridescentShort.dark, cs.iridescentShort.light),
                           fontSize: "clamp(0.9rem, 1.3vw, 1.2rem)",
                           fontWeight: 600,
                         }}
@@ -631,9 +516,7 @@ export default function CSPage() {
                     className="bg-clip-text text-transparent"
                     style={{
                       WebkitBackgroundClip: "text",
-                      backgroundImage: isDark
-                        ? `linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 15%, rgb(180,210,235) 30%, rgb(215,190,215) 45%, rgb(170,200,230) 60%, rgb(200,185,225) 75%, rgb(180,195,235) 90%, rgb(210,185,220) 100%)`
-                        : `linear-gradient(135deg, rgb(100,115,145) 0%, rgb(125,110,135) 15%, rgb(105,130,150) 30%, rgb(130,115,130) 45%, rgb(100,125,145) 60%, rgb(120,110,140) 75%, rgb(105,120,148) 90%, rgb(128,115,135) 100%)`,
+                      backgroundImage: themed(isDark, cs.iridescent.dark, cs.iridescent.light),
                       fontSize: "clamp(0.85rem, 1.2vw, 1.05rem)",
                       fontWeight: 500,
                       lineHeight: 1.8,
@@ -669,9 +552,7 @@ export default function CSPage() {
             className="bg-clip-text text-transparent"
             style={{
               WebkitBackgroundClip: "text",
-              backgroundImage: isDark
-                ? "linear-gradient(135deg, rgb(180,200,255), rgb(210,185,230))"
-                : "linear-gradient(135deg, rgb(100,115,145), rgb(125,110,135))",
+              backgroundImage: themed(isDark, cs.iridescentShort.dark, cs.iridescentShort.light),
               fontSize: "0.65rem",
               fontWeight: 600,
               letterSpacing: "0.18em",
@@ -723,7 +604,7 @@ export default function CSPage() {
               }}
             />
             <div
-              className={`relative w-full max-w-3xl max-h-[90vh] overflow-auto rounded-3xl ${glassClassNames}`}
+              className={`relative w-full max-w-3xl max-h-[90vh] overflow-auto rounded-3xl ${glassBoxClassNames}`}
               style={{
                 ...glassStyle,
                 backgroundColor: isDark
@@ -732,117 +613,12 @@ export default function CSPage() {
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div
-                className="dark:hidden"
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: "10%",
-                  right: "10%",
-                  height: "1px",
-                  background:
-                    "linear-gradient(90deg, transparent, rgba(0,0,0,0.08) 30%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.08) 70%, transparent)",
-                  borderRadius: "inherit",
-                  pointerEvents: "none",
-                  zIndex: 2,
-                }}
-              />
-              <div
-                className="hidden dark:block"
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: "10%",
-                  right: "10%",
-                  height: "1px",
-                  background:
-                    "linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)",
-                  borderRadius: "inherit",
-                  pointerEvents: "none",
-                  zIndex: 2,
-                }}
-              />
-              <div
-                className="dark:hidden"
-                style={{
-                  position: "absolute",
-                  bottom: 0,
-                  left: "10%",
-                  right: "10%",
-                  height: "1px",
-                  background:
-                    "linear-gradient(90deg, transparent, rgba(0,0,0,0.04) 30%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.04) 70%, transparent)",
-                  borderRadius: "inherit",
-                  pointerEvents: "none",
-                  zIndex: 2,
-                }}
-              />
-              <div
-                className="hidden dark:block"
-                style={{
-                  position: "absolute",
-                  bottom: 0,
-                  left: "10%",
-                  right: "10%",
-                  height: "1px",
-                  background:
-                    "linear-gradient(90deg, transparent, rgba(255,255,255,0.2) 30%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.2) 70%, transparent)",
-                  borderRadius: "inherit",
-                  pointerEvents: "none",
-                  zIndex: 2,
-                }}
-              />
-              <div
-                style={{
-                  position: "absolute",
-                  top: -1,
-                  left: -1,
-                  right: -1,
-                  bottom: -1,
-                  borderRadius: "inherit",
-                  pointerEvents: "none",
-                  zIndex: 0,
-                  boxShadow:
-                    "inset 2px 0 8px rgba(255,0,80,0.04), inset -2px 0 8px rgba(0,100,255,0.04), inset 0 2px 8px rgba(255,200,0,0.03), inset 0 -2px 8px rgba(0,200,255,0.03)",
-                }}
-              />
-              <div
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  borderRadius: "inherit",
-                  pointerEvents: "none",
-                  zIndex: 0,
-                  background:
-                    "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.02) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(200,220,255,0.05) 0%, transparent 50%)",
-                }}
-              />
-              <div
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  borderRadius: "inherit",
-                  pointerEvents: "none",
-                  zIndex: 0,
-                  WebkitMaskImage:
-                    "radial-gradient(ellipse at center, transparent 55%, black 100%)",
-                  maskImage:
-                    "radial-gradient(ellipse at center, transparent 55%, black 100%)",
-                  backdropFilter: "blur(3px) saturate(1.1)",
-                  WebkitBackdropFilter: "blur(3px) saturate(1.1)",
-                }}
-              />
+              <GlassLayers />
               <div className="sticky top-0 z-10 flex justify-between items-center p-4">
                 <a
                   href="/Kanaskie_Henry_Resume.pdf"
                   download
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-opacity hover:opacity-70 ${glassClassNames}`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-opacity hover:opacity-70 ${glassBoxClassNames}`}
                   style={{
                     ...glassStyle,
                     backgroundColor: isDark
@@ -854,9 +630,7 @@ export default function CSPage() {
                     className="flex items-center gap-2 bg-clip-text text-transparent"
                     style={{
                       WebkitBackgroundClip: "text",
-                      backgroundImage: isDark
-                        ? "linear-gradient(135deg, rgb(180,200,255), rgb(210,185,230))"
-                        : "linear-gradient(135deg, rgb(100,115,145), rgb(125,110,135))",
+                      backgroundImage: themed(isDark, cs.iridescentShort.dark, cs.iridescentShort.light),
                       fontSize: "0.9rem",
                       fontWeight: 600,
                     }}
@@ -866,7 +640,7 @@ export default function CSPage() {
                       height="16"
                       viewBox="0 0 24 24"
                       fill="none"
-                      stroke={isDark ? "rgb(180,200,255)" : "rgb(100,115,145)"}
+                      stroke={themed(isDark, cs.color.dark, cs.color.light)}
                       strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -880,13 +654,13 @@ export default function CSPage() {
                 </a>
                 <button
                   onClick={() => setResumeOpen(false)}
-                  className={`w-10 h-10 flex items-center justify-center rounded-full transition-opacity hover:opacity-70 cursor-pointer ${glassClassNames}`}
+                  className={`w-10 h-10 flex items-center justify-center rounded-full transition-opacity hover:opacity-70 cursor-pointer ${glassBoxClassNames}`}
                   style={{
                     ...glassStyle,
                     backgroundColor: isDark
                       ? "rgba(180,200,255,0.08)"
                       : "rgba(100,115,145,0.06)",
-                    color: isDark ? "rgb(180,200,255)" : "rgb(100,115,145)",
+                    color: themed(isDark, cs.color.dark, cs.color.light),
                   }}
                 >
                   ✕
@@ -936,7 +710,7 @@ export default function CSPage() {
               }}
             />
             <div
-              className={`relative w-full max-w-lg max-h-[90vh] overflow-auto rounded-3xl ${glassClassNames}`}
+              className={`relative w-full max-w-lg max-h-[90vh] overflow-auto rounded-3xl ${glassBoxClassNames}`}
               style={{
                 ...glassStyle,
                 backgroundColor: isDark
@@ -945,121 +719,14 @@ export default function CSPage() {
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div
-                className="dark:hidden"
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: "10%",
-                  right: "10%",
-                  height: "1px",
-                  background:
-                    "linear-gradient(90deg, transparent, rgba(0,0,0,0.08) 30%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.08) 70%, transparent)",
-                  borderRadius: "inherit",
-                  pointerEvents: "none",
-                  zIndex: 2,
-                }}
-              />
-              <div
-                className="hidden dark:block"
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: "10%",
-                  right: "10%",
-                  height: "1px",
-                  background:
-                    "linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)",
-                  borderRadius: "inherit",
-                  pointerEvents: "none",
-                  zIndex: 2,
-                }}
-              />
-              <div
-                className="dark:hidden"
-                style={{
-                  position: "absolute",
-                  bottom: 0,
-                  left: "10%",
-                  right: "10%",
-                  height: "1px",
-                  background:
-                    "linear-gradient(90deg, transparent, rgba(0,0,0,0.04) 30%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.04) 70%, transparent)",
-                  borderRadius: "inherit",
-                  pointerEvents: "none",
-                  zIndex: 2,
-                }}
-              />
-              <div
-                className="hidden dark:block"
-                style={{
-                  position: "absolute",
-                  bottom: 0,
-                  left: "10%",
-                  right: "10%",
-                  height: "1px",
-                  background:
-                    "linear-gradient(90deg, transparent, rgba(255,255,255,0.2) 30%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.2) 70%, transparent)",
-                  borderRadius: "inherit",
-                  pointerEvents: "none",
-                  zIndex: 2,
-                }}
-              />
-              <div
-                style={{
-                  position: "absolute",
-                  top: -1,
-                  left: -1,
-                  right: -1,
-                  bottom: -1,
-                  borderRadius: "inherit",
-                  pointerEvents: "none",
-                  zIndex: 0,
-                  boxShadow:
-                    "inset 2px 0 8px rgba(255,0,80,0.04), inset -2px 0 8px rgba(0,100,255,0.04), inset 0 2px 8px rgba(255,200,0,0.03), inset 0 -2px 8px rgba(0,200,255,0.03)",
-                }}
-              />
-              <div
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  borderRadius: "inherit",
-                  pointerEvents: "none",
-                  zIndex: 0,
-                  background:
-                    "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.02) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(200,220,255,0.05) 0%, transparent 50%)",
-                }}
-              />
-              <div
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  borderRadius: "inherit",
-                  pointerEvents: "none",
-                  zIndex: 0,
-                  WebkitMaskImage:
-                    "radial-gradient(ellipse at center, transparent 55%, black 100%)",
-                  maskImage:
-                    "radial-gradient(ellipse at center, transparent 55%, black 100%)",
-                  backdropFilter: "blur(3px) saturate(1.1)",
-                  WebkitBackdropFilter: "blur(3px) saturate(1.1)",
-                }}
-              />
+              <GlassLayers />
               <div className="relative z-[1] flex justify-between items-center p-6 pb-0">
                 <FuzzyText>
                   <span
                     className="bg-clip-text text-transparent"
                     style={{
                       WebkitBackgroundClip: "text",
-                      backgroundImage: isDark
-                        ? `linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 15%, rgb(180,210,235) 30%, rgb(215,190,215) 45%, rgb(170,200,230) 60%, rgb(200,185,225) 75%, rgb(180,195,235) 90%, rgb(210,185,220) 100%)`
-                        : `linear-gradient(135deg, rgb(100,115,145) 0%, rgb(125,110,135) 15%, rgb(105,130,150) 30%, rgb(130,115,130) 45%, rgb(100,125,145) 60%, rgb(120,110,140) 75%, rgb(105,120,148) 90%, rgb(128,115,135) 100%)`,
+                      backgroundImage: themed(isDark, cs.iridescent.dark, cs.iridescent.light),
                       fontSize: "clamp(1.1rem, 1.8vw, 1.5rem)",
                       fontWeight: 700,
                     }}
@@ -1069,13 +736,13 @@ export default function CSPage() {
                 </FuzzyText>
                 <button
                   onClick={() => setEmailOpen(false)}
-                  className={`w-10 h-10 flex items-center justify-center rounded-full transition-opacity hover:opacity-70 cursor-pointer ${glassClassNames}`}
+                  className={`w-10 h-10 flex items-center justify-center rounded-full transition-opacity hover:opacity-70 cursor-pointer ${glassBoxClassNames}`}
                   style={{
                     ...glassStyle,
                     backgroundColor: isDark
                       ? "rgba(180,200,255,0.08)"
                       : "rgba(100,115,145,0.06)",
-                    color: isDark ? "rgb(180,200,255)" : "rgb(100,115,145)",
+                    color: themed(isDark, cs.color.dark, cs.color.light),
                   }}
                 >
                   ✕
@@ -1093,9 +760,7 @@ export default function CSPage() {
                         className="block mb-1.5 bg-clip-text text-transparent"
                         style={{
                           WebkitBackgroundClip: "text",
-                          backgroundImage: isDark
-                            ? "linear-gradient(135deg, rgb(180,200,255), rgb(210,185,230))"
-                            : "linear-gradient(135deg, rgb(100,115,145), rgb(125,110,135))",
+                          backgroundImage: themed(isDark, cs.iridescentShort.dark, cs.iridescentShort.light),
                           fontSize: "0.8rem",
                           fontWeight: 600,
                           textTransform: "capitalize",
@@ -1119,7 +784,7 @@ export default function CSPage() {
                             return n;
                           });
                       }}
-                      className={`w-full rounded-xl px-4 py-2.5 outline-none transition-colors ${glassClassNames}`}
+                      className={`w-full rounded-xl px-4 py-2.5 outline-none transition-colors ${glassBoxClassNames}`}
                       style={{
                         ...glassStyle,
                         backgroundColor: isDark
@@ -1161,9 +826,7 @@ export default function CSPage() {
                       className="block mb-1.5 bg-clip-text text-transparent"
                       style={{
                         WebkitBackgroundClip: "text",
-                        backgroundImage: isDark
-                          ? "linear-gradient(135deg, rgb(180,200,255), rgb(210,185,230))"
-                          : "linear-gradient(135deg, rgb(100,115,145), rgb(125,110,135))",
+                        backgroundImage: themed(isDark, cs.iridescentShort.dark, cs.iridescentShort.light),
                         fontSize: "0.8rem",
                         fontWeight: 600,
                       }}
@@ -1186,7 +849,7 @@ export default function CSPage() {
                           return n;
                         });
                     }}
-                    className={`w-full rounded-xl px-4 py-2.5 outline-none transition-colors resize-none ${glassClassNames}`}
+                    className={`w-full rounded-xl px-4 py-2.5 outline-none transition-colors resize-none ${glassBoxClassNames}`}
                     style={{
                       ...glassStyle,
                       backgroundColor: isDark
@@ -1246,7 +909,7 @@ export default function CSPage() {
                   <button
                     type="submit"
                     disabled={emailStatus === "sending"}
-                    className={`mt-2 w-full py-3 rounded-xl transition-opacity cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${glassClassNames}`}
+                    className={`mt-2 w-full py-3 rounded-xl transition-opacity cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${glassBoxClassNames}`}
                     style={{
                       ...glassStyle,
                       backgroundColor: isDark
@@ -1258,9 +921,7 @@ export default function CSPage() {
                       className="bg-clip-text text-transparent"
                       style={{
                         WebkitBackgroundClip: "text",
-                        backgroundImage: isDark
-                          ? "linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 50%, rgb(180,210,235) 100%)"
-                          : "linear-gradient(135deg, rgb(100,115,145) 0%, rgb(125,110,135) 50%, rgb(105,130,150) 100%)",
+                        backgroundImage: themed(isDark, cs.iridescentMedium.dark, cs.iridescentMedium.light),
                         fontSize: "0.95rem",
                         fontWeight: 700,
                       }}

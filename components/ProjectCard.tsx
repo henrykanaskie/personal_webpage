@@ -11,14 +11,11 @@ import {
 } from "framer-motion";
 import AnimatedSvg from "./AnimatedSvg";
 import {
-  glassStyle,
   VaporCloud,
   useInfoBubble,
-  useIsMobile,
-  useIsDark,
-  glassBubbleClassNames,
 } from "./InfoBubble";
-import { glassClassNames, FuzzyText } from "./LeftInfoBox";
+import { glassStyle, GlassLayers, FuzzyText, useIsMobile, useIsDark } from "../lib/glass";
+import { glassBubbleClassNames, glassBoxClassNames, cs, themed } from "../lib/tokens";
 
 // ─── useInView with hysteresis (different enter/leave thresholds) ───
 
@@ -84,8 +81,8 @@ interface ProjectCardProps {
 
 // ─── Iridescent progress bar gradient (matches site palette) ───
 
-const progressGradientLight = `linear-gradient(90deg, rgb(100,115,145), rgb(125,110,135), rgb(105,130,150), rgb(130,115,130), rgb(100,125,145))`;
-const progressGradientDark = `linear-gradient(90deg, rgb(180,200,255), rgb(210,185,230), rgb(180,210,235), rgb(215,190,215), rgb(180,200,255))`;
+const progressGradientLight = cs.progressBar.light;
+const progressGradientDark = cs.progressBar.dark;
 
 // ─── SVG corner positioning helper ───
 
@@ -224,12 +221,7 @@ function BubbleShell({
       exit={{ opacity: 0, transition: { duration: 0.001 } }}
       whileHover={isPopping ? {} : { scale: 1.03, transition: { duration: 0.2 } }}
     >
-      {/* Glass layers */}
-      <div style={{ position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none", zIndex: 0, background: "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.02) 30%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(200,220,255,0.05) 0%, transparent 50%)" }} />
-      <div style={{ position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none", zIndex: 0, WebkitMaskImage: "radial-gradient(ellipse at center, transparent 55%, black 100%)", maskImage: "radial-gradient(ellipse at center, transparent 55%, black 100%)", backdropFilter: "blur(3px) saturate(1.1)", WebkitBackdropFilter: "blur(3px) saturate(1.1)" }} />
-      <div className="dark:hidden" style={{ position: "absolute", top: 0, left: "15%", right: "15%", height: "1px", borderRadius: "inherit", pointerEvents: "none", background: "linear-gradient(90deg, transparent, rgba(0,0,0,0.08) 30%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.08) 70%, transparent)" }} />
-      <div className="hidden dark:block" style={{ position: "absolute", top: 0, left: "15%", right: "15%", height: "1px", borderRadius: "inherit", pointerEvents: "none", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)" }} />
-      <div style={{ position: "absolute", inset: -1, borderRadius: "inherit", pointerEvents: "none", boxShadow: "inset 2px 0 8px rgba(255,0,80,0.04), inset -2px 0 8px rgba(0,100,255,0.04), inset 0 2px 8px rgba(255,200,0,0.03), inset 0 -2px 8px rgba(0,200,255,0.03)" }} />
+      <GlassLayers refractionSide="left" specularInset="15%" />
 
       {children}
     </motion.div>
@@ -545,16 +537,9 @@ export default function ProjectCard({
           animate={isInView ? { opacity: 1 } : { opacity: 0 }}
           transition={{ duration: 0.9, ease: "easeInOut" }}
           style={{ position: "relative", borderRadius: "24px", flex: 1, ...glassStyle }}
-          className={`${glassClassNames} p-5 md:p-8`}
+          className={`${glassBoxClassNames} p-5 md:p-8`}
         >
-          {/* Specular highlights */}
-          <div className="dark:hidden" style={{ position: "absolute", top: 0, left: "10%", right: "10%", height: "1px", background: "linear-gradient(90deg, transparent, rgba(0,0,0,0.08) 30%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.08) 70%, transparent)", borderRadius: "inherit", pointerEvents: "none", zIndex: 1 }} />
-          <div className="hidden dark:block" style={{ position: "absolute", top: 0, left: "10%", right: "10%", height: "1px", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)", borderRadius: "inherit", pointerEvents: "none", zIndex: 1 }} />
-          <div className="dark:hidden" style={{ position: "absolute", bottom: 0, left: "10%", right: "10%", height: "1px", background: "linear-gradient(90deg, transparent, rgba(0,0,0,0.04) 30%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.04) 70%, transparent)", borderRadius: "inherit", pointerEvents: "none", zIndex: 1 }} />
-          <div className="hidden dark:block" style={{ position: "absolute", bottom: 0, left: "10%", right: "10%", height: "1px", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2) 30%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.2) 70%, transparent)", borderRadius: "inherit", pointerEvents: "none", zIndex: 1 }} />
-          <div style={{ position: "absolute", top: -1, left: -1, right: -1, bottom: -1, borderRadius: "inherit", pointerEvents: "none", zIndex: 0, boxShadow: "inset 2px 0 8px rgba(255,0,80,0.04), inset -2px 0 8px rgba(0,100,255,0.04), inset 0 2px 8px rgba(255,200,0,0.03), inset 0 -2px 8px rgba(0,200,255,0.03)" }} />
-          <div style={{ position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none", zIndex: 0, background: "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.02) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(200,220,255,0.05) 0%, transparent 50%)" }} />
-          <div style={{ position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none", zIndex: 0, WebkitMaskImage: "radial-gradient(ellipse at center, transparent 55%, black 100%)", maskImage: "radial-gradient(ellipse at center, transparent 55%, black 100%)", backdropFilter: "blur(3px) saturate(1.1)", WebkitBackdropFilter: "blur(3px) saturate(1.1)" }} />
+          <GlassLayers refractionSide="left" />
 
           {/* Content */}
           <div style={{ position: "relative", zIndex: 1 }}>
@@ -565,9 +550,7 @@ export default function ProjectCard({
                   className="bg-clip-text text-transparent"
                   style={{
                     WebkitBackgroundClip: "text",
-                    backgroundImage: isDark
-                      ? "linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 15%, rgb(180,210,235) 30%, rgb(215,190,215) 45%, rgb(170,200,230) 60%, rgb(200,185,225) 75%, rgb(180,195,235) 90%, rgb(210,185,220) 100%)"
-                      : "linear-gradient(135deg, rgb(100,115,145) 0%, rgb(125,110,135) 15%, rgb(105,130,150) 30%, rgb(130,115,130) 45%, rgb(100,125,145) 60%, rgb(120,110,140) 75%, rgb(105,120,148) 90%, rgb(128,115,135) 100%)",
+                    backgroundImage: themed(isDark, cs.iridescent.dark, cs.iridescent.light),
                   }}
                 >
                   {title}
@@ -598,9 +581,7 @@ export default function ProjectCard({
                   className="bg-clip-text text-transparent"
                   style={{
                     WebkitBackgroundClip: "text",
-                    backgroundImage: isDark
-                      ? "linear-gradient(135deg, rgba(248,250,255,0.96) 0%, rgba(255,248,255,0.93) 15%, rgba(248,252,255,0.95) 30%, rgba(255,250,255,0.92) 45%, rgba(245,250,255,0.94) 60%, rgba(255,248,255,0.93) 75%, rgba(248,250,255,0.95) 90%, rgba(255,248,255,0.93) 100%)"
-                      : "linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(25,15,35,0.92) 15%, rgba(10,20,30,0.94) 30%, rgba(30,15,25,0.9) 45%, rgba(10,20,28,0.93) 60%, rgba(22,12,32,0.91) 75%, rgba(12,18,30,0.94) 90%, rgba(28,15,28,0.91) 100%)",
+                    backgroundImage: themed(isDark, cs.body.dark, cs.body.light),
                   }}
                 >
                   {description}
