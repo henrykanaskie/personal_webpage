@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useState, useEffect } from "react";
+import { useRef, useCallback, useState, useEffect, memo } from "react";
 import { motion, useInView } from "framer-motion";
 import { FuzzyText, useIsMobile, useIsDark, glassStyle, GlassLayers } from "../lib/glass";
 import { glassBubbleClassNames } from "../lib/tokens";
@@ -148,7 +148,7 @@ function generateBorderParticles(
 
 // ─── Border Vapor Cloud ───
 // Particles originate from the bubble's border and drift outward like mist escaping
-export function VaporCloud({
+export const VaporCloud = memo(function VaporCloud({
   originX,
   originY,
   bubbleWidth,
@@ -220,7 +220,7 @@ export function VaporCloud({
       ))}
     </div>
   );
-}
+});
 
 // ─── Bubble Info Type ───
 export interface BubbleInfo {

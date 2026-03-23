@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, Fragment } from "react";
+import Image from "next/image";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import GlassTitle from "@/components/GlassTitle";
 import {
@@ -144,29 +145,52 @@ export default function CSPage() {
   const [hasScrolled, setHasScrolled] = useState(false);
   useEffect(() => {
     const sectionIds = ["about", "experience", "projects", "education"];
-    let rafId: number | null = null;
-    const handleScroll = () => {
-      if (window.scrollY > 80) setHasScrolled(true);
-      if (rafId !== null) return;
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        let current = sectionIds[0];
-        for (const id of sectionIds) {
-          const el = document.getElementById(id);
-          if (el && el.getBoundingClientRect().top <= 120) current = id;
+
+    // rootMargin "-120px 0px 0px 0px" shifts the intersection root down by 120px.
+    // A section is "intersecting" when its top has scrolled past the 120px mark —
+    // exactly the condition the old getBoundingClientRect loop was testing.
+    // Active section = last intersecting section in order.
+    const intersecting = new Set<string>();
+    const sectionObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const id = (entry.target as HTMLElement).id;
+          if (entry.isIntersecting) intersecting.add(id);
+          else intersecting.delete(id);
         }
-        setActiveSection(current);
-      });
+        let active = sectionIds[0];
+        for (const id of sectionIds) {
+          if (intersecting.has(id)) active = id;
+        }
+        setActiveSection(active);
+      },
+      { rootMargin: "-120px 0px 0px 0px", threshold: 0 }
+    );
+    for (const id of sectionIds) {
+      const el = document.getElementById(id);
+      if (el) sectionObserver.observe(el);
+    }
+
+    // One-shot scroll listener: sets hasScrolled once then removes itself.
+    const onScroll = () => {
+      if (window.scrollY > 80) {
+        setHasScrolled(true);
+        window.removeEventListener("scroll", onScroll);
+      }
     };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => {
+      sectionObserver.disconnect();
+      window.removeEventListener("scroll", onScroll);
+    };
   }, []);
 
   // About section viewport refs for fade-in/out animations
   const contactRef = useRef<HTMLDivElement>(null);
   const contactInView = useInView(contactRef, {
-    once: false,
-    amount: isMobile ? 0.15 : 0.15,
+    once: true,
+    amount: 0.15,
   });
 
   // About section modal state
@@ -398,6 +422,7 @@ export default function CSPage() {
             transition: { duration: 0.55, ease: [0.5, 0, 0.75, 0] },
           }}
           transition={{ duration: 1.2, ease: "easeInOut" }}
+          style={{ willChange: "transform, opacity" }}
           className="w-full px-2 md:px-[5%]"
         >
           <motion.div
@@ -411,6 +436,7 @@ export default function CSPage() {
               {/* Photo */}
               <div
                 style={{
+                  position: "relative",
                   flexShrink: 0,
                   width: isMobile
                     ? "min(180px, 42vw)"
@@ -424,10 +450,13 @@ export default function CSPage() {
                     : "0 2px 16px rgba(0,0,0,0.12)",
                 }}
               >
-                <img
+                <Image
                   src="/photography/cs_profile/IMG_4059.jpeg"
                   alt="Henry Kanaskie"
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  fill
+                  style={{ objectFit: "cover" }}
+                  sizes={isMobile ? "42vw" : "clamp(150px, 22vw, 320px)"}
+                  priority={false}
                 />
               </div>
 
