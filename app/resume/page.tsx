@@ -513,9 +513,7 @@ export default function ResumePage() {
 
   return (
     <div className="flex flex-col gap-10 md:gap-16 pb-[10vh]">
-      {/* ── Intro ── */}
-      <GlassTitle text="Henry Kanaskie" />
-
+      <GlassTitle text="Resume" />
       <motion.div
         initial={{ opacity: 0, x: "70vw" }}
         animate={{ opacity: 1, x: 0 }}

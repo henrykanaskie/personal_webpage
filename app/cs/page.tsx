@@ -3,7 +3,13 @@
 import { useEffect, useRef, useState, Fragment } from "react";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import GlassTitle from "@/components/GlassTitle";
-import { GlassLayers, glassStyle, FuzzyText, useIsDark, useIsMobile } from "@/lib/glass";
+import {
+  GlassLayers,
+  glassStyle,
+  FuzzyText,
+  useIsDark,
+  useIsMobile,
+} from "@/lib/glass";
 import { cs, themed, glassBoxClassNames } from "@/lib/tokens";
 import LeftInfoBox from "@/components/LeftInfoBox";
 import RightInfoBox from "@/components/RightInfoBox";
@@ -36,7 +42,8 @@ function GlassBlurb({
         className={`${glassBoxClassNames} p-5 md:p-10 lg:p-12 h-full`}
       >
         <GlassLayers />
-        <div style={{ position: "relative", zIndex: 1 }}>
+        {/* Keep content above any backdrop-filter layers to avoid blur. */}
+        <div style={{ position: "relative", zIndex: 2 }}>
           {title && (
             <div style={{ textAlign: "center", marginBottom: 20 }}>
               <FuzzyText>
@@ -44,7 +51,11 @@ function GlassBlurb({
                   className="bg-clip-text text-transparent"
                   style={{
                     WebkitBackgroundClip: "text",
-                    backgroundImage: themed(isDark, cs.iridescent.dark, cs.iridescent.light),
+                    backgroundImage: themed(
+                      isDark,
+                      cs.iridescent.dark,
+                      cs.iridescent.light,
+                    ),
                     fontSize: "clamp(1.1rem, 1.8vw, 1.5rem)",
                     fontWeight: 700,
                   }}
@@ -281,7 +292,11 @@ export default function CSPage() {
                 letterSpacing: "0.22em",
                 textTransform: "uppercase",
                 fontWeight: 700,
-                backgroundImage: themed(isDark, cs.iridescentVertical.dark, cs.iridescentVertical.light),
+                backgroundImage: themed(
+                  isDark,
+                  cs.iridescentVertical.dark,
+                  cs.iridescentVertical.light,
+                ),
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
@@ -347,7 +362,11 @@ export default function CSPage() {
                     transition={{ duration: 0.35, ease: "easeInOut" }}
                     style={{
                       borderRadius: "50%",
-                      backgroundImage: themed(isDark, cs.iridescentShort.dark, cs.iridescentShort.light),
+                      backgroundImage: themed(
+                        isDark,
+                        cs.iridescentShort.dark,
+                        cs.iridescentShort.light,
+                      ),
                     }}
                   />
                 </button>
@@ -417,22 +436,16 @@ export default function CSPage() {
                 className={`flex flex-col ${isMobile ? "items-start" : "shrink-0"}`}
                 style={{ gap: "0.05em" }}
               >
-                {["Henry", "Kanaskie"].map((word) => (
-                  <span
-                    key={word}
-                    className="font-extrabold tracking-tight leading-none bg-clip-text text-transparent"
-                    style={{
-                      fontSize: isMobile
-                        ? "clamp(2rem, 10vw, 3.5rem)"
-                        : "clamp(2.8rem, 7vw, 7rem)",
-                      letterSpacing: "-0.02em",
-                      WebkitBackgroundClip: "text",
-                      backgroundImage: themed(isDark, cs.iridescent.dark, cs.iridescent.light),
-                    }}
-                  >
-                    {word}
-                  </span>
-                ))}
+                <GlassTitle
+                  text={"Henry\nKanaskie"}
+                  variant="crystalline"
+                  containerClassName="justify-start items-start pt-0 pb-0"
+                  fontSize={
+                    isMobile
+                      ? "clamp(2rem, 10vw, 3.5rem)"
+                      : "clamp(2.8rem, 7vw, 7rem)"
+                  }
+                />
                 <div
                   className={`flex flex-wrap ${isMobile ? "justify-center" : ""} items-center gap-4 mt-3`}
                 >
@@ -458,10 +471,8 @@ export default function CSPage() {
                   ].map((item, i, arr) => {
                     const inner = (
                       <span
-                        className="bg-clip-text text-transparent"
                         style={{
-                          WebkitBackgroundClip: "text",
-                          backgroundImage: themed(isDark, cs.iridescentShort.dark, cs.iridescentShort.light),
+                          color: "rgba(255, 255, 255, 0.92)",
                           fontSize: "clamp(0.9rem, 1.3vw, 1.2rem)",
                           fontWeight: 600,
                         }}
@@ -513,10 +524,8 @@ export default function CSPage() {
               <GlassBlurb>
                 <FuzzyText>
                   <p
-                    className="bg-clip-text text-transparent"
                     style={{
-                      WebkitBackgroundClip: "text",
-                      backgroundImage: themed(isDark, cs.iridescent.dark, cs.iridescent.light),
+                      color: "rgba(255, 255, 255, 0.92)",
                       fontSize: "clamp(0.85rem, 1.2vw, 1.05rem)",
                       fontWeight: 500,
                       lineHeight: 1.8,
@@ -549,10 +558,8 @@ export default function CSPage() {
           style={{ opacity: 1 }}
         >
           <span
-            className="bg-clip-text text-transparent"
             style={{
-              WebkitBackgroundClip: "text",
-              backgroundImage: themed(isDark, cs.iridescentShort.dark, cs.iridescentShort.light),
+              color: "rgba(255, 255, 255, 0.92)",
               fontSize: "0.65rem",
               fontWeight: 600,
               letterSpacing: "0.18em",
@@ -574,9 +581,7 @@ export default function CSPage() {
                 viewBox="0 0 24 14"
                 fill="none"
                 style={{
-                  stroke: isDark
-                    ? `rgba(180,200,255,${i === 0 ? 0.7 : 0.3})`
-                    : `rgba(100,115,145,${i === 0 ? 0.6 : 0.25})`,
+                  stroke: `rgba(255,255,255,${i === 0 ? 0.7 : 0.3})`,
                   strokeWidth: 2,
                   strokeLinecap: "round",
                   strokeLinejoin: "round",
@@ -630,7 +635,11 @@ export default function CSPage() {
                     className="flex items-center gap-2 bg-clip-text text-transparent"
                     style={{
                       WebkitBackgroundClip: "text",
-                      backgroundImage: themed(isDark, cs.iridescentShort.dark, cs.iridescentShort.light),
+                      backgroundImage: themed(
+                        isDark,
+                        cs.iridescentShort.dark,
+                        cs.iridescentShort.light,
+                      ),
                       fontSize: "0.9rem",
                       fontWeight: 600,
                     }}
@@ -726,7 +735,11 @@ export default function CSPage() {
                     className="bg-clip-text text-transparent"
                     style={{
                       WebkitBackgroundClip: "text",
-                      backgroundImage: themed(isDark, cs.iridescent.dark, cs.iridescent.light),
+                      backgroundImage: themed(
+                        isDark,
+                        cs.iridescent.dark,
+                        cs.iridescent.light,
+                      ),
                       fontSize: "clamp(1.1rem, 1.8vw, 1.5rem)",
                       fontWeight: 700,
                     }}
@@ -760,7 +773,11 @@ export default function CSPage() {
                         className="block mb-1.5 bg-clip-text text-transparent"
                         style={{
                           WebkitBackgroundClip: "text",
-                          backgroundImage: themed(isDark, cs.iridescentShort.dark, cs.iridescentShort.light),
+                          backgroundImage: themed(
+                            isDark,
+                            cs.iridescentShort.dark,
+                            cs.iridescentShort.light,
+                          ),
                           fontSize: "0.8rem",
                           fontWeight: 600,
                           textTransform: "capitalize",
@@ -826,7 +843,11 @@ export default function CSPage() {
                       className="block mb-1.5 bg-clip-text text-transparent"
                       style={{
                         WebkitBackgroundClip: "text",
-                        backgroundImage: themed(isDark, cs.iridescentShort.dark, cs.iridescentShort.light),
+                        backgroundImage: themed(
+                          isDark,
+                          cs.iridescentShort.dark,
+                          cs.iridescentShort.light,
+                        ),
                         fontSize: "0.8rem",
                         fontWeight: 600,
                       }}
@@ -921,7 +942,11 @@ export default function CSPage() {
                       className="bg-clip-text text-transparent"
                       style={{
                         WebkitBackgroundClip: "text",
-                        backgroundImage: themed(isDark, cs.iridescentMedium.dark, cs.iridescentMedium.light),
+                        backgroundImage: themed(
+                          isDark,
+                          cs.iridescentMedium.dark,
+                          cs.iridescentMedium.light,
+                        ),
                         fontSize: "0.95rem",
                         fontWeight: 700,
                       }}
@@ -997,7 +1022,9 @@ export default function CSPage() {
           title="Undergraduate Researcher"
           company="Jason Clark Research Group"
           role="FPGA & DSP Engineering"
-          description={["The Jason Clark Research Group pushes the limits of precision sensing at the micro and nano scale. I worked on the hardware side. I spent my time designing VHDL modules for FPGA-based signal processing so the lab could acquire and characterize nano-ampere signals that were previously impossible to measure. From writing testbenches to integrating damping algorithms via Hardware-in-the-Loop, the work was about giving researchers reliable, stable data they could actually trust."]}
+          description={[
+            "The Jason Clark Research Group pushes the limits of precision sensing at the micro and nano scale. I worked on the hardware side. I spent my time designing VHDL modules for FPGA-based signal processing so the lab could acquire and characterize nano-ampere signals that were previously impossible to measure. From writing testbenches to integrating damping algorithms via Hardware-in-the-Loop, the work was about giving researchers reliable, stable data they could actually trust.",
+          ]}
           svgPaths={fpgaPaths}
           svgSize={65}
           svgOffset={{ x: -45, y: 10 }}
@@ -1021,7 +1048,7 @@ export default function CSPage() {
           style={{ scrollMarginTop: "80px" }}
           className="flex flex-col gap-12 md:gap-20 pb-[10vh]"
         >
-          <GlassTitle text="Projects" svgPaths={rocketPaths} />
+          <GlassTitle text="Projects" />
           <div className="flex flex-col items-center gap-14 md:gap-24 px-4 md:px-[5%]">
             {rows.map((row, rowIdx) => (
               <div

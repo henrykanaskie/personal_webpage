@@ -116,7 +116,7 @@ export default function AboutPage() {
 
   return (
     <div className="flex flex-col items-center gap-12 md:gap-28 pb-[10vh]">
-      <GlassTitle text="Henry Kanaskie" />
+      <GlassTitle text="Henry Kanaskie" debugVariantToggle />
 
       {/* Contact info */}
       <motion.div
@@ -218,10 +218,8 @@ export default function AboutPage() {
           <GlassBlurb>
             <FuzzyText>
               <p
-                className="bg-clip-text text-transparent"
                 style={{
-                  WebkitBackgroundClip: "text",
-                  backgroundImage: themed(isDark, cs.iridescent.dark, cs.iridescent.light),
+                  color: "rgba(255, 255, 255, 0.92)",
                   fontSize: "clamp(0.95rem, 1.4vw, 1.15rem)",
                   fontWeight: 500,
                   lineHeight: 1.8,

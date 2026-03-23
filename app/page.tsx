@@ -5,6 +5,7 @@ import { motion, useMotionValue, animate } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useIsDark } from "@/lib/glass";
+import { themed } from "@/lib/tokens";
 
 const navLinks = [
   { name: "About", href: "/cs", sectionId: "about" },
@@ -443,12 +444,49 @@ function CSSide({
   isDark: boolean;
   isMobile: boolean;
 }) {
-  const titleGrad = isDark
-    ? "linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 40%, rgb(180,210,235) 70%, rgb(210,185,220) 100%)"
-    : "linear-gradient(135deg, rgb(75,92,132) 0%, rgb(108,88,118) 40%, rgb(80,112,138) 70%, rgb(112,95,124) 100%)";
-  const nameGrad = isDark
-    ? "linear-gradient(135deg, rgba(200,215,255,0.55) 0%, rgba(220,205,240,0.5) 100%)"
-    : "linear-gradient(135deg, rgba(75,92,132,0.55) 0%, rgba(108,88,118,0.5) 100%)";
+  // Crystalline base — matches GlassTitle "crystalline" variant
+  const crystalBase: React.CSSProperties = {
+    WebkitBackgroundClip: "text",
+    backgroundImage: themed(
+      isDark,
+      "linear-gradient(180deg, rgba(255,255,255,0.52) 0%, rgba(225,238,255,0.26) 52%, rgba(255,255,255,0.18) 100%)",
+      "linear-gradient(180deg, rgba(16,22,34,0.52) 0%, rgba(18,26,40,0.30) 52%, rgba(12,18,28,0.18) 100%)",
+    ),
+    WebkitTextStroke: themed(isDark, "1.05px rgba(255,255,255,0.30)", "1.05px rgba(255,255,255,0.46)"),
+    textShadow: themed(
+      isDark,
+      "0 1px 0 rgba(255,255,255,0.10), 0 10px 38px rgba(0,0,0,0.55), 0 42px 160px rgba(0,0,0,0.90)",
+      "0 1px 0 rgba(255,255,255,0.28), 0 10px 34px rgba(0,0,0,0.14), 0 42px 140px rgba(0,0,0,0.16)",
+    ),
+    filter: themed(isDark, "contrast(1.14) saturate(1.02)", "contrast(1.06) saturate(0.96)"),
+  };
+  const crystalRefraction: React.CSSProperties = {
+    WebkitBackgroundClip: "text",
+    backgroundImage: themed(
+      isDark,
+      "radial-gradient(140% 90% at 12% 14%, rgba(255,255,255,0.52) 0%, rgba(255,255,255,0.16) 30%, rgba(255,255,255,0.05) 46%, transparent 62%), radial-gradient(120% 95% at 92% 88%, rgba(140,190,255,0.26) 0%, rgba(140,190,255,0.10) 34%, rgba(140,190,255,0.03) 54%, transparent 70%), linear-gradient(118deg, rgba(255,255,255,0.00) 0%, rgba(255,255,255,0.14) 24%, rgba(160,205,255,0.06) 40%, rgba(255,255,255,0.08) 54%, rgba(125,180,255,0.12) 70%, rgba(255,255,255,0.00) 100%)",
+      "radial-gradient(140% 90% at 12% 14%, rgba(255,255,255,0.34) 0%, rgba(255,255,255,0.12) 30%, rgba(255,255,255,0.04) 46%, transparent 62%), radial-gradient(120% 95% at 92% 88%, rgba(105,155,230,0.18) 0%, rgba(105,155,230,0.08) 34%, rgba(105,155,230,0.02) 54%, transparent 70%), linear-gradient(118deg, rgba(255,255,255,0.00) 0%, rgba(255,255,255,0.10) 24%, rgba(140,185,255,0.04) 40%, rgba(255,255,255,0.05) 54%, rgba(90,140,215,0.08) 70%, rgba(255,255,255,0.00) 100%)",
+    ),
+    filter: themed(isDark, "contrast(1.16)", "contrast(1.10)"),
+    opacity: themed(isDark, 0.88, 0.78) as unknown as number,
+  };
+  const crystalRim: React.CSSProperties = {
+    WebkitBackgroundClip: "text",
+    backgroundImage: themed(
+      isDark,
+      "linear-gradient(180deg, rgba(255,255,255,0.62) 0%, rgba(255,255,255,0.18) 38%, rgba(180,220,255,0.12) 62%, rgba(140,190,255,0.22) 100%)",
+      "linear-gradient(180deg, rgba(255,255,255,0.36) 0%, rgba(255,255,255,0.12) 38%, rgba(160,205,255,0.08) 62%, rgba(105,155,230,0.14) 100%)",
+    ),
+    filter: themed(isDark, "contrast(1.18)", "contrast(1.12)"),
+    opacity: themed(isDark, 0.78, 0.48) as unknown as number,
+    mixBlendMode: themed(isDark, "screen", "overlay") as unknown as React.CSSProperties["mixBlendMode"],
+  };
+  const dispersionBase: React.CSSProperties = {
+    opacity: themed(isDark, 0.22, 0.12) as unknown as number,
+    filter: undefined,
+    mixBlendMode: themed(isDark, "screen", "overlay") as unknown as React.CSSProperties["mixBlendMode"],
+  };
+
   const divColor = isDark ? "rgba(180,200,255,0.15)" : "rgba(80,100,140,0.18)";
   const dotColor = isDark ? "rgba(180,200,255,0.2)" : "rgba(80,100,140,0.22)";
 
@@ -469,10 +507,8 @@ function CSSide({
         }}
       >
         <p
-          className="bg-clip-text text-transparent"
           style={{
-            WebkitBackgroundClip: "text",
-            backgroundImage: nameGrad,
+            color: isDark ? "rgba(200,210,225,0.55)" : "rgba(80,90,110,0.55)",
             fontSize: "11px",
             letterSpacing: "0.45em",
             textTransform: "uppercase",
@@ -484,7 +520,7 @@ function CSSide({
         </p>
       </div>
 
-      {/* Title */}
+      {/* Title — crystalline */}
       <div
         style={{
           position: "absolute",
@@ -495,21 +531,33 @@ function CSSide({
           whiteSpace: "nowrap",
         }}
       >
-        <h1
-          className="font-bold bg-clip-text text-transparent"
+        <span
+          className="relative inline-block font-bold select-none"
           style={{
-            WebkitBackgroundClip: "text",
-            backgroundImage: titleGrad,
-            fontSize: isMobile
-              ? "clamp(1.4rem, 7vw, 2.6rem)"
-              : "clamp(2.8rem, 5.5vw, 5rem)",
+            fontSize: isMobile ? "clamp(1.4rem, 7vw, 2.6rem)" : "clamp(2.8rem, 5.5vw, 5rem)",
             letterSpacing: "-0.02em",
-            margin: 0,
             lineHeight: 1.1,
           }}
         >
-          Computer Science
-        </h1>
+          <span className="relative bg-clip-text text-transparent" style={crystalBase}>
+            Computer Science
+          </span>
+          {/* Refraction */}
+          <span aria-hidden className="absolute inset-0 bg-clip-text text-transparent pointer-events-none" style={crystalRefraction}>
+            Computer Science
+          </span>
+          {/* Rim */}
+          <span aria-hidden className="absolute inset-0 bg-clip-text text-transparent pointer-events-none" style={crystalRim}>
+            Computer Science
+          </span>
+          {/* Dispersion */}
+          <span aria-hidden className="absolute inset-0 bg-clip-text text-transparent pointer-events-none" style={{ ...dispersionBase, backgroundImage: "linear-gradient(90deg, rgba(255,90,120,0.55), rgba(255,90,120,0.00) 60%)", transform: "translateX(-0.35px)" }}>
+            Computer Science
+          </span>
+          <span aria-hidden className="absolute inset-0 bg-clip-text text-transparent pointer-events-none" style={{ ...dispersionBase, backgroundImage: "linear-gradient(90deg, rgba(120,190,255,0.00) 40%, rgba(120,190,255,0.55))", transform: "translateX(0.35px)" }}>
+            Computer Science
+          </span>
+        </span>
       </div>
 
       {/* Hairline divider */}
@@ -552,14 +600,7 @@ function CSSide({
                 className="px-3 py-1.5 rounded-full font-semibold tracking-wide transition-colors duration-200 hover:bg-white/[0.05] dark:hover:bg-white/[0.06]"
                 style={{ fontSize: "15px" }}
               >
-                <span
-                  className="bg-clip-text text-transparent"
-                  style={{
-                    WebkitBackgroundClip: "text",
-                    backgroundImage: titleGrad,
-                    opacity: 0.72,
-                  }}
-                >
+                <span style={{ color: isDark ? "rgba(200,210,225,0.55)" : "rgba(80,90,110,0.55)" }}>
                   {link.name}
                 </span>
               </Link>
