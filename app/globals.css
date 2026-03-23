@@ -78,3 +78,15 @@ body {
   0% { background-position: 0% center; }
   100% { background-position: 200% center; }
 }
+
+@keyframes liquidGlassDrift {
+  0% {
+    background-position: 0% 45%, 100% 55%, 100% 50%;
+  }
+  50% {
+    background-position: 30% 62%, 75% 35%, 40% 50%;
+  }
+  100% {
+    background-position: 60% 40%, 40% 70%, -20% 50%;
+  }
+}

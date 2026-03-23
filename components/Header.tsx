@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { PhotographyFilmStripNav } from "./PhotographyFilmStripNav";
 import { glassStyle } from "../lib/glass";
-import { glassBubbleClassNames, cs, photo } from "../lib/tokens";
+import { glassBubbleClassNames, cs, photo, themed } from "../lib/tokens";
 
 // ─── Navigation links ─────────────────────────────────────────────────────────
 
@@ -18,42 +18,53 @@ const csNavLinks = [
   { name: "Resume", href: "/resume", sectionId: null },
 ];
 
-// ─── CS Gradients (cool iridescent) ──────────────────────────────────────────
+// ─── Crystalline text (CS nav) ────────────────────────────────────────────────
 
-const csLightGrad = cs.iridescent.light;
-const csDarkGrad = cs.iridescent.dark;
-
-const csLightGradActive = cs.iridescentActive.light;
-const csDarkGradActive = cs.iridescentActive.dark;
-
-// ─── Iridescent text (CS nav) ──────────────────────────────────────────────────
-
-function IridescentText({
+function CrystallineText({
   children,
   active = false,
   isDark = false,
-  gradientOverride,
-  activeGradientOverride,
 }: {
   children: React.ReactNode;
   active?: boolean;
   isDark?: boolean;
-  gradientOverride?: string;
-  activeGradientOverride?: string;
 }) {
-  const baseGrad = isDark ? csDarkGrad : csLightGrad;
-  const activeGrad = isDark ? csDarkGradActive : csLightGradActive;
-
-  const gradient = active
-    ? (activeGradientOverride ?? activeGrad)
-    : (gradientOverride ?? baseGrad);
+  const base: React.CSSProperties = {
+    WebkitBackgroundClip: "text",
+    backgroundImage: themed(
+      isDark,
+      "linear-gradient(180deg, rgba(225,238,255,0.92) 0%, rgba(200,218,255,0.62) 52%, rgba(220,208,248,0.46) 100%)",
+      "linear-gradient(180deg, rgba(110,130,175,0.85) 0%, rgba(130,145,195,0.62) 52%, rgba(140,120,160,0.48) 100%)",
+    ),
+    WebkitTextStroke: themed(isDark, "1.05px rgba(180,200,255,0.35)", "1.05px rgba(80,100,160,0.40)"),
+    textShadow: themed(
+      isDark,
+      "0 1px 0 rgba(180,200,255,0.18), 0 10px 38px rgba(0,0,0,0.55)",
+      "0 1px 0 rgba(255,255,255,0.28), 0 10px 34px rgba(0,0,0,0.14)",
+    ),
+    filter: themed(isDark, "contrast(1.14)", "contrast(1.06)"),
+    opacity: active ? 1 : 0.72,
+  };
+  const rim: React.CSSProperties = {
+    WebkitBackgroundClip: "text",
+    backgroundImage: themed(
+      isDark,
+      "linear-gradient(180deg, rgba(220,235,255,0.65) 0%, rgba(180,200,255,0.22) 38%, rgba(160,190,255,0.14) 62%, rgba(140,190,255,0.28) 100%)",
+      "linear-gradient(180deg, rgba(200,215,255,0.38) 0%, rgba(160,185,240,0.16) 38%, rgba(140,170,230,0.10) 62%, rgba(105,140,220,0.18) 100%)",
+    ),
+    filter: themed(isDark, "contrast(1.18)", "contrast(1.12)"),
+    opacity: themed(isDark, active ? 0.9 : 0.78, active ? 0.6 : 0.48) as unknown as number,
+    mixBlendMode: themed(isDark, "screen", "overlay") as unknown as React.CSSProperties["mixBlendMode"],
+  };
 
   return (
-    <span
-      className="bg-clip-text text-transparent"
-      style={{ WebkitBackgroundClip: "text", backgroundImage: gradient }}
-    >
-      {children}
+    <span className="relative inline-block">
+      <span className="relative bg-clip-text text-transparent" style={base}>
+        {children}
+      </span>
+      <span aria-hidden className="absolute inset-0 bg-clip-text text-transparent pointer-events-none" style={rim}>
+        {children}
+      </span>
     </span>
   );
 }
@@ -521,9 +532,9 @@ export default function Header() {
                 className={`${glassBubbleClassNames} px-7 py-3 rounded-full font-semibold text-lg transition-all duration-200`}
                 style={active ? activeBubbleStyle : glassStyle}
               >
-                <IridescentText active={active} isDark={isDark}>
+                <CrystallineText active={active} isDark={isDark}>
                   {link.name}
-                </IridescentText>
+                </CrystallineText>
               </Link>
             );
           })}
