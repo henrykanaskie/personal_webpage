@@ -5,6 +5,7 @@ import { motion, useInView, useMotionValue, animate } from "framer-motion";
 import AnimatedSvg from "./AnimatedSvg";
 import { useIsDark } from "../lib/glass";
 import { cs, themed } from "../lib/tokens";
+import { registerShineEffect } from "../lib/scrollVelocity";
 
 type GlassTitleVariant = "iridescent" | "crystalline" | "crystalline-blur";
 
@@ -44,7 +45,7 @@ export default function GlassTitle({
   const shineRef = useRef<HTMLSpanElement>(null);
   const causticRef = useRef<HTMLSpanElement>(null);
   const isDark = useIsDark();
-  const isInView = useInView(ref, { once: false, amount: 0.3 });
+  const isInView = useInView(ref, { once: true, amount: 0.3 });
 
   const svgProgress = useMotionValue(0);
   const drawTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -109,7 +110,7 @@ export default function GlassTitle({
     if (!isCrystalline && !isCrystallineBlur) return {};
     return {
       WebkitBackgroundClip: "text",
-      // Clearer internal refraction; less bloom, more “cut” light.
+      // Clearer internal refraction; less bloom, more "cut" light.
       backgroundImage: themed(
         isDark,
         "radial-gradient(140% 90% at 12% 14%, rgba(255,255,255,0.52) 0%, rgba(255,255,255,0.16) 30%, rgba(255,255,255,0.05) 46%, transparent 62%), radial-gradient(120% 95% at 92% 88%, rgba(140,190,255,0.26) 0%, rgba(140,190,255,0.10) 34%, rgba(140,190,255,0.03) 54%, transparent 70%), linear-gradient(118deg, rgba(255,255,255,0.00) 0%, rgba(255,255,255,0.14) 24%, rgba(160,205,255,0.06) 40%, rgba(255,255,255,0.08) 54%, rgba(125,180,255,0.12) 70%, rgba(255,255,255,0.00) 100%)",
@@ -152,7 +153,7 @@ export default function GlassTitle({
     if (!isCrystalline && !isCrystallineBlur) return {};
     return {
       WebkitBackgroundClip: "text",
-      // Tighter caustics: localized “spark” rather than a wide sweep.
+      // Tighter caustics: localized "spark" rather than a wide sweep.
       backgroundImage: themed(
         isDark,
         "linear-gradient(103deg, transparent 0%, transparent 44%, rgba(255,255,255,0.18) 48%, rgba(255,255,255,0.38) 50%, rgba(255,255,255,0.16) 52%, transparent 56%, transparent 100%)",
@@ -240,99 +241,7 @@ export default function GlassTitle({
       window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
     if (prefersReduced) return;
 
-    let rafId = 0;
-    let idleTimer: ReturnType<typeof setTimeout> | null = null;
-
-    let currentX = 200; // percent
-    let targetX = 200;
-    let currentShineO = 0;
-    let targetShineO = 0;
-    let currentCausticO = 0;
-    let targetCausticO = 0;
-
-    let lastY = typeof window !== "undefined" ? window.scrollY : 0;
-    let lastT = typeof performance !== "undefined" ? performance.now() : 0;
-
-    const clamp = (v: number, min: number, max: number) =>
-      Math.min(max, Math.max(min, v));
-    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-
-    const apply = () => {
-      rafId = 0;
-      // Smooth glide + decay.
-      currentX = lerp(currentX, targetX, 0.14);
-      currentShineO = lerp(currentShineO, targetShineO, 0.12);
-      currentCausticO = lerp(currentCausticO, targetCausticO, 0.12);
-
-      const xCss = `${currentX.toFixed(2)}%`;
-      if (shineEl) {
-        shineEl.style.setProperty("--glass-shine-x", xCss);
-        shineEl.style.setProperty(
-          "--glass-shine-o",
-          `${currentShineO.toFixed(3)}`,
-        );
-      }
-      if (causticEl) {
-        causticEl.style.setProperty("--glass-shine-x", xCss);
-        causticEl.style.setProperty(
-          "--glass-caustic-o",
-          `${currentCausticO.toFixed(3)}`,
-        );
-      }
-
-      const stillMoving =
-        Math.abs(targetX - currentX) > 0.06 ||
-        Math.abs(targetShineO - currentShineO) > 0.004 ||
-        Math.abs(targetCausticO - currentCausticO) > 0.004;
-      if (stillMoving) rafId = window.requestAnimationFrame(apply);
-    };
-
-    const kick = () => {
-      if (!rafId) rafId = window.requestAnimationFrame(apply);
-    };
-
-    const onScroll = () => {
-      const y = window.scrollY;
-      const now = performance.now();
-      const dy = y - lastY;
-      const dt = Math.max(16, now - lastT);
-      lastY = y;
-      lastT = now;
-
-      // Drive the shine in the direction of scroll.
-      targetX = clamp(targetX - dy * 0.35, -80, 220);
-
-      // Opacity is proportional to scroll speed, then fades out when idle.
-      const v = Math.abs(dy) / dt; // px/ms
-      targetShineO = clamp(v * 0.9, 0, 0.42);
-      targetCausticO = clamp(v * 0.75, 0, 0.4);
-
-      if (idleTimer) clearTimeout(idleTimer);
-      idleTimer = setTimeout(() => {
-        targetShineO = 0;
-        targetCausticO = 0;
-        kick();
-      }, 120);
-
-      kick();
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    // Initialize to avoid any “first paint flash”.
-    if (shineEl) {
-      shineEl.style.setProperty("--glass-shine-x", `${currentX}%`);
-      shineEl.style.setProperty("--glass-shine-o", "0");
-    }
-    if (causticEl) {
-      causticEl.style.setProperty("--glass-shine-x", `${currentX}%`);
-      causticEl.style.setProperty("--glass-caustic-o", "0");
-    }
-
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      if (idleTimer) clearTimeout(idleTimer);
-      if (rafId) window.cancelAnimationFrame(rafId);
-    };
+    return registerShineEffect(shineEl, causticEl);
   }, []);
 
   const leftPaths = svgPathsLeft ?? svgPaths;
@@ -347,6 +256,7 @@ export default function GlassTitle({
       animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
       exit={{ opacity: 0, transition: { duration: 0.3, ease: "easeIn" } }}
       transition={{ duration: 1.2, ease: "easeInOut" }}
+      style={{ willChange: "transform, opacity" }}
       className={`flex justify-center items-center pt-12 md:pt-18 pb-4 md:pb-8 select-none ${containerClassName ?? ""}`}
     >
       {/* Left SVG — overlaps into text with negative margin */}

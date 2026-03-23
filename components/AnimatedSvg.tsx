@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { motion, MotionValue } from "framer-motion";
 
 interface AnimatedSvgProps {
@@ -12,7 +13,7 @@ interface AnimatedSvgProps {
   rotate?: number;
 }
 
-export default function AnimatedSvg({
+function AnimatedSvg({
   paths,
   size = 240,
   color = "#166c8bff",
@@ -56,3 +57,5 @@ export default function AnimatedSvg({
     </div>
   );
 }
+
+export default memo(AnimatedSvg);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useState, useEffect, RefObject } from "react";
+import { useRef, useCallback, useState, useEffect, RefObject, memo } from "react";
 import {
   motion,
   useMotionValue,
@@ -28,7 +28,8 @@ function useInViewHysteresis(
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const thresholds = Array.from({ length: 21 }, (_, i) => i / 20);
+    // Only need thresholds at the actual comparison points (leaveAmount=0.08, enterAmount=0.35/0.40)
+    const thresholds = [0, 0.08, 0.35, 0.40];
     const observer = new IntersectionObserver(
       ([entry]) => {
         const ratio = entry.intersectionRatio;
@@ -103,7 +104,7 @@ function cornerPosition(corner: Corner, offset?: { x?: number; y?: number }) {
 
 // ─── Shared bubble shell ───
 
-function BubbleShell({
+const BubbleShell = memo(function BubbleShell({
   side,
   isMobile,
   onPop,
@@ -226,11 +227,11 @@ function BubbleShell({
       {children}
     </motion.div>
   );
-}
+});
 
 // ─── Thumbnail Bubble Content ───
 
-function ThumbnailBubbleContent({
+const ThumbnailBubbleContent = memo(function ThumbnailBubbleContent({
   thumbnail,
   isMobile,
   isDark,
@@ -273,11 +274,11 @@ function ThumbnailBubbleContent({
       </p>
     </div>
   );
-}
+});
 
 // ─── Deployment Bubble Content ───
 
-function DeploymentBubbleContent({
+const DeploymentBubbleContent = memo(function DeploymentBubbleContent({
   deployment,
   isMobile,
   isDark,
@@ -364,7 +365,7 @@ function DeploymentBubbleContent({
       </p>
     </div>
   );
-}
+});
 
 // ─── Project Card ───
 
@@ -499,6 +500,7 @@ export default function ProjectCard({
           zIndex: anyBubbleOpen ? 10 : "auto",
           display: "flex",
           flexDirection: "column",
+          willChange: "transform",
         }}
         className="w-[calc(100%-2rem)] mx-auto md:mx-0 md:w-[420px] lg:w-[460px] min-h-[280px] md:min-h-[320px]"
       >
