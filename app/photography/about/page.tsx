@@ -15,7 +15,7 @@ const GEAR: GearCategory[] = [
     title: "Cameras",
     items: [
       { name: "Sony A7 IV", spec: "Full Frame · 33MP", note: "Primary body" },
-      { name: "Fujifilm X100V", spec: "APS-C · 26MP", note: "Street & travel" },
+      { name: "Olympus OM-1", spec: "35mm Film", note: "Film" },
     ],
   },
   {
@@ -23,24 +23,14 @@ const GEAR: GearCategory[] = [
     title: "Lenses",
     items: [
       {
-        name: "Sony FE 35mm f/1.8",
-        spec: "Prime · Wide",
+        name: "Sigma 24-70mm f/2.8 Art",
+        spec: "Standard Zoom",
         note: "Everyday carry",
       },
       {
-        name: "Sony FE 85mm f/1.8",
-        spec: "Prime · Portrait",
-        note: "Portraits",
-      },
-      {
-        name: "Sony FE 16-35mm f/2.8 GM",
-        spec: "Wide Zoom",
-        note: "Landscape",
-      },
-      {
-        name: "Sony FE 70-200mm f/4 G",
+        name: "Sigma 70-200mm f/2.8",
         spec: "Telephoto Zoom",
-        note: "Astrophotography",
+        note: "Reach",
       },
     ],
   },
@@ -49,17 +39,10 @@ const GEAR: GearCategory[] = [
     title: "Accessories",
     items: [
       {
-        name: "Gitzo Traveler GT1545T",
-        spec: "Carbon Tripod",
-        note: "Landscape & Astro",
-      },
-      {
-        name: "Peak Design Everyday 20L",
-        spec: "Camera Backpack",
+        name: "Peak Design Sling",
+        spec: "Small · Camera Bag",
         note: "Daily carry",
       },
-      { name: "B+W 77mm CPL", spec: "Circular Polarizer", note: "Landscape" },
-      { name: "Godox V1 Pro", spec: "Round Head Flash", note: "Portraits" },
     ],
   },
 ];
@@ -385,7 +368,7 @@ export default function PhotographyAboutPage() {
                 margin: 0,
               }}
             >
-              35mm · Digital · Available for commissions
+              Digital · Film · Available for commissions
             </p>
           </motion.div>
         </div>

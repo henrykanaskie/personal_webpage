@@ -197,7 +197,7 @@ export default function LeftInfoBox({
                   className="bg-clip-text text-transparent"
                   style={{
                     WebkitBackgroundClip: "text",
-                    backgroundImage: themed(isDark, cs.iridescent.dark, cs.iridescent.light),
+                    backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
                   }}
                 >
                   {title}

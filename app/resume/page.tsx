@@ -39,7 +39,7 @@ function SectionLabel({ label, isDark }: { label: string; isDark: boolean }) {
           className="bg-clip-text text-transparent"
           style={{
             WebkitBackgroundClip: "text",
-            backgroundImage: themed(isDark, cs.iridescent.dark, cs.iridescent.light),
+            backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
             fontSize: "clamp(0.62rem, 0.85vw, 0.75rem)",
             fontWeight: 700,
             textTransform: "uppercase",
@@ -116,7 +116,7 @@ function ExperienceCard({
                 className="bg-clip-text text-transparent"
                 style={{
                   WebkitBackgroundClip: "text",
-                  backgroundImage: themed(isDark, cs.iridescent.dark, cs.iridescent.light),
+                  backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
                   fontSize: "clamp(1rem, 1.5vw, 1.2rem)",
                   fontWeight: 700,
                 }}
@@ -366,7 +366,7 @@ function ResumeProjectCard({
               className="bg-clip-text text-transparent"
               style={{
                 WebkitBackgroundClip: "text",
-                backgroundImage: themed(isDark, cs.iridescent.dark, cs.iridescent.light),
+                backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
                 fontSize: "clamp(0.88rem, 1.3vw, 1.05rem)",
                 fontWeight: 700,
               }}
@@ -556,7 +556,7 @@ export default function ResumePage() {
                     className="bg-clip-text text-transparent"
                     style={{
                       WebkitBackgroundClip: "text",
-                      backgroundImage: themed(isDark, cs.iridescentShort.dark, cs.iridescentShort.light),
+                      backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
                     }}
                   >
                     {item.label}
@@ -573,7 +573,7 @@ export default function ResumePage() {
                     className="bg-clip-text text-transparent"
                     style={{
                       WebkitBackgroundClip: "text",
-                      backgroundImage: themed(isDark, cs.iridescentShort.dark, cs.iridescentShort.light),
+                      backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
                     }}
                   >
                     {item.label}

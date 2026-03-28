@@ -52,6 +52,12 @@ export const cs = {
     dark: `linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 50%, rgb(180,210,235) 100%)`,
   },
 
+  // Liquid glass / crystalline text gradient (matches GlassTitle crystalline variant)
+  liquidGlass: {
+    light: `linear-gradient(180deg, rgba(14,18,52,0.88) 0%, rgba(22,32,80,0.72) 48%, rgba(30,45,100,0.52) 100%)`,
+    dark: `linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 15%, rgb(180,210,235) 30%, rgb(215,190,215) 45%, rgb(170,200,230) 60%, rgb(200,185,225) 75%, rgb(180,195,235) 90%, rgb(210,185,220) 100%)`,
+  },
+
   // Standalone color (for stroke, color props — not gradients)
   color: {
     light: "rgb(100,115,145)",
@@ -135,13 +141,13 @@ export const glass = {
   specular: {
     top: {
       light:
-        "linear-gradient(90deg, transparent, rgba(0,0,0,0.08) 30%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.08) 70%, transparent)",
+        "linear-gradient(90deg, transparent, rgba(16,112,196,0.30) 30%, rgba(16,112,196,0.40) 50%, rgba(16,112,196,0.30) 70%, transparent)",
       dark:
         "linear-gradient(90deg, transparent, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.4) 70%, transparent)",
     },
     bottom: {
       light:
-        "linear-gradient(90deg, transparent, rgba(0,0,0,0.04) 30%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.04) 70%, transparent)",
+        "linear-gradient(90deg, transparent, rgba(16,112,196,0.14) 30%, rgba(16,112,196,0.18) 50%, rgba(16,112,196,0.14) 70%, transparent)",
       dark:
         "linear-gradient(90deg, transparent, rgba(255,255,255,0.2) 30%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.2) 70%, transparent)",
     },
@@ -160,6 +166,9 @@ export const glass = {
 export const glassBubbleClassNames = `
   bg-white/[0.35]
   border border-[rgba(80,150,255,0.18)]
+  border-t-[rgba(16,112,196,0.38)]
+  border-r-[rgba(16,112,196,0.18)]
+  border-b-[rgba(16,112,196,0.22)]
   shadow-[inset_0_1px_0_rgba(80,150,255,0.12)]
   shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]
 
@@ -172,9 +181,10 @@ export const glassBubbleClassNames = `
 
 export const glassBoxClassNames = `
   bg-transparent
-  border border-[rgba(255,255,255,0.03)]
-  border-t-[rgba(255,255,255,0.001)]
-  border-r-[rgba(255,255,255,0.004)]
+  border border-[rgba(16,112,196,0.14)]
+  border-t-[rgba(16,112,196,0.36)]
+  border-r-[rgba(16,112,196,0.14)]
+  border-b-[rgba(16,112,196,0.22)]
   shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]
 
   dark:border-[rgba(255,255,255,0.06)]

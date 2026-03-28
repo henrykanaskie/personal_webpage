@@ -78,6 +78,7 @@ interface ProjectCardProps {
   deployment: DeploymentInfo;
   svgs?: SvgConfig[];
   bubbleSide?: "left" | "right";
+  numCardsInRow?: number;
 }
 
 // ─── Iridescent progress bar gradient (matches site palette) ───
@@ -102,6 +103,55 @@ function cornerPosition(corner: Corner, offset?: { x?: number; y?: number }) {
   };
 }
 
+// ─── Dynamic bubble-mobile detection ───
+// Switches to below-card layout when there isn't enough room on either side
+// of the row for a side bubble (bubbleWidth 240 + gapFromCard 80 = 320px).
+//
+// Uses offsetWidth (transform-agnostic) so it's never fooled by the entry
+// animation that starts the card off-screen at x: ±100vw.
+
+const BUBBLE_EXTENSION = 320; // bubbleWidth(240) + gapFromCard(80)
+const SECTION_PADDING_RATIO = 0.05; // matches md:px-[5%]
+const ROW_GAP = 64; // matches md:gap-16
+
+function useBubbleMobile(
+  boxRef: React.RefObject<HTMLDivElement | null>,
+  numCardsInRow: number
+): boolean | null {
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const check = () => {
+      const W = window.innerWidth;
+      if (W < 768) { setIsMobile(true); return; }
+
+      const cardWidth = boxRef.current?.offsetWidth ?? 0;
+      if (cardWidth === 0) return;
+
+      // Compute how much space is available on each side of the row.
+      // offsetWidth is unaffected by CSS transforms, so this is correct
+      // even while the card is mid-animation.
+      const rowWidth = numCardsInRow * cardWidth + (numCardsInRow - 1) * ROW_GAP;
+      const sectionPadding = SECTION_PADDING_RATIO * W;
+      const availableWidth = W - 2 * sectionPadding;
+      const spaceOnSide = (availableWidth - rowWidth) / 2 + sectionPadding;
+
+      setIsMobile(spaceOnSide < BUBBLE_EXTENSION);
+    };
+
+    const ro = new ResizeObserver(check);
+    if (boxRef.current) ro.observe(boxRef.current);
+    window.addEventListener("resize", check);
+    check();
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", check);
+    };
+  }, [boxRef, numCardsInRow]);
+
+  return isMobile;
+}
+
 // ─── Shared bubble shell ───
 
 const BubbleShell = memo(function BubbleShell({
@@ -113,6 +163,7 @@ const BubbleShell = memo(function BubbleShell({
   desktopYOffset,
   desktopX,
   mobileYOffset,
+  mobileBubbleX,
   children,
 }: {
   side: "left" | "right";
@@ -123,6 +174,7 @@ const BubbleShell = memo(function BubbleShell({
   desktopYOffset?: number;
   desktopX?: number;
   mobileYOffset?: number;
+  mobileBubbleX?: string;
   children: React.ReactNode;
 }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
@@ -191,7 +243,7 @@ const BubbleShell = memo(function BubbleShell({
         showBelow
           ? {
               top: "100%",
-              x: "-50%",
+              x: mobileBubbleX ?? "-50%",
               y: `${16 + mYOff}px`,
               scaleX: isPopping || isPressed ? 1.08 : 1,
               scaleY: isPopping || isPressed ? 1.08 : 1,
@@ -379,9 +431,11 @@ export default function ProjectCard({
   deployment,
   svgs = [],
   bubbleSide = "right",
+  numCardsInRow = 2,
 }: ProjectCardProps) {
   const boxRef = useRef<HTMLDivElement>(null);
-  const isMobile = useIsMobile(1650);
+  const isMobile = useBubbleMobile(boxRef, numCardsInRow);
+  const isTrulyMobile = useIsMobile(768);
   const isDark = useIsDark();
   const isInView = useInViewHysteresis(boxRef, {
     enterAmount: isMobile ? 0.4 : 0.35,
@@ -426,9 +480,14 @@ export default function ProjectCard({
     ? (thumbnailIsFirst ? -BUBBLE_STACK_OFFSET : BUBBLE_STACK_OFFSET)
     : 0;
 
-  // Mobile: stacked vertically when both open (~280px per bubble)
+  // Side-by-side when below but not truly mobile
+  const showSideBySide = isMobile && !isTrulyMobile && bothBubblesOpen;
+
+  // Mobile: stacked vertically on true mobile, side by side otherwise
   const thumbnailMobileYOffset = 0;
-  const deploymentMobileYOffset = bothBubblesOpen ? 200 : 0;
+  const deploymentMobileYOffset = showSideBySide ? 0 : (bothBubblesOpen ? 200 : 0);
+  const thumbnailMobileBubbleX = showSideBySide ? "calc(-100% - 8px)" : "-50%";
+  const deploymentMobileBubbleX = showSideBySide ? "8px" : "-50%";
 
   // SVG draw progress
   const svgProgress = useMotionValue(0);
@@ -552,7 +611,7 @@ export default function ProjectCard({
                   className="bg-clip-text text-transparent"
                   style={{
                     WebkitBackgroundClip: "text",
-                    backgroundImage: themed(isDark, cs.iridescent.dark, cs.iridescent.light),
+                    backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
                   }}
                 >
                   {title}
@@ -626,6 +685,7 @@ export default function ProjectCard({
                 parentInView={isInView}
                 desktopYOffset={thumbnailDesktopY}
                 mobileYOffset={thumbnailMobileYOffset}
+                mobileBubbleX={thumbnailMobileBubbleX}
               >
                 <ThumbnailBubbleContent thumbnail={thumbnail} isMobile={isMobile} isDark={isDark} />
               </BubbleShell>
@@ -642,6 +702,7 @@ export default function ProjectCard({
                 parentInView={isInView}
                 desktopYOffset={deploymentDesktopY}
                 mobileYOffset={deploymentMobileYOffset}
+                mobileBubbleX={deploymentMobileBubbleX}
               >
                 <DeploymentBubbleContent deployment={deployment} isMobile={isMobile} isDark={isDark} />
               </BubbleShell>
@@ -652,7 +713,7 @@ export default function ProjectCard({
 
       {/* Mobile spacer — always rendered so it animates smoothly when isMobile changes */}
       <motion.div
-        animate={{ height: isMobile && anyBubbleOpen ? (bothBubblesOpen ? 450 : 300) : 0 }}
+        animate={{ height: isMobile && anyBubbleOpen ? (bothBubblesOpen && !showSideBySide ? 450 : 300) : 0 }}
         transition={{ duration: 0.75, ease: [0.25, 1, 0.5, 1] }}
         style={{ overflow: "hidden" }}
       />

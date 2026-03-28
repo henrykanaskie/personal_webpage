@@ -16,7 +16,7 @@ interface AnimatedSvgProps {
 function AnimatedSvg({
   paths,
   size = 240,
-  color = "#166c8bff",
+  color = "rgb(22, 90, 139)",
   strokeWidth = 2,
   scrollProgress,
   className = "",
@@ -29,7 +29,9 @@ function AnimatedSvg({
         width: size,
         height: size,
         position: "relative",
-        transform: rotate ? `rotate(${rotate}deg) translateZ(0)` : "translateZ(0)",
+        transform: rotate
+          ? `rotate(${rotate}deg) translateZ(0)`
+          : "translateZ(0)",
         willChange: "transform",
       }}
     >
@@ -49,7 +51,10 @@ function AnimatedSvg({
               key={index}
               d={path}
               initial={{ pathLength: 0 }}
-              style={{ pathLength: scrollProgress, willChange: "stroke-dashoffset" }}
+              style={{
+                pathLength: scrollProgress,
+                willChange: "stroke-dashoffset",
+              }}
             />
           ))}
         </g>

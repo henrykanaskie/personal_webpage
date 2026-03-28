@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, Fragment } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import GlassTitle from "@/components/GlassTitle";
@@ -11,9 +11,16 @@ import {
   useIsDark,
   useIsMobile,
 } from "@/lib/glass";
-import { cs, themed, glassBoxClassNames } from "@/lib/tokens";
+import {
+  cs,
+  themed,
+  glassBoxClassNames,
+  glassBubbleClassNames,
+} from "@/lib/tokens";
+import { CrystallineText } from "@/components/Header";
 import LeftInfoBox from "@/components/LeftInfoBox";
 import RightInfoBox from "@/components/RightInfoBox";
+import AboutBlurb from "@/components/AboutBlurb";
 import ProjectCard, { ProjectCardProvider } from "@/components/ProjectCard";
 import EducationCard from "@/components/EducationCard";
 import { rocketPaths } from "@/svgs/rocketPaths";
@@ -23,55 +30,6 @@ import { thrusterPaths } from "@/svgs/thrusterPaths";
 import { cpuPaths } from "@/svgs/cpuPaths";
 import { beePaths } from "@/svgs/beePaths";
 import { nnPaths } from "@/svgs/nnPaths";
-
-// ── GlassBlurb (local component from About section) ──────────────────────────
-function GlassBlurb({
-  title,
-  children,
-}: {
-  title?: string;
-  children: React.ReactNode;
-}) {
-  const isDark = useIsDark();
-  return (
-    <div
-      style={{ position: "relative", width: "100%" }}
-      className="px-2 md:px-4 w-full h-full"
-    >
-      <div
-        style={{ position: "relative", borderRadius: "24px", ...glassStyle }}
-        className={`${glassBoxClassNames} p-5 md:p-10 lg:p-12 h-full`}
-      >
-        <GlassLayers />
-        {/* Keep content above any backdrop-filter layers to avoid blur. */}
-        <div style={{ position: "relative", zIndex: 2 }}>
-          {title && (
-            <div style={{ textAlign: "center", marginBottom: 20 }}>
-              <FuzzyText>
-                <span
-                  className="bg-clip-text text-transparent"
-                  style={{
-                    WebkitBackgroundClip: "text",
-                    backgroundImage: themed(
-                      isDark,
-                      cs.iridescent.dark,
-                      cs.iridescent.light,
-                    ),
-                    fontSize: "clamp(1.1rem, 1.8vw, 1.5rem)",
-                    fontWeight: 700,
-                  }}
-                >
-                  {title}
-                </span>
-              </FuzzyText>
-            </div>
-          )}
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ── Section divider ───────────────────────────────────────────────────────────
 function SectionDivider() {
@@ -83,7 +41,7 @@ function SectionDivider() {
           height: "1px",
           background: isDark
             ? "linear-gradient(90deg, transparent, rgba(180,200,255,0.15) 30%, rgba(200,185,225,0.2) 50%, rgba(180,200,255,0.15) 70%, transparent)"
-            : "linear-gradient(90deg, transparent, rgba(100,115,145,0.1) 30%, rgba(125,110,135,0.15) 50%, rgba(100,115,145,0.1) 70%, transparent)",
+            : "linear-gradient(90deg, transparent, rgba(22,90,139,0.45) 30%, rgba(22,90,139,0.58) 50%, rgba(22,90,139,0.45) 70%, transparent)",
         }}
       />
     </div>
@@ -138,51 +96,79 @@ const projects = [
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CSPage() {
   const isDark = useIsDark();
-  const isMobile = useIsMobile(1000);
+  const isMobile = useIsMobile(850);
 
   // Active section for nav dots
   const [activeSection, setActiveSection] = useState("about");
   const [hasScrolled, setHasScrolled] = useState(false);
+  // Direct DOM ref for the progress fill — avoids re-renders on every scroll tick
+  const navFillRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const sectionIds = ["about", "experience", "projects", "education"];
+    const N = sectionIds.length;
 
-    // rootMargin "-120px 0px 0px 0px" shifts the intersection root down by 120px.
-    // A section is "intersecting" when its top has scrolled past the 120px mark —
-    // exactly the condition the old getBoundingClientRect loop was testing.
-    // Active section = last intersecting section in order.
-    const intersecting = new Set<string>();
-    const sectionObserver = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const id = (entry.target as HTMLElement).id;
-          if (entry.isIntersecting) intersecting.add(id);
-          else intersecting.delete(id);
-        }
-        let active = sectionIds[0];
-        for (const id of sectionIds) {
-          if (intersecting.has(id)) active = id;
-        }
-        setActiveSection(active);
-      },
-      { rootMargin: "-120px 0px 0px 0px", threshold: 0 }
-    );
-    for (const id of sectionIds) {
-      const el = document.getElementById(id);
-      if (el) sectionObserver.observe(el);
-    }
+    // Cache section positions — only recomputed on resize, not on every scroll
+    let sectionTops: number[] = new Array(N).fill(0);
+    let lastSectionBottom = 0;
 
-    // One-shot scroll listener: sets hasScrolled once then removes itself.
-    const onScroll = () => {
-      if (window.scrollY > 80) {
-        setHasScrolled(true);
-        window.removeEventListener("scroll", onScroll);
+    const measureSections = () => {
+      const scrollY = window.scrollY;
+      sectionTops = sectionIds.map((id) => {
+        const el = document.getElementById(id);
+        return el ? el.getBoundingClientRect().top + scrollY : 0;
+      });
+      const lastEl = document.getElementById(sectionIds[N - 1]);
+      lastSectionBottom = lastEl
+        ? lastEl.getBoundingClientRect().bottom + scrollY
+        : sectionTops[N - 1] + window.innerHeight;
+    };
+
+    const updateNav = () => {
+      const scrollY = window.scrollY;
+      const viewportMid = scrollY + window.innerHeight * 0.5;
+
+      if (scrollY > 80) setHasScrolled(true);
+
+      // Active section: highest top that is <= viewport center
+      let activeIdx = 0;
+      for (let i = 0; i < N; i++) {
+        if (sectionTops[i] <= viewportMid) activeIdx = i;
+      }
+      setActiveSection(sectionIds[activeIdx]);
+
+      // Progress bar — pure math, no DOM reads
+      const currentTop = sectionTops[activeIdx];
+      const nextTop =
+        activeIdx < N - 1 ? sectionTops[activeIdx + 1] : lastSectionBottom;
+      const fraction =
+        nextTop > currentTop
+          ? Math.max(
+              0,
+              Math.min(1, (viewportMid - currentTop) / (nextTop - currentTop)),
+            )
+          : 0;
+      const progress = Math.max(
+        0,
+        Math.min(1, (activeIdx + fraction) / (N - 1)),
+      );
+      if (navFillRef.current) {
+        navFillRef.current.style.height = `calc(${progress * 100}% - ${progress * 15}px)`;
       }
     };
-    window.addEventListener("scroll", onScroll, { passive: true });
+
+    measureSections();
+    updateNav();
+
+    const onResize = () => {
+      measureSections();
+      updateNav();
+    };
+    window.addEventListener("scroll", updateNav, { passive: true });
+    window.addEventListener("resize", onResize, { passive: true });
 
     return () => {
-      sectionObserver.disconnect();
-      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scroll", updateNav);
+      window.removeEventListener("resize", onResize);
     };
   }, []);
 
@@ -196,6 +182,13 @@ export default function CSPage() {
   // About section modal state
   const [resumeOpen, setResumeOpen] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
+
+  // Notify header to hide nav when a modal is open
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("csModal", { detail: { open: resumeOpen || emailOpen } }),
+    );
+  }, [resumeOpen, emailOpen]);
   const [emailForm, setEmailForm] = useState({
     name: "",
     email: "",
@@ -207,6 +200,7 @@ export default function CSPage() {
   >("idle");
   const [emailError, setEmailError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const validateEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
@@ -318,8 +312,8 @@ export default function CSPage() {
                 fontWeight: 700,
                 backgroundImage: themed(
                   isDark,
-                  cs.iridescentVertical.dark,
-                  cs.iridescentVertical.light,
+                  cs.liquidGlass.dark,
+                  cs.liquidGlass.light,
                 ),
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
@@ -332,37 +326,63 @@ export default function CSPage() {
           </AnimatePresence>
         </div>
 
-        {/* Dots */}
-        {(["about", "experience", "projects", "education"] as const).map(
-          (id, i) => {
-            const isActive = activeSection === id;
-            return (
-              <div
-                key={id}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                }}
-              >
-                {i > 0 && (
-                  <div
-                    style={{
-                      width: 1,
-                      height: 14,
-                      background: isDark
-                        ? "rgba(180,200,255,0.1)"
-                        : "rgba(100,115,145,0.1)",
-                    }}
-                  />
-                )}
+        {/* Dots + progress track */}
+        <div
+          style={{
+            position: "relative",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 14,
+          }}
+        >
+          {/* Background track */}
+          <div
+            style={{
+              position: "absolute",
+              top: "7.5px",
+              bottom: "7.5px",
+              left: "50%",
+              width: 1,
+              transform: "translateX(-50%)",
+              background: isDark
+                ? "rgba(180,200,255,0.08)"
+                : "rgba(100,115,145,0.08)",
+            }}
+          />
+          {/* Glowing fill */}
+          <div
+            ref={navFillRef}
+            style={{
+              position: "absolute",
+              top: "7.5px",
+              left: "50%",
+              width: 1,
+              height: "0%",
+              transform: "translateX(-50%)",
+              background: isDark
+                ? "linear-gradient(to bottom, rgba(180,200,255,0.9), rgba(210,185,230,0.7))"
+                : "linear-gradient(to bottom, rgba(100,115,145,0.8), rgba(125,110,135,0.6))",
+              boxShadow: isDark
+                ? "0 0 4px rgba(180,200,255,0.7), 0 0 10px rgba(210,185,230,0.35)"
+                : "0 0 4px rgba(100,115,145,0.55), 0 0 8px rgba(125,110,135,0.3)",
+            }}
+          />
+          {/* Dots */}
+          {(["about", "experience", "projects", "education"] as const).map(
+            (id) => {
+              const isActive = activeSection === id;
+              return (
                 <button
+                  key={id}
                   onClick={() =>
                     document
                       .getElementById(id)
                       ?.scrollIntoView({ behavior: "smooth" })
                   }
                   style={{
+                    position: "relative",
+                    zIndex: 1,
                     background: "none",
                     border: "none",
                     cursor: "pointer",
@@ -394,10 +414,10 @@ export default function CSPage() {
                     }}
                   />
                 </button>
-              </div>
-            );
-          },
-        )}
+              );
+            },
+          )}
+        </div>
       </div>
 
       {/* ── About ──────────────────────────────────────────────────────── */}
@@ -409,39 +429,40 @@ export default function CSPage() {
         {/* Single row: Photo + Name/Links + Bio */}
         <motion.div
           ref={contactRef}
-          initial={{ x: "-70vw" }}
-          animate={
-            contactInView
-              ? { x: 0, y: 0 }
-              : isMobile
-                ? { x: 0, y: 15 }
-                : { x: -20, y: 10 }
-          }
+          initial={{ opacity: 0 }}
+          animate={contactInView ? { opacity: 1 } : { opacity: 0 }}
           exit={{
-            x: "-70vw",
+            opacity: 0,
             transition: { duration: 0.55, ease: [0.5, 0, 0.75, 0] },
           }}
-          transition={{ duration: 1.2, ease: "easeInOut" }}
-          style={{ willChange: "transform, opacity" }}
-          className="w-full px-2 md:px-[5%]"
+          transition={{ duration: 1.8, ease: "easeInOut" }}
+          style={{
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "flex-start",
+            minHeight: isMobile ? undefined : "400px",
+            gap: "clamp(1rem, 3vw, 2.5rem)",
+          }}
+          className="w-full px-2 md:px-[5%] pt-8 md:pt-14"
         >
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={contactInView ? { opacity: 1 } : { opacity: 0 }}
-            transition={{ duration: 1.8, ease: "easeInOut" }}
-            className="flex flex-col md:flex-row items-center gap-6 md:gap-10 pt-8 md:pt-14"
-          >
-            {/* Row 1 on mobile: Photo + Name/Links side by side */}
-            <div className="flex flex-row items-center gap-6 w-full md:contents">
-              {/* Photo */}
+          {isMobile ? (
+            /* ── Mobile layout ── */
+            <div className="flex flex-col gap-5 w-full">
+              {/* Name */}
+              <GlassTitle
+                text="Henry Kanaskie"
+                variant="crystalline"
+                containerClassName="justify-center items-center !pt-0 !pb-0"
+                fontSize="clamp(2rem, 11vw, 3.5rem)"
+              />
+
+              {/* Photo — with side margins */}
               <div
                 style={{
                   position: "relative",
-                  flexShrink: 0,
-                  width: isMobile
-                    ? "min(180px, 42vw)"
-                    : "clamp(150px, 22vw, 320px)",
-                  aspectRatio: "3/4",
+                  width: "clamp(200px, 50vw, 300px)",
+                  alignSelf: "center",
+                  aspectRatio: "3 / 4",
                   borderRadius: "16px",
                   overflow: "hidden",
                   border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.1)"}`,
@@ -454,30 +475,110 @@ export default function CSPage() {
                   src="/photography/cs_profile/IMG_4059.jpeg"
                   alt="Henry Kanaskie"
                   fill
-                  style={{ objectFit: "cover" }}
-                  sizes={isMobile ? "42vw" : "clamp(150px, 22vw, 320px)"}
+                  style={{ objectFit: "cover", objectPosition: "center top" }}
+                  sizes="100vw"
                   priority={false}
                 />
               </div>
 
-              {/* Name + Links */}
+              {/* Links */}
+              <div className="flex flex-row justify-center items-center gap-2 flex-wrap">
+                {[
+                  {
+                    label: "Email",
+                    href: undefined,
+                    action: () => {
+                      setEmailOpen(true);
+                      setEmailStatus("idle");
+                    },
+                  },
+                  {
+                    label: "LinkedIn",
+                    href: "https://linkedin.com/in/henry-kanaskie",
+                    action: undefined,
+                  },
+                  {
+                    label: "Resume",
+                    href: undefined,
+                    action: () => setResumeOpen(true),
+                  },
+                ].map((item) => {
+                  const pillClassName = `${glassBubbleClassNames} rounded-full font-semibold transition-all duration-200 hover:scale-105 active:scale-95`;
+                  const pillStyle: React.CSSProperties = {
+                    ...glassStyle,
+                    fontSize: "0.85rem",
+                    padding: "0.35rem 0.85rem",
+                    whiteSpace: "nowrap",
+                  };
+                  const label = (
+                    <CrystallineText isDark={isDark}>
+                      {item.label}
+                    </CrystallineText>
+                  );
+                  return item.href ? (
+                    <a
+                      key={item.label}
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={pillStyle}
+                      className={pillClassName}
+                    >
+                      {label}
+                    </a>
+                  ) : (
+                    <button
+                      key={item.label}
+                      onClick={item.action}
+                      style={pillStyle}
+                      className={`${pillClassName} cursor-pointer`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Blurb */}
+              <AboutBlurb
+                about={
+                  "Hey there! My name's Henry. I'm a Computer Science honors student at Oregon State University, passionate about machine learning, space, and medicine. I love working on software and impactful technology that helps people. I'm driven by problems where computation meets real-world change and improvement. Outside of engineering, I'm usually behind a camera, on the slopes, lifting, or finding new music. I value growth and learning above everything, and I'm always excited to connect with others who share that mindset!"
+                }
+              />
+            </div>
+          ) : (
+            /* ── Desktop layout ── */
+            <>
+              {/* Left column — photo + links stacked */}
               <div
-                className={`flex flex-col ${isMobile ? "items-start" : "shrink-0"}`}
-                style={{ gap: "0.05em" }}
+                className="flex flex-col gap-3 shrink-0 items-center"
+                style={{ width: "300px" }}
               >
-                <GlassTitle
-                  text={"Henry\nKanaskie"}
-                  variant="crystalline"
-                  containerClassName="justify-start items-start pt-0 pb-0"
-                  fontSize={
-                    isMobile
-                      ? "clamp(2rem, 10vw, 3.5rem)"
-                      : "clamp(2.8rem, 7vw, 7rem)"
-                  }
-                />
                 <div
-                  className={`flex flex-wrap ${isMobile ? "justify-center" : ""} items-center gap-4 mt-3`}
+                  style={{
+                    position: "relative",
+                    width: "300px",
+                    height: "400px",
+                    borderRadius: "16px",
+                    overflow: "hidden",
+                    border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.1)"}`,
+                    boxShadow: isDark
+                      ? "0 4px 32px rgba(0,0,0,0.55)"
+                      : "0 2px 16px rgba(0,0,0,0.12)",
+                  }}
                 >
+                  <Image
+                    src="/photography/cs_profile/IMG_4059.jpeg"
+                    alt="Henry Kanaskie"
+                    fill
+                    style={{ objectFit: "cover" }}
+                    sizes="300px"
+                    priority={false}
+                  />
+                </div>
+
+                {/* Link bubbles under photo */}
+                <div className="flex flex-row items-center justify-center gap-2 flex-wrap w-full">
                   {[
                     {
                       label: "Email",
@@ -497,86 +598,74 @@ export default function CSPage() {
                       href: undefined,
                       action: () => setResumeOpen(true),
                     },
-                  ].map((item, i, arr) => {
-                    const inner = (
-                      <span
-                        style={{
-                          color: "rgba(255, 255, 255, 0.92)",
-                          fontSize: "clamp(0.9rem, 1.3vw, 1.2rem)",
-                          fontWeight: 600,
-                        }}
-                      >
+                  ].map((item) => {
+                    const pillClassName = `${glassBubbleClassNames} rounded-full font-semibold transition-all duration-200 hover:scale-105 active:scale-95`;
+                    const pillStyle: React.CSSProperties = {
+                      ...glassStyle,
+                      fontSize: "0.8rem",
+                      padding: "0.3rem 0.9rem",
+                      whiteSpace: "nowrap",
+                    };
+                    const label = (
+                      <CrystallineText isDark={isDark}>
                         {item.label}
-                      </span>
+                      </CrystallineText>
                     );
-                    return (
-                      <Fragment key={item.label}>
-                        {item.href ? (
-                          <a
-                            href={item.href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="hover:opacity-70 transition-opacity"
-                          >
-                            {inner}
-                          </a>
-                        ) : (
-                          <button
-                            onClick={item.action}
-                            className="hover:opacity-70 transition-opacity cursor-pointer"
-                          >
-                            {inner}
-                          </button>
-                        )}
-                        {i < arr.length - 1 && (
-                          <span
-                            style={{
-                              width: 1,
-                              height: "1em",
-                              display: "inline-block",
-                              background: isDark
-                                ? "linear-gradient(180deg, transparent, rgba(180,200,255,0.3), transparent)"
-                                : "linear-gradient(180deg, transparent, rgba(100,115,145,0.25), transparent)",
-                            }}
-                          />
-                        )}
-                      </Fragment>
+                    return item.href ? (
+                      <a
+                        key={item.label}
+                        href={item.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={pillStyle}
+                        className={pillClassName}
+                      >
+                        {label}
+                      </a>
+                    ) : (
+                      <button
+                        key={item.label}
+                        onClick={item.action}
+                        style={pillStyle}
+                        className={`${pillClassName} cursor-pointer`}
+                      >
+                        {label}
+                      </button>
                     );
                   })}
                 </div>
               </div>
-            </div>
-            {/* end mobile row 1 */}
 
-            {/* Bio */}
-            <div className="flex-1 min-w-0 w-full">
-              <GlassBlurb>
-                <FuzzyText>
-                  <p
-                    style={{
-                      color: "rgba(255, 255, 255, 0.92)",
-                      fontSize: "clamp(0.85rem, 1.2vw, 1.05rem)",
-                      fontWeight: 500,
-                      lineHeight: 1.8,
-                    }}
-                  >
-                    Hey there! I&apos;m a Computer Science honors student at
-                    Oregon State University, passionate about machine learning,
-                    space, and medicine. From optimizing anti-drone software at
-                    DZYNE Technologies to engineering plasma thruster
-                    diagnostics and FPGA pipelines in research labs, I love
-                    working on software and impactful technology that helps
-                    people. I&apos;m driven by problems where computation meets
-                    real-world change and improvement. Outside of engineering,
-                    I&apos;m usually behind a camera, on the slopes, lifting, or
-                    hunting for new music. I value growth and learning above
-                    everything, and I&apos;m always excited to connect with
-                    others who share that mindset!
-                  </p>
-                </FuzzyText>
-              </GlassBlurb>
-            </div>
-          </motion.div>
+              {/* Right column — name top, blurb bottom */}
+              <div
+                className="flex flex-col gap-4 flex-1 min-w-0"
+                style={{ minHeight: "400px" }}
+              >
+                {/* Name */}
+                <div className="shrink-0">
+                  <GlassTitle
+                    text="Henry Kanaskie"
+                    variant="crystalline"
+                    containerClassName="justify-start items-start !pt-0 md:!pt-0 !pb-0 md:!pb-0"
+                    fontSize="clamp(2.4rem, 7.5vw, 10rem)"
+                    noWrap
+                  />
+                </div>
+
+                {/* Spacer */}
+                <div className="flex-1" />
+
+                {/* Blurb */}
+                <div>
+                  <AboutBlurb
+                    about={
+                      "Hey there! My name's Henry. I'm a Computer Science honors student at Oregon State University, passionate about machine learning, space, and medicine. I love working on software and impactful technology that helps people. I'm driven by problems where computation meets real-world change and improvement. Outside of engineering, I'm usually behind a camera, on the slopes, lifting, or finding new music. I value growth and learning above everything, and I'm always excited to connect with others who share that mindset!"
+                    }
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </motion.div>
 
         {/* Scroll hint */}
@@ -588,7 +677,7 @@ export default function CSPage() {
         >
           <span
             style={{
-              color: "rgba(255, 255, 255, 0.92)",
+              color: isDark ? "rgba(255,255,255,0.92)" : "rgba(22,90,139,0.85)",
               fontSize: "0.65rem",
               fontWeight: 600,
               letterSpacing: "0.18em",
@@ -610,7 +699,9 @@ export default function CSPage() {
                 viewBox="0 0 24 14"
                 fill="none"
                 style={{
-                  stroke: `rgba(255,255,255,${i === 0 ? 0.7 : 0.3})`,
+                  stroke: isDark
+                    ? `rgba(255,255,255,${i === 0 ? 0.7 : 0.3})`
+                    : `rgba(22,90,139,${i === 0 ? 0.7 : 0.35})`,
                   strokeWidth: 2,
                   strokeLinecap: "round",
                   strokeLinejoin: "round",
@@ -642,7 +733,7 @@ export default function CSPage() {
               style={{
                 ...glassStyle,
                 backgroundColor: isDark
-                  ? "rgba(20,20,40,0.65)"
+                  ? "rgba(14,16,20,0.72)"
                   : "rgba(255,255,255,0.55)",
               }}
               onClick={(e) => e.stopPropagation()}
@@ -656,8 +747,8 @@ export default function CSPage() {
                   style={{
                     ...glassStyle,
                     backgroundColor: isDark
-                      ? "rgba(180,200,255,0.08)"
-                      : "rgba(100,115,145,0.06)",
+                      ? "rgba(255,255,255,0.06)"
+                      : "rgba(0,0,0,0.04)",
                   }}
                 >
                   <span
@@ -666,8 +757,8 @@ export default function CSPage() {
                       WebkitBackgroundClip: "text",
                       backgroundImage: themed(
                         isDark,
-                        cs.iridescentShort.dark,
-                        cs.iridescentShort.light,
+                        cs.liquidGlass.dark,
+                        cs.liquidGlass.light,
                       ),
                       fontSize: "0.9rem",
                       fontWeight: 600,
@@ -696,9 +787,11 @@ export default function CSPage() {
                   style={{
                     ...glassStyle,
                     backgroundColor: isDark
-                      ? "rgba(180,200,255,0.08)"
-                      : "rgba(100,115,145,0.06)",
-                    color: themed(isDark, cs.color.dark, cs.color.light),
+                      ? "rgba(255,255,255,0.06)"
+                      : "rgba(0,0,0,0.04)",
+                    color: isDark
+                      ? "rgba(255,255,255,0.6)"
+                      : "rgba(20,28,48,0.5)",
                   }}
                 >
                   ✕
@@ -752,7 +845,7 @@ export default function CSPage() {
               style={{
                 ...glassStyle,
                 backgroundColor: isDark
-                  ? "rgba(20,20,40,0.65)"
+                  ? "rgba(14,16,20,0.72)"
                   : "rgba(255,255,255,0.55)",
               }}
               onClick={(e) => e.stopPropagation()}
@@ -761,14 +854,10 @@ export default function CSPage() {
               <div className="relative z-[1] flex justify-between items-center p-6 pb-0">
                 <FuzzyText>
                   <span
-                    className="bg-clip-text text-transparent"
                     style={{
-                      WebkitBackgroundClip: "text",
-                      backgroundImage: themed(
-                        isDark,
-                        cs.iridescent.dark,
-                        cs.iridescent.light,
-                      ),
+                      color: isDark
+                        ? "rgba(255,255,255,0.88)"
+                        : "rgba(20,28,48,0.82)",
                       fontSize: "clamp(1.1rem, 1.8vw, 1.5rem)",
                       fontWeight: 700,
                     }}
@@ -782,9 +871,11 @@ export default function CSPage() {
                   style={{
                     ...glassStyle,
                     backgroundColor: isDark
-                      ? "rgba(180,200,255,0.08)"
-                      : "rgba(100,115,145,0.06)",
-                    color: themed(isDark, cs.color.dark, cs.color.light),
+                      ? "rgba(255,255,255,0.06)"
+                      : "rgba(0,0,0,0.04)",
+                    color: isDark
+                      ? "rgba(255,255,255,0.6)"
+                      : "rgba(20,28,48,0.5)",
                   }}
                 >
                   ✕
@@ -799,14 +890,11 @@ export default function CSPage() {
                   <div key={field}>
                     <FuzzyText>
                       <label
-                        className="block mb-1.5 bg-clip-text text-transparent"
+                        className="block mb-1.5"
                         style={{
-                          WebkitBackgroundClip: "text",
-                          backgroundImage: themed(
-                            isDark,
-                            cs.iridescentShort.dark,
-                            cs.iridescentShort.light,
-                          ),
+                          color: isDark
+                            ? "rgba(255,255,255,0.5)"
+                            : "rgba(20,28,48,0.5)",
                           fontSize: "0.8rem",
                           fontWeight: 600,
                           textTransform: "capitalize",
@@ -830,21 +918,23 @@ export default function CSPage() {
                             return n;
                           });
                       }}
+                      onFocus={() => setFocusedField(field)}
+                      onBlur={() => setFocusedField(null)}
                       className={`w-full rounded-xl px-4 py-2.5 outline-none transition-colors ${glassBoxClassNames}`}
                       style={{
                         ...glassStyle,
                         backgroundColor: isDark
                           ? "rgba(255,255,255,0.03)"
                           : "rgba(0,0,0,0.02)",
-                        color: isDark ? "rgb(200,215,255)" : "rgb(80,95,125)",
+                        color: isDark
+                          ? "rgba(255,255,255,0.88)"
+                          : "rgba(20,28,48,0.75)",
                         fontSize: "0.95rem",
                         border: fieldErrors[field]
-                          ? `1px solid ${
-                              isDark
-                                ? "rgba(255,130,130,0.4)"
-                                : "rgba(200,60,60,0.3)"
-                            }`
-                          : undefined,
+                          ? `1px solid ${isDark ? "rgba(255,130,130,0.4)" : "rgba(200,60,60,0.3)"}`
+                          : focusedField === field
+                            ? `1px solid ${isDark ? "rgba(255,255,255,0.3)" : "rgba(20,28,48,0.25)"}`
+                            : undefined,
                       }}
                     />
                     {fieldErrors[field] && (
@@ -869,14 +959,11 @@ export default function CSPage() {
                 <div>
                   <FuzzyText>
                     <label
-                      className="block mb-1.5 bg-clip-text text-transparent"
+                      className="block mb-1.5"
                       style={{
-                        WebkitBackgroundClip: "text",
-                        backgroundImage: themed(
-                          isDark,
-                          cs.iridescentShort.dark,
-                          cs.iridescentShort.light,
-                        ),
+                        color: isDark
+                          ? "rgba(255,255,255,0.5)"
+                          : "rgba(20,28,48,0.5)",
                         fontSize: "0.8rem",
                         fontWeight: 600,
                       }}
@@ -899,21 +986,23 @@ export default function CSPage() {
                           return n;
                         });
                     }}
+                    onFocus={() => setFocusedField("message")}
+                    onBlur={() => setFocusedField(null)}
                     className={`w-full rounded-xl px-4 py-2.5 outline-none transition-colors resize-none ${glassBoxClassNames}`}
                     style={{
                       ...glassStyle,
                       backgroundColor: isDark
                         ? "rgba(255,255,255,0.03)"
                         : "rgba(0,0,0,0.02)",
-                      color: isDark ? "rgb(200,215,255)" : "rgb(80,95,125)",
+                      color: isDark
+                        ? "rgba(255,255,255,0.88)"
+                        : "rgba(20,28,48,0.75)",
                       fontSize: "0.95rem",
                       border: fieldErrors.message
-                        ? `1px solid ${
-                            isDark
-                              ? "rgba(255,130,130,0.4)"
-                              : "rgba(200,60,60,0.3)"
-                          }`
-                        : undefined,
+                        ? `1px solid ${isDark ? "rgba(255,130,130,0.4)" : "rgba(200,60,60,0.3)"}`
+                        : focusedField === "message"
+                          ? `1px solid ${isDark ? "rgba(255,255,255,0.3)" : "rgba(20,28,48,0.25)"}`
+                          : undefined,
                     }}
                   />
                   {fieldErrors.message && (
@@ -963,19 +1052,15 @@ export default function CSPage() {
                     style={{
                       ...glassStyle,
                       backgroundColor: isDark
-                        ? "rgba(180,200,255,0.1)"
-                        : "rgba(100,115,145,0.08)",
+                        ? "rgba(255,255,255,0.07)"
+                        : "rgba(0,0,0,0.05)",
                     }}
                   >
                     <span
-                      className="bg-clip-text text-transparent"
                       style={{
-                        WebkitBackgroundClip: "text",
-                        backgroundImage: themed(
-                          isDark,
-                          cs.iridescentMedium.dark,
-                          cs.iridescentMedium.light,
-                        ),
+                        color: isDark
+                          ? "rgba(255,255,255,0.88)"
+                          : "rgba(20,28,48,0.8)",
                         fontSize: "0.95rem",
                         fontWeight: 700,
                       }}
@@ -1030,7 +1115,7 @@ export default function CSPage() {
           }}
         />
         <RightInfoBox
-          title="Undergraduate Researcher"
+          title="Applied Machine Learning Researcher"
           company="Plasma, Energy, and Space Propulsion Laboratory"
           role="Signal Processing & ML"
           description="The PESP Lab applies plasma physics to problems in aerospace propulsion and cancer treatment. My work sat at the intersection of ML and signal processing. I spent time making clean diagnostic signals out of high-noise environments and building predictive models from large experimental datasets. The research mission is to make plasma systems more efficient and to make them more precisely controlled. I contributed to that across both the thruster and biomedical sides of the lab."
@@ -1092,6 +1177,7 @@ export default function CSPage() {
                     description={project.description}
                     deployment={project.deployment}
                     bubbleSide={colIdx < row.length / 2 ? "left" : "right"}
+                    numCardsInRow={row.length}
                     svgs={project.svgs}
                   />
                 ))}

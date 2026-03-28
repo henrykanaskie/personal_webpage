@@ -468,7 +468,7 @@ export function InfoBubble({
           <div style={{ marginTop: 4 }}>
             <FuzzyText style={{ margin: 0 }}>
               <span
-                className="text-black/40 dark:text-white/40"
+                className="text-black/60 dark:text-white/40"
                 style={{ fontSize: 9, letterSpacing: "0.04em" }}
               >
                 {extraInfo.startDate} — {extraInfo.endDate}
@@ -477,14 +477,14 @@ export function InfoBubble({
           </div>
 
           <div
-            className="bg-black/[0.12] dark:bg-white/[0.15]"
+            className="bg-black/[0.22] dark:bg-white/[0.15]"
             style={{ height: 1, margin: "10px 0" }}
           />
 
           {/* Tech Stack */}
           <FuzzyText style={{ margin: 0 }}>
             <span
-              className="text-black/50 dark:text-white/50"
+              className="text-black/70 dark:text-white/50"
               style={{
                 fontSize: 8,
                 textTransform: "uppercase",
@@ -506,7 +506,7 @@ export function InfoBubble({
             {extraInfo.techStack.split(",").map((tech) => (
               <span
                 key={tech.trim()}
-                className="text-black/80 dark:text-white/80 bg-black/[0.04] dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08]"
+                className="text-black/90 dark:text-white/80 bg-black/[0.07] dark:bg-white/[0.06] border border-black/[0.18] dark:border-white/[0.08]"
                 style={{
                   fontSize: 9,
                   fontFamily: "monospace",
@@ -521,14 +521,14 @@ export function InfoBubble({
           </div>
 
           <div
-            className="bg-black/[0.12] dark:bg-white/[0.15]"
+            className="bg-black/[0.22] dark:bg-white/[0.15]"
             style={{ height: 1, margin: "12px 0" }}
           />
 
           {/* Industry */}
           <FuzzyText style={{ margin: 0 }}>
             <span
-              className="text-black/40 dark:text-white/40"
+              className="text-black/60 dark:text-white/40"
               style={{
                 fontSize: 8,
                 textTransform: "uppercase",
@@ -550,14 +550,14 @@ export function InfoBubble({
           </div>
 
           <div
-            className="bg-black/[0.12] dark:bg-white/[0.15]"
+            className="bg-black/[0.22] dark:bg-white/[0.15]"
             style={{ height: 1, margin: "10px 0" }}
           />
 
           {/* Location */}
           <FuzzyText style={{ margin: 0 }}>
             <span
-              className="text-black/40 dark:text-white/40"
+              className="text-black/60 dark:text-white/40"
               style={{
                 fontSize: 8,
                 textTransform: "uppercase",

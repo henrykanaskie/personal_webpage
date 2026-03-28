@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Fragment, useEffect } from "react";
+import React, { useState, Fragment, useEffect, useRef } from "react";
 import { motion, useMotionValue, animate } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -126,9 +126,11 @@ function FloatingBokeh({ c, color }: { c: (typeof BOKEH)[0]; color: string }) {
 function AnimatedDivider({
   hovered,
   horizontal = false,
+  dividerRef,
 }: {
   hovered: "left" | "right" | null;
   horizontal?: boolean;
+  dividerRef?: React.RefObject<HTMLDivElement | null>;
 }) {
   const active = hovered !== null;
   const mid =
@@ -140,6 +142,7 @@ function AnimatedDivider({
 
   return (
     <div
+      ref={dividerRef}
       style={{
         position: "relative",
         width: horizontal ? "100%" : 1,
@@ -148,17 +151,14 @@ function AnimatedDivider({
         zIndex: 2,
       }}
     >
-      <motion.div
-        animate={{ opacity: active ? [0.4, 1, 0.4] : 0.4 }}
-        transition={
-          active
-            ? { duration: 3, repeat: Infinity, ease: "easeInOut" }
-            : { duration: 0.8 }
-        }
+      <div
         style={{
           position: "absolute",
           inset: 0,
           background: `linear-gradient(${horizontal ? "to right" : "to bottom"}, transparent 3%, ${mid} 20%, ${mid} 80%, transparent 97%)`,
+          opacity: 0.4,
+          animation: active ? "dividerPulse 3s ease-in-out infinite" : "none",
+          transition: active ? "none" : "opacity 0.8s ease",
         }}
       />
     </div>
@@ -640,17 +640,38 @@ export default function HomePage() {
   }, []);
 
   const inactiveDim = "brightness(0.62)";
+  const outerRef = useRef<HTMLDivElement>(null);
+  const dividerRef = useRef<HTMLDivElement>(null);
+  const hoveredRef = useRef<"left" | "right" | null>(null);
 
   return (
     <div
+      ref={outerRef}
       style={{
         position: "fixed",
-        inset: 0,
+        top: 0,
+        left: 0,
+        width: "100vw",
+        height: "100vh",
         zIndex: 0,
         display: "flex",
         flexDirection: isMobile ? "column" : "row",
       }}
-      onMouseLeave={() => setHovered(null)}
+      onMouseMove={(e) => {
+        if (isMobile) return;
+        const dividerEl = dividerRef.current;
+        if (!dividerEl) return;
+        const dividerRect = dividerEl.getBoundingClientRect();
+        const side: "left" | "right" = e.clientX < dividerRect.left ? "left" : "right";
+        if (side !== hoveredRef.current) {
+          hoveredRef.current = side;
+          setHovered(side);
+        }
+      }}
+      onMouseLeave={() => {
+        hoveredRef.current = null;
+        setHovered(null);
+      }}
     >
       {/* Photography */}
       <motion.div
@@ -670,13 +691,12 @@ export default function HomePage() {
           overflow: "hidden",
           cursor: "pointer",
         }}
-        onMouseEnter={() => !isMobile && setHovered("left")}
         onClick={() => router.push("/photography")}
       >
         <PhotoSide active={hovered === "left"} isDark={isDark} />
       </motion.div>
 
-      <AnimatedDivider hovered={hovered} horizontal={isMobile} />
+      <AnimatedDivider hovered={hovered} horizontal={isMobile} dividerRef={dividerRef} />
 
       {/* CS */}
       <motion.div
@@ -696,7 +716,6 @@ export default function HomePage() {
           overflow: "hidden",
           cursor: "pointer",
         }}
-        onMouseEnter={() => !isMobile && setHovered("right")}
         onClick={(e) => {
           if (!(e.target as Element).closest("a")) router.push("/cs");
         }}

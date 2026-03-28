@@ -24,6 +24,8 @@ export default function GlassTitle({
   debugVariantToggle = false,
   fontSize,
   containerClassName,
+  disableEntrance = false,
+  noWrap = false,
 }: {
   text?: string;
   svgPaths?: string[];
@@ -39,6 +41,8 @@ export default function GlassTitle({
   debugVariantToggle?: boolean;
   fontSize?: string;
   containerClassName?: string;
+  disableEntrance?: boolean;
+  noWrap?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const textMeasureRef = useRef<HTMLSpanElement>(null);
@@ -69,8 +73,8 @@ export default function GlassTitle({
         WebkitBackgroundClip: "text",
         backgroundImage: themed(
           isDark,
-          cs.iridescent.dark,
-          cs.iridescent.light,
+          cs.liquidGlass.dark,
+          cs.liquidGlass.light,
         ),
         textShadow: themed(isDark, cs.titleShadow.dark, cs.titleShadow.light),
       };
@@ -82,17 +86,17 @@ export default function GlassTitle({
       backgroundImage: themed(
         isDark,
         "linear-gradient(180deg, rgba(255,255,255,0.52) 0%, rgba(225,238,255,0.26) 52%, rgba(255,255,255,0.18) 100%)",
-        "linear-gradient(180deg, rgba(16,22,34,0.52) 0%, rgba(18,26,40,0.30) 52%, rgba(12,18,28,0.18) 100%)",
+        "linear-gradient(180deg, rgba(14,18,52,0.88) 0%, rgba(22,32,80,0.72) 48%, rgba(30,45,100,0.52) 100%)",
       ),
       WebkitTextStroke: themed(
         isDark,
         "1.05px rgba(255,255,255,0.30)",
-        "1.05px rgba(255,255,255,0.46)",
+        "1.05px rgba(160,200,255,0.55)",
       ),
       textShadow: themed(
         isDark,
         "0 1px 0 rgba(255,255,255,0.10), 0 10px 38px rgba(0,0,0,0.55), 0 42px 160px rgba(0,0,0,0.90)",
-        "0 1px 0 rgba(255,255,255,0.28), 0 10px 34px rgba(0,0,0,0.14), 0 42px 140px rgba(0,0,0,0.16)",
+        "0 1px 0 rgba(200,220,255,0.40), 0 10px 34px rgba(10,20,80,0.18), 0 42px 140px rgba(10,20,80,0.20)",
       ),
       filter: themed(
         isDark,
@@ -100,8 +104,8 @@ export default function GlassTitle({
           ? "contrast(1.18) saturate(1.05)"
           : "contrast(1.14) saturate(1.02)",
         isCrystallineBlur
-          ? "contrast(1.10) saturate(0.98)"
-          : "contrast(1.06) saturate(0.96)",
+          ? "contrast(1.12) saturate(1.06)"
+          : "contrast(1.08) saturate(1.04)",
       ),
     };
   }, [effectiveVariant, isDark, isCrystallineBlur]);
@@ -121,7 +125,7 @@ export default function GlassTitle({
         isCrystallineBlur ? "contrast(1.18)" : "contrast(1.16)",
         isCrystallineBlur ? "contrast(1.12)" : "contrast(1.10)",
       ),
-      opacity: themed(isDark, 0.88, 0.78) as unknown as number,
+      opacity: themed(isDark, 0.88, 0.92) as unknown as number,
     };
   }, [isCrystalline, isCrystallineBlur, isDark]);
 
@@ -133,14 +137,14 @@ export default function GlassTitle({
       backgroundImage: themed(
         isDark,
         "linear-gradient(180deg, rgba(255,255,255,0.62) 0%, rgba(255,255,255,0.18) 38%, rgba(180,220,255,0.12) 62%, rgba(140,190,255,0.22) 100%)",
-        "linear-gradient(180deg, rgba(255,255,255,0.36) 0%, rgba(255,255,255,0.12) 38%, rgba(160,205,255,0.08) 62%, rgba(105,155,230,0.14) 100%)",
+        "linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(200,220,255,0.28) 38%, rgba(140,190,255,0.18) 62%, rgba(100,150,230,0.30) 100%)",
       ),
       filter: themed(
         isDark,
         isCrystallineBlur ? "contrast(1.20)" : "contrast(1.18)",
-        isCrystallineBlur ? "contrast(1.14)" : "contrast(1.12)",
+        isCrystallineBlur ? "contrast(1.16)" : "contrast(1.14)",
       ),
-      opacity: themed(isDark, 0.78, 0.48) as unknown as number,
+      opacity: themed(isDark, 0.78, 0.72) as unknown as number,
       mixBlendMode: themed(
         isDark,
         "screen",
@@ -252,8 +256,8 @@ export default function GlassTitle({
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 20 }}
-      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+      initial={disableEntrance ? false : { opacity: 0, y: 20 }}
+      animate={disableEntrance || isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
       exit={{ opacity: 0, transition: { duration: 0.3, ease: "easeIn" } }}
       transition={{ duration: 1.2, ease: "easeInOut" }}
       style={{ willChange: "transform, opacity" }}
@@ -284,7 +288,7 @@ export default function GlassTitle({
           fontSize: fontSize ?? "clamp(4rem, 11vw, 10rem)",
           letterSpacing: "-0.02em",
           zIndex: 1,
-          whiteSpace: "pre-line",
+          whiteSpace: noWrap ? "nowrap" : "pre-line",
           display: "inline-block",
         }}
       >

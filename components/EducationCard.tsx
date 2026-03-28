@@ -81,7 +81,7 @@ export default function EducationCard({
                 className="bg-clip-text text-transparent"
                 style={{
                   WebkitBackgroundClip: "text",
-                  backgroundImage: themed(isDark, cs.iridescent.dark, cs.iridescent.light),
+                  backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
                 }}
               >
                 {school}
@@ -166,7 +166,7 @@ export default function EducationCard({
                     className="bg-clip-text text-transparent"
                     style={{
                       WebkitBackgroundClip: "text",
-                      backgroundImage: themed(isDark, cs.iridescentShort.dark, cs.iridescentShort.light),
+                      backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
                       fontSize: "clamp(1.25rem, 2vw, 1.75rem)",
                       fontWeight: 700,
                     }}

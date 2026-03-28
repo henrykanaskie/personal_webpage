@@ -42,7 +42,7 @@ function GlassBlurb({
                   className="bg-clip-text text-transparent"
                   style={{
                     WebkitBackgroundClip: "text",
-                    backgroundImage: themed(isDark, cs.iridescent.dark, cs.iridescent.light),
+                    backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
                     fontSize: "clamp(1.1rem, 1.8vw, 1.5rem)",
                     fontWeight: 700,
                   }}
@@ -158,7 +158,7 @@ export default function AboutPage() {
               className="bg-clip-text text-transparent"
               style={{
                 WebkitBackgroundClip: "text",
-                backgroundImage: themed(isDark, cs.iridescentShort.dark, cs.iridescentShort.light),
+                backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
               }}
             >
               {item.label}
@@ -244,7 +244,7 @@ export default function AboutPage() {
                 className="bg-clip-text text-transparent"
                 style={{
                   WebkitBackgroundClip: "text",
-                  backgroundImage: themed(isDark, cs.iridescentShort.dark, cs.iridescentShort.light),
+                  backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
                   fontSize: "clamp(0.8rem, 1.2vw, 1rem)",
                   fontWeight: 500,
                 }}
@@ -301,7 +301,7 @@ export default function AboutPage() {
                   className="flex items-center gap-2 bg-clip-text text-transparent"
                   style={{
                     WebkitBackgroundClip: "text",
-                    backgroundImage: themed(isDark, cs.iridescentShort.dark, cs.iridescentShort.light),
+                    backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
                     fontSize: "0.9rem",
                     fontWeight: 600,
                   }}
@@ -400,7 +400,7 @@ export default function AboutPage() {
                   className="bg-clip-text text-transparent"
                   style={{
                     WebkitBackgroundClip: "text",
-                    backgroundImage: themed(isDark, cs.iridescent.dark, cs.iridescent.light),
+                    backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
                     fontSize: "clamp(1.1rem, 1.8vw, 1.5rem)",
                     fontWeight: 700,
                   }}
@@ -436,7 +436,7 @@ export default function AboutPage() {
                       className="block mb-1.5 bg-clip-text text-transparent"
                       style={{
                         WebkitBackgroundClip: "text",
-                        backgroundImage: themed(isDark, cs.iridescentShort.dark, cs.iridescentShort.light),
+                        backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
                         fontSize: "0.8rem",
                         fontWeight: 600,
                         textTransform: "capitalize",
@@ -495,7 +495,7 @@ export default function AboutPage() {
                     className="block mb-1.5 bg-clip-text text-transparent"
                     style={{
                       WebkitBackgroundClip: "text",
-                      backgroundImage: themed(isDark, cs.iridescentShort.dark, cs.iridescentShort.light),
+                      backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
                       fontSize: "0.8rem",
                       fontWeight: 600,
                     }}
@@ -585,7 +585,7 @@ export default function AboutPage() {
                     className="bg-clip-text text-transparent"
                     style={{
                       WebkitBackgroundClip: "text",
-                      backgroundImage: themed(isDark, cs.iridescentMedium.dark, cs.iridescentMedium.light),
+                      backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
                       fontSize: "0.95rem",
                       fontWeight: 700,
                     }}

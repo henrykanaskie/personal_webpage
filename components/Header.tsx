@@ -20,7 +20,7 @@ const csNavLinks = [
 
 // ─── Crystalline text (CS nav) ────────────────────────────────────────────────
 
-function CrystallineText({
+export function CrystallineText({
   children,
   active = false,
   isDark = false,
@@ -34,16 +34,16 @@ function CrystallineText({
     backgroundImage: themed(
       isDark,
       "linear-gradient(180deg, rgba(225,238,255,0.92) 0%, rgba(200,218,255,0.62) 52%, rgba(220,208,248,0.46) 100%)",
-      "linear-gradient(180deg, rgba(110,130,175,0.85) 0%, rgba(130,145,195,0.62) 52%, rgba(140,120,160,0.48) 100%)",
+      "linear-gradient(180deg, rgba(75,95,145,0.97) 0%, rgba(95,110,165,0.88) 52%, rgba(105,85,130,0.78) 100%)",
     ),
-    WebkitTextStroke: themed(isDark, "1.05px rgba(180,200,255,0.35)", "1.05px rgba(80,100,160,0.40)"),
+    WebkitTextStroke: themed(isDark, "1.05px rgba(180,200,255,0.35)", "0px transparent"),
     textShadow: themed(
       isDark,
       "0 1px 0 rgba(180,200,255,0.18), 0 10px 38px rgba(0,0,0,0.55)",
       "0 1px 0 rgba(255,255,255,0.28), 0 10px 34px rgba(0,0,0,0.14)",
     ),
-    filter: themed(isDark, "contrast(1.14)", "contrast(1.06)"),
-    opacity: active ? 1 : 0.72,
+    filter: themed(isDark, "contrast(1.14)", "contrast(1.10)"),
+    opacity: active ? 1 : themed(isDark, 0.72, 0.88),
   };
   const rim: React.CSSProperties = {
     WebkitBackgroundClip: "text",
@@ -53,8 +53,8 @@ function CrystallineText({
       "linear-gradient(180deg, rgba(200,215,255,0.38) 0%, rgba(160,185,240,0.16) 38%, rgba(140,170,230,0.10) 62%, rgba(105,140,220,0.18) 100%)",
     ),
     filter: themed(isDark, "contrast(1.18)", "contrast(1.12)"),
-    opacity: themed(isDark, active ? 0.9 : 0.78, active ? 0.6 : 0.48) as unknown as number,
-    mixBlendMode: themed(isDark, "screen", "overlay") as unknown as React.CSSProperties["mixBlendMode"],
+    opacity: themed(isDark, active ? 0.9 : 0.78, 0) as unknown as number,
+    mixBlendMode: themed(isDark, "screen", "normal") as unknown as React.CSSProperties["mixBlendMode"],
   };
 
   return (
@@ -267,6 +267,16 @@ export default function Header() {
     };
     window.addEventListener("photoLightbox", onLightbox);
     return () => window.removeEventListener("photoLightbox", onLightbox);
+  }, []);
+
+  // Hide nav links when a CS modal (resume / email) is open
+  const [csModalOpen, setCsModalOpen] = useState(false);
+  useEffect(() => {
+    const onCsModal = (e: Event) => {
+      setCsModalOpen((e as CustomEvent<{ open: boolean }>).detail.open);
+    };
+    window.addEventListener("csModal", onCsModal);
+    return () => window.removeEventListener("csModal", onCsModal);
   }, []);
 
   // Smart navbar: show on scroll up, hide on scroll down
@@ -484,11 +494,7 @@ export default function Header() {
     <header
       ref={navRef}
       className="sticky top-2 mx-2 mt-2 p-3 hidden md:block"
-      style={{
-        zIndex: 9999,
-        transform: visible ? "translateY(0)" : "translateY(-120%)",
-        transition: "transform 0.35s ease",
-      }}
+      style={{ zIndex: 9999 }}
     >
       <nav className="flex items-center gap-2">
         {/* Home bubble */}
@@ -504,7 +510,15 @@ export default function Header() {
         </Link>
 
         {/* ── Desktop nav bubbles — evenly spaced ── */}
-        <div className="hidden md:flex flex-1 items-center justify-evenly">
+        <div
+          className="hidden md:flex flex-1 items-center justify-evenly"
+          style={{
+            opacity: visible && !csModalOpen ? 1 : 0,
+            transform: visible && !csModalOpen ? "translateY(0)" : "translateY(-8px)",
+            transition: "opacity 0.3s ease, transform 0.3s ease",
+            pointerEvents: visible && !csModalOpen ? "auto" : "none",
+          }}
+        >
           {csNavLinks.map((link) => {
             const active = link.sectionId
               ? isCSPage && activeSection === link.sectionId
@@ -553,7 +567,6 @@ export default function Header() {
           />
         </div>
       </nav>
-
     </header>
   );
 
