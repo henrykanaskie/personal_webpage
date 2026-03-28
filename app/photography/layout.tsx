@@ -1,6 +1,6 @@
 "use client";
 
-import { useIsDark } from "@/components/InfoBubble";
+import { useIsDark } from "@/lib/glass";
 
 export default function PhotographyLayout({
   children,

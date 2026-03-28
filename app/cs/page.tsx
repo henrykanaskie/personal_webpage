@@ -18,10 +18,9 @@ import {
   glassBubbleClassNames,
 } from "@/lib/tokens";
 import { CrystallineText } from "@/components/Header";
-import LeftInfoBox from "@/components/LeftInfoBox";
-import RightInfoBox from "@/components/RightInfoBox";
+import InfoBox from "@/components/InfoBox";
 import AboutBlurb from "@/components/AboutBlurb";
-import ProjectCard, { ProjectCardProvider } from "@/components/ProjectCard";
+import ProjectCard from "@/components/ProjectCard";
 import EducationCard from "@/components/EducationCard";
 import { rocketPaths } from "@/svgs/rocketPaths";
 import { fpgaPaths } from "@/svgs/fpgaPaths";
@@ -1093,7 +1092,7 @@ export default function CSPage() {
           svgOffsetRight={{ x: 10, y: 10 }}
           svgSizeRight={47}
         />
-        <LeftInfoBox
+        <InfoBox side="left"
           title="Software Engineering Intern"
           company="DZYNE Technologies"
           role="Embedded Systems & Full-Stack"
@@ -1114,7 +1113,7 @@ export default function CSPage() {
             industry: "Defense Technology",
           }}
         />
-        <RightInfoBox
+        <InfoBox side="right"
           title="Applied Machine Learning Researcher"
           company="Plasma, Energy, and Space Propulsion Laboratory"
           role="Signal Processing & ML"
@@ -1132,7 +1131,7 @@ export default function CSPage() {
             industry: "Aerospace Research",
           }}
         />
-        <LeftInfoBox
+        <InfoBox side="left"
           title="Undergraduate Researcher"
           company="Jason Clark Research Group"
           role="FPGA & DSP Engineering"
@@ -1156,8 +1155,7 @@ export default function CSPage() {
       <SectionDivider />
 
       {/* ── Projects ───────────────────────────────────────────────────── */}
-      <ProjectCardProvider>
-        <section
+      <section
           id="projects"
           style={{ scrollMarginTop: "80px" }}
           className="flex flex-col gap-12 md:gap-20 pb-[10vh]"
@@ -1185,7 +1183,6 @@ export default function CSPage() {
             ))}
           </div>
         </section>
-      </ProjectCardProvider>
 
       <SectionDivider />
 

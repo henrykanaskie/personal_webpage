@@ -4,7 +4,7 @@ import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, useInView } from "framer-motion";
-import { useIsDark } from "@/components/InfoBubble";
+import { useIsDark } from "@/lib/glass";
 import { Section, RGB, PhotoEntry } from "../data";
 
 // ─── Photo frame ──────────────────────────────────────────────────────────────

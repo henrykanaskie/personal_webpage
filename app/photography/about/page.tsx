@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { motion, useInView } from "framer-motion";
-import { useIsDark } from "@/components/InfoBubble";
+import { useIsDark } from "@/lib/glass";
 
 // ─── Gear data — update with your actual kit ─────────────────────────────────
 

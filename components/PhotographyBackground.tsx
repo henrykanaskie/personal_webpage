@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { useIsDark } from "@/components/InfoBubble";
+import { useIsDark } from "@/lib/glass";
 
 /**
  * Persistent photography background that lives OUTSIDE PageTransition.

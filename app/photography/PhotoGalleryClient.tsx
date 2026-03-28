@@ -4,7 +4,7 @@ import { useRef, useState, useCallback, useEffect } from "react";
 import { motion, useInView } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
-import { useIsDark, useIsMobile } from "@/components/InfoBubble";
+import { useIsDark, useIsMobile } from "@/lib/glass";
 import { Section, PhotoEntry, RGB } from "@/app/photography/data";
 
 // ─── Lightbox ─────────────────────────────────────────────────────────────────

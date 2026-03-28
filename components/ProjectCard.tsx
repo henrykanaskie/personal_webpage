@@ -3,12 +3,10 @@
 import { useRef, useCallback, useState, useEffect, RefObject, memo } from "react";
 import {
   motion,
-  useMotionValue,
   useInView,
-  useIsPresent,
-  animate,
   AnimatePresence,
 } from "framer-motion";
+import { useSvgDrawAnimation } from "../hooks/useSvgDrawAnimation";
 import AnimatedSvg from "./AnimatedSvg";
 import {
   VaporCloud,
@@ -43,12 +41,6 @@ function useInViewHysteresis(
   }, [ref, enterAmount, leaveAmount]);
 
   return inView;
-}
-
-// ─── Provider (pass-through wrapper for page layout) ───
-
-export function ProjectCardProvider({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
 }
 
 // ─── Types ───
@@ -490,32 +482,7 @@ export default function ProjectCard({
   const deploymentMobileBubbleX = showSideBySide ? "8px" : "-50%";
 
   // SVG draw progress
-  const svgProgress = useMotionValue(0);
-  const drawTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isPresent = useIsPresent();
-
-  // Fast undraw when page exit starts
-  useEffect(() => {
-    if (!isPresent) {
-      if (drawTimer.current) clearTimeout(drawTimer.current);
-      drawTimer.current = null;
-      animate(svgProgress, 0, { duration: 0.35, ease: "easeIn" });
-    }
-  }, [isPresent, svgProgress]);
-
-  const onViewportEnter = useCallback(() => {
-    if (drawTimer.current) clearTimeout(drawTimer.current);
-    drawTimer.current = setTimeout(() => {
-      animate(svgProgress, 1, { duration: 3, ease: "easeInOut" });
-      drawTimer.current = null;
-    }, 600);
-  }, [svgProgress]);
-
-  const onViewportLeave = useCallback(() => {
-    if (drawTimer.current) clearTimeout(drawTimer.current);
-    drawTimer.current = null;
-    animate(svgProgress, 0, { duration: 1.8, ease: "easeInOut" });
-  }, [svgProgress]);
+  const { svgProgress, onViewportEnter, onViewportLeave } = useSvgDrawAnimation(3);
 
   return (
     <>

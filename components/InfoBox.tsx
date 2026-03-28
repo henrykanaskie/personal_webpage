@@ -1,12 +1,9 @@
 "use client";
 
-import { useRef, useCallback, useEffect } from "react";
+import { useRef } from "react";
 import {
   motion,
-  useMotionValue,
   useInView,
-  useIsPresent,
-  animate,
   AnimatePresence,
 } from "framer-motion";
 import AnimatedSvg from "./AnimatedSvg";
@@ -18,16 +15,14 @@ import {
 } from "./InfoBubble";
 import { glassStyle, GlassLayers, FuzzyText, useIsMobile, useIsDark } from "../lib/glass";
 import { glassBoxClassNames, cs, themed } from "../lib/tokens";
+import { useSvgDrawAnimation } from "../hooks/useSvgDrawAnimation";
 
-// Re-export for backward compatibility
-export { FuzzyText };
-export { glassBoxClassNames as glassClassNames } from "../lib/tokens";
-
-interface LeftInfoBoxProps {
+interface InfoBoxProps {
+  side: "left" | "right";
   title: string;
   company: string;
   role: string;
-  description: string[];
+  description: string | string[];
   svgPaths: string[];
   svgSize?: number;
   svgDrawDuration?: number;
@@ -38,7 +33,8 @@ interface LeftInfoBoxProps {
   svgOffset?: { x?: number; y?: number };
 }
 
-export default function LeftInfoBox({
+export default function InfoBox({
+  side,
   title,
   company,
   role,
@@ -51,7 +47,8 @@ export default function LeftInfoBox({
   svgFlipX = false,
   svgFlipY = false,
   svgOffset = { x: 0, y: 0 },
-}: LeftInfoBoxProps) {
+}: InfoBoxProps) {
+  const isLeft = side === "left";
   const boxRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile(1000);
   const isDark = useIsDark();
@@ -70,37 +67,10 @@ export default function LeftInfoBox({
     handleBubbleVisibility,
   } = useInfoBubble();
 
-  // SVG draw progress
-  const svgProgress = useMotionValue(0);
-  const drawTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isPresent = useIsPresent();
-
-  // Fast undraw when page exit starts
-  useEffect(() => {
-    if (!isPresent) {
-      if (drawTimer.current) clearTimeout(drawTimer.current);
-      drawTimer.current = null;
-      animate(svgProgress, 0, { duration: 0.35, ease: "easeIn" });
-    }
-  }, [isPresent, svgProgress]);
-
-  const onViewportEnter = useCallback(() => {
-    if (drawTimer.current) clearTimeout(drawTimer.current);
-    drawTimer.current = setTimeout(() => {
-      animate(svgProgress, 1, { duration: svgDrawDuration, ease: "easeInOut" });
-      drawTimer.current = null;
-    }, 600);
-  }, [svgProgress, svgDrawDuration]);
-
-  const onViewportLeave = useCallback(() => {
-    if (drawTimer.current) clearTimeout(drawTimer.current);
-    drawTimer.current = null;
-    animate(svgProgress, 0, { duration: 1.8, ease: "easeInOut" });
-  }, [svgProgress]);
+  const { svgProgress, onViewportEnter, onViewportLeave } = useSvgDrawAnimation(svgDrawDuration);
 
   return (
     <>
-      {/* Vapor particles rendered at document level (fixed positioning) */}
       {vaporOrigin && (
         <VaporCloud
           originX={vaporOrigin.x}
@@ -113,16 +83,16 @@ export default function LeftInfoBox({
 
       <motion.div
         ref={boxRef}
-        initial={{ x: "-70vw" }}
+        initial={{ x: isLeft ? "-70vw" : "70vw" }}
         animate={
           isInView
             ? { x: 0, y: 0 }
             : isMobile
               ? { x: 0, y: 15 }
-              : { x: -20, y: 10 }
+              : { x: isLeft ? -20 : 20, y: 10 }
         }
         exit={{
-          x: "-70vw",
+          x: isLeft ? "-70vw" : "70vw",
           transition: { duration: 0.55, ease: [0.5, 0, 0.75, 0] },
         }}
         onViewportEnter={onViewportEnter}
@@ -137,7 +107,7 @@ export default function LeftInfoBox({
           minHeight: "clamp(200px, 22vw, 300px)",
           zIndex: "auto",
         }}
-        className="mx-auto md:mx-0 md:ml-[5%] w-[calc(100%-2rem)] md:w-auto"
+        className={`mx-auto md:mx-0 ${isLeft ? "md:ml-[5%]" : "md:self-end md:mr-[5%]"} w-[calc(100%-2rem)] md:w-auto`}
       >
         {/* SVG positioned outside the glass box so backdrop-filter blurs it */}
         <motion.div
@@ -149,8 +119,8 @@ export default function LeftInfoBox({
           style={{
             position: "absolute",
             top: `${35 + (svgOffset.y ?? 0)}px`,
-            right: `${-25 + (svgOffset.x ?? 0)}px`,
-            transformOrigin: "top right",
+            [isLeft ? "right" : "left"]: `${(isLeft ? -25 : 25) + (svgOffset.x ?? 0)}px`,
+            transformOrigin: isLeft ? "top right" : "top left",
             transform:
               `${svgFlipX ? "scaleX(-1)" : ""} ${svgFlipY ? "scaleY(-1)" : ""}`.trim() ||
               undefined,
@@ -179,7 +149,7 @@ export default function LeftInfoBox({
           }}
           className={`${glassBoxClassNames} p-5 md:p-10 lg:p-12`}
         >
-          <GlassLayers refractionSide="left" />
+          <GlassLayers refractionSide={isLeft ? "left" : "right"} />
 
           {/* Content */}
           <div style={{ position: "relative", zIndex: 1 }}>
@@ -313,7 +283,7 @@ export default function LeftInfoBox({
             {isBubbleOpen && extraInfo && (
               <InfoBubble
                 extraInfo={extraInfo}
-                side="right"
+                side={isLeft ? "right" : "left"}
                 onPop={handlePop}
                 isMobile={isMobile}
                 popRequested={popRequested}

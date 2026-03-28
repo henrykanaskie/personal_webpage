@@ -2,12 +2,8 @@
 
 import { useRef, useCallback, useState, useEffect, memo } from "react";
 import { motion, useInView } from "framer-motion";
-import { FuzzyText, useIsMobile, useIsDark, glassStyle, GlassLayers } from "../lib/glass";
+import { FuzzyText, glassStyle, GlassLayers } from "../lib/glass";
 import { glassBubbleClassNames } from "../lib/tokens";
-
-// Re-export for backward compatibility with existing consumers
-export { useIsMobile, useIsDark, glassStyle, GlassLayers, FuzzyText };
-export { glassBubbleClassNames } from "../lib/tokens";
 
 // ─── Border Vapor Particle ───
 interface BorderParticle {
