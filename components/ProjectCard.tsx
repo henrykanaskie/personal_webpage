@@ -1,47 +1,24 @@
 "use client";
 
-import { useRef, useCallback, useState, useEffect, RefObject, memo } from "react";
-import {
-  motion,
-  useInView,
-  AnimatePresence,
-} from "framer-motion";
+import { useRef, useCallback, useState, useEffect, memo } from "react";
+import { motion, useInView, AnimatePresence } from "framer-motion";
+import { useInViewFromBelow } from "../hooks/useInViewFromBelow";
 import { useSvgDrawAnimation } from "../hooks/useSvgDrawAnimation";
 import AnimatedSvg from "./AnimatedSvg";
+import { VaporCloud, useInfoBubble } from "./InfoBubble";
 import {
-  VaporCloud,
-  useInfoBubble,
-} from "./InfoBubble";
-import { glassStyle, GlassLayers, FuzzyText, useIsMobile, useIsDark } from "../lib/glass";
-import { glassBubbleClassNames, glassBoxClassNames, cs, themed } from "../lib/tokens";
-
-// ─── useInView with hysteresis (different enter/leave thresholds) ───
-
-function useInViewHysteresis(
-  ref: RefObject<Element | null>,
-  { enterAmount, leaveAmount }: { enterAmount: number; leaveAmount: number }
-) {
-  const [inView, setInView] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    // Only need thresholds at the actual comparison points (leaveAmount=0.08, enterAmount=0.35/0.40)
-    const thresholds = [0, 0.08, 0.35, 0.40];
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        const ratio = entry.intersectionRatio;
-        if (ratio >= enterAmount) setInView(true);
-        else if (ratio < leaveAmount) setInView(false);
-      },
-      { threshold: thresholds }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [ref, enterAmount, leaveAmount]);
-
-  return inView;
-}
+  glassStyle,
+  GlassLayers,
+  FuzzyText,
+  useIsMobile,
+  useIsDark,
+} from "../lib/glass";
+import {
+  glassBubbleClassNames,
+  glassBoxClassNames,
+  cs,
+  themed,
+} from "../lib/tokens";
 
 // ─── Types ───
 
@@ -73,11 +50,6 @@ interface ProjectCardProps {
   numCardsInRow?: number;
 }
 
-// ─── Iridescent progress bar gradient (matches site palette) ───
-
-const progressGradientLight = cs.progressBar.light;
-const progressGradientDark = cs.progressBar.dark;
-
 // ─── SVG corner positioning helper ───
 
 function cornerPosition(corner: Corner, offset?: { x?: number; y?: number }) {
@@ -108,14 +80,17 @@ const ROW_GAP = 64; // matches md:gap-16
 
 function useBubbleMobile(
   boxRef: React.RefObject<HTMLDivElement | null>,
-  numCardsInRow: number
+  numCardsInRow: number,
 ): boolean | null {
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
 
   useEffect(() => {
     const check = () => {
       const W = window.innerWidth;
-      if (W < 768) { setIsMobile(true); return; }
+      if (W < 768) {
+        setIsMobile(true);
+        return;
+      }
 
       const cardWidth = boxRef.current?.offsetWidth ?? 0;
       if (cardWidth === 0) return;
@@ -123,7 +98,8 @@ function useBubbleMobile(
       // Compute how much space is available on each side of the row.
       // offsetWidth is unaffected by CSS transforms, so this is correct
       // even while the card is mid-animation.
-      const rowWidth = numCardsInRow * cardWidth + (numCardsInRow - 1) * ROW_GAP;
+      const rowWidth =
+        numCardsInRow * cardWidth + (numCardsInRow - 1) * ROW_GAP;
       const sectionPadding = SECTION_PADDING_RATIO * W;
       const availableWidth = W - 2 * sectionPadding;
       const spaceOnSide = (availableWidth - rowWidth) / 2 + sectionPadding;
@@ -182,7 +158,12 @@ const BubbleShell = memo(function BubbleShell({
     setIsPopping(true);
     if (!bubbleRef.current) return;
     const rect = bubbleRef.current.getBoundingClientRect();
-    onPop(rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width, rect.height);
+    onPop(
+      rect.left + rect.width / 2,
+      rect.top + rect.height / 2,
+      rect.width,
+      rect.height,
+    );
   }, [isPopping, onPop]);
 
   useEffect(() => {
@@ -203,14 +184,18 @@ const BubbleShell = memo(function BubbleShell({
         borderRadius: "24px",
         cursor: "pointer",
         pointerEvents: "auto",
-        transformOrigin: showBelow ? "center top" : isRight ? "left center" : "right center",
+        transformOrigin: showBelow
+          ? "center top"
+          : isRight
+            ? "left center"
+            : "right center",
         zIndex: 9999999,
         ...glassStyle,
       }}
       className={glassBubbleClassNames}
       onClick={handleClick}
       onMouseDown={() => setIsPressed(true)}
-      onMouseUp={handleClick}
+      onMouseUp={() => setIsPressed(false)}
       onMouseLeave={() => setIsPressed(false)}
       onTouchStart={(e) => {
         setIsPressed(true);
@@ -228,8 +213,22 @@ const BubbleShell = memo(function BubbleShell({
       }}
       initial={
         showBelow
-          ? { top: "100%", x: "-50%", y: "0%", scaleX: 0.5, scaleY: 0.15, opacity: 0 }
-          : { top: "50%", y: "-50%", x: isRight ? "30%" : "-30%", scaleX: 0.15, scaleY: 0.3, opacity: 0 }
+          ? {
+              top: "100%",
+              x: "-50%",
+              y: "0%",
+              scaleX: 0.5,
+              scaleY: 0.15,
+              opacity: 0,
+            }
+          : {
+              top: "50%",
+              y: "-50%",
+              x: isRight ? "30%" : "-30%",
+              scaleX: 0.15,
+              scaleY: 0.3,
+              opacity: 0,
+            }
       }
       animate={
         showBelow
@@ -244,9 +243,12 @@ const BubbleShell = memo(function BubbleShell({
           : {
               top: "50%",
               y: `calc(-50% + ${dYOff}px)`,
-              x: desktopX !== undefined
-                ? desktopX
-                : (isRight ? "calc(100% + 80px)" : "calc(-100% - 80px)"),
+              x:
+                desktopX !== undefined
+                  ? desktopX
+                  : isRight
+                    ? "calc(100% + 80px)"
+                    : "calc(-100% - 80px)",
               scaleX: isPopping || isPressed ? 1.08 : 1,
               scaleY: isPopping || isPressed ? 1.08 : 1,
               opacity: isInView || parentInView ? 1 : 0,
@@ -254,7 +256,10 @@ const BubbleShell = memo(function BubbleShell({
       }
       transition={
         isPopping
-          ? { scale: { duration: 0.08, ease: "easeOut" }, opacity: { duration: 0.08 } }
+          ? {
+              scale: { duration: 0.08, ease: "easeOut" },
+              opacity: { duration: 0.08 },
+            }
           : {
               duration: 0.75,
               ease: [0.34, 1.56, 0.64, 1],
@@ -264,7 +269,9 @@ const BubbleShell = memo(function BubbleShell({
             }
       }
       exit={{ opacity: 0, transition: { duration: 0.001 } }}
-      whileHover={isPopping ? {} : { scale: 1.03, transition: { duration: 0.2 } }}
+      whileHover={
+        isPopping ? {} : { scale: 1.03, transition: { duration: 0.2 } }
+      }
     >
       <GlassLayers refractionSide="left" specularInset="15%" />
 
@@ -273,47 +280,56 @@ const BubbleShell = memo(function BubbleShell({
   );
 });
 
-// ─── Thumbnail Bubble Content ───
+// ─── Description Bubble Content ───
 
-const ThumbnailBubbleContent = memo(function ThumbnailBubbleContent({
-  thumbnail,
+const DescriptionBubbleContent = memo(function DescriptionBubbleContent({
+  description,
   isMobile,
   isDark,
 }: {
-  thumbnail?: string;
+  description: string;
   isMobile: boolean | null;
   isDark: boolean;
 }) {
   return (
-    <div style={{ position: "relative", zIndex: 1, pointerEvents: "none", textAlign: "center" }}>
+    <div style={{ position: "relative", zIndex: 1, textAlign: "center" }}>
+      <FuzzyText style={{ margin: 0 }}>
+        <span
+          className="text-black/50 dark:text-white/50"
+          style={{
+            fontSize: 9.5,
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+          }}
+        >
+          About
+        </span>
+      </FuzzyText>
       <div
+        className="bg-black/[0.12] dark:bg-white/[0.15]"
+        style={{ height: 1, margin: "8px 0" }}
+      />
+      <p
+        className="font-[family-name:var(--font-elevated)]"
         style={{
-          borderRadius: 12,
-          overflow: "hidden",
-          width: "100%",
-          aspectRatio: "16 / 9",
-          background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          margin: 0,
+          fontSize: 12,
+          lineHeight: 1.65,
+          textAlign: "left",
+          color: themed(isDark, cs.bodyColor.dark, cs.bodyColor.light),
         }}
       >
-        {thumbnail ? (
-          <img
-            src={thumbnail}
-            alt="Project thumbnail"
-            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-          />
-        ) : (
-          <span
-            className="text-black/20 dark:text-white/20"
-            style={{ fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase" }}
-          >
-            Preview
-          </span>
-        )}
-      </div>
-      <p style={{ margin: "8px 0 0", fontSize: 10, opacity: 0.4 }} className="text-black dark:text-white">
+        {description}
+      </p>
+      <p
+        style={{
+          margin: "8px 0 0",
+          fontSize: 10,
+          opacity: 0.4,
+          pointerEvents: "none",
+        }}
+        className="text-black dark:text-white"
+      >
         {isMobile ? "tap to dismiss" : "click to dismiss"}
       </p>
     </div>
@@ -325,13 +341,18 @@ const ThumbnailBubbleContent = memo(function ThumbnailBubbleContent({
 const DeploymentBubbleContent = memo(function DeploymentBubbleContent({
   deployment,
   isMobile,
-  isDark,
 }: {
   deployment: DeploymentInfo;
   isMobile: boolean | null;
   isDark: boolean;
 }) {
-  const LinkOrPlaceholder = ({ url, label }: { url?: string; label: string }) => {
+  const LinkOrPlaceholder = ({
+    url,
+    label,
+  }: {
+    url?: string;
+    label: string;
+  }) => {
     if (url) {
       return (
         <a
@@ -342,7 +363,15 @@ const DeploymentBubbleContent = memo(function DeploymentBubbleContent({
           style={{ pointerEvents: "auto" }}
           className="text-black/80 dark:text-white/80 hover:text-black dark:hover:text-white transition-colors duration-200"
         >
-          <span style={{ fontSize: 10, fontFamily: "monospace", textDecoration: "underline", textUnderlineOffset: 3 }}>
+          <span
+            style={{
+              fontSize: 10,
+              fontFamily: "var(--font-elevated)",
+              letterSpacing: "0.04em",
+              textDecoration: "underline",
+              textUnderlineOffset: 3,
+            }}
+          >
             {label}
           </span>
         </a>
@@ -350,10 +379,25 @@ const DeploymentBubbleContent = memo(function DeploymentBubbleContent({
     }
     return (
       <span className="flex items-center gap-2">
-        <span className="text-black/30 dark:text-white/30" style={{ fontSize: 10, fontFamily: "monospace" }}>
+        <span
+          className="text-black/30 dark:text-white/30"
+          style={{
+            fontSize: 10,
+            fontFamily: "var(--font-elevated)",
+            letterSpacing: "0.04em",
+          }}
+        >
           {label}
         </span>
-        <span className="bg-black/20 dark:bg-white/20" style={{ width: 24, height: 1, display: "inline-block", borderRadius: 1 }} />
+        <span
+          className="bg-black/20 dark:bg-white/20"
+          style={{
+            width: 24,
+            height: 1,
+            display: "inline-block",
+            borderRadius: 1,
+          }}
+        />
       </span>
     );
   };
@@ -361,50 +405,44 @@ const DeploymentBubbleContent = memo(function DeploymentBubbleContent({
   return (
     <div style={{ position: "relative", zIndex: 1, textAlign: "center" }}>
       <FuzzyText style={{ margin: 0 }}>
-        <span className="text-black/50 dark:text-white/50" style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em" }}>
-          Deployment
+        <span
+          className="text-black/50 dark:text-white/50"
+          style={{
+            fontSize: 9.5,
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+          }}
+        >
+          Links
         </span>
       </FuzzyText>
-      <div className="bg-black/[0.12] dark:bg-white/[0.15]" style={{ height: 1, margin: "8px 0" }} />
+      <div
+        className="bg-black/[0.12] dark:bg-white/[0.15]"
+        style={{ height: 1, margin: "8px 0" }}
+      />
 
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, pointerEvents: "auto" }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 6,
+          pointerEvents: "auto",
+        }}
+      >
         <LinkOrPlaceholder url={deployment.githubUrl} label="GitHub" />
         <LinkOrPlaceholder url={deployment.siteUrl} label="Live Site" />
       </div>
 
-      <div className="bg-black/[0.12] dark:bg-white/[0.15]" style={{ height: 1, margin: "10px 0" }} />
-
-      <FuzzyText style={{ margin: 0 }}>
-        <span className="text-black/50 dark:text-white/50" style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em" }}>
-          Progress
-        </span>
-      </FuzzyText>
-      <div style={{ marginTop: 6 }}>
-        <div
-          className="bg-black/[0.06] dark:bg-white/[0.06]"
-          style={{ width: "100%", height: 6, borderRadius: 3, overflow: "hidden", position: "relative" }}
-        >
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${deployment.progress}%` }}
-            transition={{ duration: 1.2, ease: "easeOut", delay: 0.3 }}
-            style={{
-              height: "100%",
-              borderRadius: 3,
-              backgroundImage: isDark ? progressGradientDark : progressGradientLight,
-              backgroundSize: "200% 100%",
-              animation: "iridescentShift 3s linear infinite",
-            }}
-          />
-        </div>
-        <FuzzyText style={{ margin: 0 }}>
-          <span className="text-black/60 dark:text-white/60" style={{ fontSize: 9, marginTop: 4, display: "inline-block" }}>
-            {deployment.progress}%
-          </span>
-        </FuzzyText>
-      </div>
-
-      <p style={{ margin: "8px 0 0", fontSize: 10, opacity: 0.4, pointerEvents: "none" }} className="text-black dark:text-white">
+      <p
+        style={{
+          margin: "8px 0 0",
+          fontSize: 10,
+          opacity: 0.4,
+          pointerEvents: "none",
+        }}
+        className="text-black dark:text-white"
+      >
         {isMobile ? "tap to dismiss" : "click to dismiss"}
       </p>
     </div>
@@ -413,7 +451,7 @@ const DeploymentBubbleContent = memo(function DeploymentBubbleContent({
 
 // ─── Project Card ───
 
-const BUBBLE_STACK_OFFSET = 120; // px the second bubble shifts when both open
+const BUBBLE_STACK_OFFSET = 125; // px the second bubble shifts when both open
 
 export default function ProjectCard({
   title,
@@ -429,18 +467,10 @@ export default function ProjectCard({
   const isMobile = useBubbleMobile(boxRef, numCardsInRow);
   const isTrulyMobile = useIsMobile(768);
   const isDark = useIsDark();
-  const isInView = useInViewHysteresis(boxRef, {
-    enterAmount: isMobile ? 0.4 : 0.35,
-    leaveAmount: 0.08,
-  });
+  const isInView = useInViewFromBelow(boxRef, isMobile ? 0.4 : 0.35);
 
   const thumbnailBubble = useInfoBubble();
   const deploymentBubble = useInfoBubble();
-
-  // Auto-open thumbnail bubble when card comes into view
-  useEffect(() => {
-    if (isInView) thumbnailBubble.openBubble();
-  }, [isInView, thumbnailBubble.openBubble]);
 
   // Track which bubble opened first so the second one pushes the first down
   const firstOpenedRef = useRef<"thumbnail" | "deployment" | null>(null);
@@ -459,17 +489,23 @@ export default function ProjectCard({
     }
   }, [thumbnailBubble.isBubbleOpen, deploymentBubble.isBubbleOpen]);
 
-  const anyBubbleOpen = thumbnailBubble.isBubbleOpen || deploymentBubble.isBubbleOpen;
-  const bothBubblesOpen = thumbnailBubble.isBubbleOpen && deploymentBubble.isBubbleOpen;
+  const anyBubbleOpen =
+    thumbnailBubble.isBubbleOpen || deploymentBubble.isBubbleOpen;
+  const bothBubblesOpen =
+    thumbnailBubble.isBubbleOpen && deploymentBubble.isBubbleOpen;
   // When both are open, the first-opened gets pushed down, the newer one sits on top
   const thumbnailIsFirst = firstOpenedRef.current === "thumbnail";
 
   // Desktop: first-opened shifts down, second stays up
   const thumbnailDesktopY = bothBubblesOpen
-    ? (thumbnailIsFirst ? BUBBLE_STACK_OFFSET : -BUBBLE_STACK_OFFSET)
+    ? thumbnailIsFirst
+      ? BUBBLE_STACK_OFFSET
+      : -BUBBLE_STACK_OFFSET
     : 0;
   const deploymentDesktopY = bothBubblesOpen
-    ? (thumbnailIsFirst ? -BUBBLE_STACK_OFFSET : BUBBLE_STACK_OFFSET)
+    ? thumbnailIsFirst
+      ? -BUBBLE_STACK_OFFSET
+      : BUBBLE_STACK_OFFSET
     : 0;
 
   // Side-by-side when below but not truly mobile
@@ -477,12 +513,17 @@ export default function ProjectCard({
 
   // Mobile: stacked vertically on true mobile, side by side otherwise
   const thumbnailMobileYOffset = 0;
-  const deploymentMobileYOffset = showSideBySide ? 0 : (bothBubblesOpen ? 200 : 0);
+  const deploymentMobileYOffset = showSideBySide
+    ? 0
+    : bothBubblesOpen
+      ? 320
+      : 0;
   const thumbnailMobileBubbleX = showSideBySide ? "calc(-100% - 8px)" : "-50%";
   const deploymentMobileBubbleX = showSideBySide ? "8px" : "-50%";
 
   // SVG draw progress
-  const { svgProgress, onViewportEnter, onViewportLeave } = useSvgDrawAnimation(3);
+  const { svgProgress, onViewportEnter, onViewportLeave } =
+    useSvgDrawAnimation(3);
 
   return (
     <>
@@ -512,7 +553,10 @@ export default function ProjectCard({
         animate={
           isInView
             ? { x: 0, y: 0 }
-            : { x: isMobile ? 0 : (bubbleSide === "left" ? -20 : 20), y: isMobile ? 15 : 10 }
+            : {
+                x: isMobile ? 0 : bubbleSide === "left" ? -20 : 20,
+                y: isMobile ? 15 : 10,
+              }
         }
         exit={{
           x: bubbleSide === "left" ? "-100vw" : "100vw",
@@ -564,7 +608,12 @@ export default function ProjectCard({
           initial={{ opacity: 0 }}
           animate={isInView ? { opacity: 1 } : { opacity: 0 }}
           transition={{ duration: 0.9, ease: "easeInOut" }}
-          style={{ position: "relative", borderRadius: "24px", flex: 1, ...glassStyle }}
+          style={{
+            position: "relative",
+            borderRadius: "24px",
+            flex: 1,
+            ...glassStyle,
+          }}
           className={`${glassBoxClassNames} p-5 md:p-8`}
         >
           <GlassLayers refractionSide="left" />
@@ -572,13 +621,25 @@ export default function ProjectCard({
           {/* Content */}
           <div style={{ position: "relative", zIndex: 1 }}>
             {/* Title */}
-            <h2 style={{ marginTop: 0, marginBottom: "4px", fontSize: "clamp(1.25rem, 2vw, 1.625rem)", fontWeight: 700, textAlign: "center" }}>
+            <h2
+              style={{
+                marginTop: 0,
+                marginBottom: "4px",
+                fontSize: "clamp(1.25rem, 2vw, 1.625rem)",
+                fontWeight: 700,
+                textAlign: "center",
+              }}
+            >
               <FuzzyText>
                 <span
                   className="bg-clip-text text-transparent"
                   style={{
                     WebkitBackgroundClip: "text",
-                    backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
+                    backgroundImage: themed(
+                      isDark,
+                      cs.liquidGlass.dark,
+                      cs.liquidGlass.light,
+                    ),
                   }}
                 >
                   {title}
@@ -587,52 +648,97 @@ export default function ProjectCard({
             </h2>
 
             {/* Tech Stack */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "center", marginBottom: 12 }}>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 4,
+                justifyContent: "center",
+                marginBottom: 12,
+              }}
+            >
               {techStack.split(",").map((tech) => (
                 <span
                   key={tech.trim()}
                   className="text-black/70 dark:text-white/70 bg-black/[0.04] dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08]"
-                  style={{ fontSize: 9, fontFamily: "monospace", padding: "2px 6px", borderRadius: 6, letterSpacing: "0.02em" }}
+                  style={{
+                    fontSize: 11,
+                    fontFamily: "var(--font-elevated)",
+                    padding: "2px 6px",
+                    borderRadius: 6,
+                    letterSpacing: "0.04em",
+                  }}
                 >
                   {tech.trim()}
                 </span>
               ))}
             </div>
 
-            {/* Description */}
-            <p
-              className="font-[family-name:var(--font-elevated)]"
-              style={{ marginTop: 0, marginBottom: 0, fontSize: "clamp(0.8rem, 1.1vw, 1rem)", fontWeight: 700, letterSpacing: "-0.005em" }}
+            {/* Thumbnail */}
+            <div
+              style={{
+                borderRadius: 12,
+                overflow: "hidden",
+                width: "100%",
+                aspectRatio: "16 / 9",
+                marginBottom: 16,
+                background: isDark
+                  ? "rgba(255,255,255,0.05)"
+                  : "rgba(0,0,0,0.06)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
-              <FuzzyText>
-                <span
-                  className="bg-clip-text text-transparent"
+              {thumbnail ? (
+                <img
+                  src={thumbnail}
+                  alt="Project thumbnail"
                   style={{
-                    WebkitBackgroundClip: "text",
-                    backgroundImage: themed(isDark, cs.body.dark, cs.body.light),
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    display: "block",
+                  }}
+                />
+              ) : (
+                <span
+                  className="text-black/20 dark:text-white/20"
+                  style={{
+                    fontSize: 11,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
                   }}
                 >
-                  {description}
+                  Preview
                 </span>
-              </FuzzyText>
-            </p>
+              )}
+            </div>
 
             {/* Bubble toggle buttons */}
             <div className="mt-5 flex justify-center gap-3">
               <button
-                onClick={thumbnailBubble.isBubbleOpen ? thumbnailBubble.requestPop : thumbnailBubble.openBubble}
+                onClick={
+                  thumbnailBubble.isBubbleOpen
+                    ? thumbnailBubble.requestPop
+                    : thumbnailBubble.openBubble
+                }
                 className="group relative px-3 py-1.5 rounded-full text-xs font-medium text-black dark:text-white bg-blue-500/3 hover:bg-blue-500/5 dark:bg-white/5 dark:hover:bg-white/10 border border-[rgba(100,130,200,0.2)] dark:border-[rgba(255,255,255,0.05)] transition-all duration-300"
               >
                 <span className="relative z-10">
-                  {thumbnailBubble.isBubbleOpen ? "Close" : "Preview"}
+                  {thumbnailBubble.isBubbleOpen ? "Close" : "About"}
                 </span>
               </button>
               <button
-                onClick={deploymentBubble.isBubbleOpen ? deploymentBubble.requestPop : deploymentBubble.openBubble}
+                onClick={
+                  deploymentBubble.isBubbleOpen
+                    ? deploymentBubble.requestPop
+                    : deploymentBubble.openBubble
+                }
                 className="group relative px-3 py-1.5 rounded-full text-xs font-medium text-black dark:text-white bg-blue-500/3 hover:bg-blue-500/5 dark:bg-white/5 dark:hover:bg-white/10 border border-[rgba(100,130,200,0.2)] dark:border-[rgba(255,255,255,0.05)] transition-all duration-300"
               >
                 <span className="relative z-10">
-                  {deploymentBubble.isBubbleOpen ? "Close" : "Deploy Info"}
+                  {deploymentBubble.isBubbleOpen ? "Close" : "Links"}
                 </span>
               </button>
             </div>
@@ -640,7 +746,18 @@ export default function ProjectCard({
         </motion.div>
 
         {/* Bubbles */}
-        <motion.div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999999, pointerEvents: "none", overflow: "visible" }}>
+        <motion.div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999999,
+            pointerEvents: "none",
+            overflow: "visible",
+          }}
+        >
           <AnimatePresence>
             {thumbnailBubble.isBubbleOpen && (
               <BubbleShell
@@ -654,7 +771,11 @@ export default function ProjectCard({
                 mobileYOffset={thumbnailMobileYOffset}
                 mobileBubbleX={thumbnailMobileBubbleX}
               >
-                <ThumbnailBubbleContent thumbnail={thumbnail} isMobile={isMobile} isDark={isDark} />
+                <DescriptionBubbleContent
+                  description={description}
+                  isMobile={isMobile}
+                  isDark={isDark}
+                />
               </BubbleShell>
             )}
           </AnimatePresence>
@@ -671,7 +792,11 @@ export default function ProjectCard({
                 mobileYOffset={deploymentMobileYOffset}
                 mobileBubbleX={deploymentMobileBubbleX}
               >
-                <DeploymentBubbleContent deployment={deployment} isMobile={isMobile} isDark={isDark} />
+                <DeploymentBubbleContent
+                  deployment={deployment}
+                  isMobile={isMobile}
+                  isDark={isDark}
+                />
               </BubbleShell>
             )}
           </AnimatePresence>
@@ -680,7 +805,14 @@ export default function ProjectCard({
 
       {/* Mobile spacer — always rendered so it animates smoothly when isMobile changes */}
       <motion.div
-        animate={{ height: isMobile && anyBubbleOpen ? (bothBubblesOpen && !showSideBySide ? 450 : 300) : 0 }}
+        animate={{
+          height:
+            isMobile && anyBubbleOpen
+              ? bothBubblesOpen && !showSideBySide
+                ? 580
+                : 340
+              : 0,
+        }}
         transition={{ duration: 0.75, ease: [0.25, 1, 0.5, 1] }}
         style={{ overflow: "hidden" }}
       />

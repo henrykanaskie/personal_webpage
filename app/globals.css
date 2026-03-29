@@ -2,7 +2,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 html {
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
 }
 body {
   /* The color of the "paper" */

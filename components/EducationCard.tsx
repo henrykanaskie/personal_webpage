@@ -95,23 +95,14 @@ export default function EducationCard({
             style={{
               marginTop: 0,
               marginBottom: "4px",
-              fontSize: "clamp(1.0625rem, 1.6vw, 1.375rem)",
-              fontWeight: 700,
+              fontSize: "clamp(0.95rem, 1.3vw, 1.125rem)",
+              fontWeight: 500,
               textAlign: "center",
               letterSpacing: "-0.01em",
+              color: themed(isDark, cs.bodyColor.dark, cs.bodyColor.light),
             }}
           >
-            <FuzzyText>
-              <span
-                className="bg-clip-text text-transparent"
-                style={{
-                  WebkitBackgroundClip: "text",
-                  backgroundImage: themed(isDark, cs.body.dark, cs.body.light),
-                }}
-              >
-                {degree}
-              </span>
-            </FuzzyText>
+            {degree}
           </h3>
 
           {/* Timeline */}
@@ -120,23 +111,15 @@ export default function EducationCard({
             style={{
               marginTop: 0,
               marginBottom: "16px",
-              fontSize: "clamp(0.9375rem, 1.4vw, 1.25rem)",
-              fontWeight: 700,
+              fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)",
+              fontWeight: 400,
               textAlign: "center",
-              letterSpacing: "-0.01em",
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              color: themed(isDark, cs.bodyColor.dark, cs.bodyColor.light),
             }}
           >
-            <FuzzyText>
-              <span
-                className="bg-clip-text text-transparent"
-                style={{
-                  WebkitBackgroundClip: "text",
-                  backgroundImage: themed(isDark, cs.body.dark, cs.body.light),
-                }}
-              >
-                {timeline}
-              </span>
-            </FuzzyText>
+            {timeline}
           </h4>
 
           {/* Divider */}
@@ -148,18 +131,16 @@ export default function EducationCard({
           {/* GPA */}
           {gpa && (
             <div style={{ textAlign: "center", marginBottom: 16 }}>
-              <FuzzyText>
-                <span
-                  className="text-black/50 dark:text-white/50"
-                  style={{
-                    fontSize: 9,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.1em",
-                  }}
-                >
-                  GPA
-                </span>
-              </FuzzyText>
+              <span
+                className="text-black/50 dark:text-white/50"
+                style={{
+                  fontSize: 9,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em",
+                }}
+              >
+                GPA
+              </span>
               <div style={{ marginTop: 4 }}>
                 <FuzzyText>
                   <span
@@ -181,18 +162,16 @@ export default function EducationCard({
           {/* Coursework */}
           {coursework && coursework.length > 0 && (
             <div style={{ textAlign: "center", marginBottom: 12 }}>
-              <FuzzyText>
-                <span
-                  className="text-black/50 dark:text-white/50"
-                  style={{
-                    fontSize: 9,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.1em",
-                  }}
-                >
-                  Relevant Coursework
-                </span>
-              </FuzzyText>
+              <span
+                className="text-black/50 dark:text-white/50"
+                style={{
+                  fontSize: 9,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em",
+                }}
+              >
+                Relevant Coursework
+              </span>
               <div
                 style={{
                   display: "flex",
@@ -208,10 +187,10 @@ export default function EducationCard({
                     className="text-black/80 dark:text-white/80 bg-black/[0.04] dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08]"
                     style={{
                       fontSize: 11,
-                      fontFamily: "monospace",
+                      fontFamily: "var(--font-elevated)",
                       padding: "3px 8px",
                       borderRadius: 8,
-                      letterSpacing: "0.02em",
+                      letterSpacing: "0.04em",
                     }}
                   >
                     {course}
@@ -224,19 +203,17 @@ export default function EducationCard({
           {/* Extras */}
           {extras && (
             <div style={{ textAlign: "center", marginTop: 12 }}>
-              <FuzzyText>
-                <span
-                  className="font-[family-name:var(--font-elevated)] bg-clip-text text-transparent"
-                  style={{
-                    WebkitBackgroundClip: "text",
-                    backgroundImage: themed(isDark, cs.bodyShort.dark, cs.bodyShort.light),
-                    fontSize: "clamp(0.85rem, 1.1vw, 1rem)",
-                    fontWeight: 600,
-                  }}
-                >
-                  {extras}
-                </span>
-              </FuzzyText>
+              <span
+                className="font-[family-name:var(--font-elevated)] bg-clip-text text-transparent"
+                style={{
+                  WebkitBackgroundClip: "text",
+                  backgroundImage: themed(isDark, cs.bodyShort.dark, cs.bodyShort.light),
+                  fontSize: "clamp(0.85rem, 1.1vw, 1rem)",
+                  fontWeight: 500,
+                }}
+              >
+                {extras}
+              </span>
             </div>
           )}
         </div>

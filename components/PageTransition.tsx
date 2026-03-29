@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { useContext, useRef, useCallback, useEffect } from "react";
+import { useContext, useRef, useCallback, useLayoutEffect } from "react";
 import { LayoutRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
 function FrozenRouter({ children }: { children: React.ReactNode }) {
@@ -17,7 +17,7 @@ function FrozenRouter({ children }: { children: React.ReactNode }) {
 
 function isFullScreenPath(p: string | null | undefined): boolean {
   if (!p) return false;
-  return p === "/" || p.startsWith("/photography");
+  return p.startsWith("/photography");
 }
 
 export default function PageTransition({
@@ -27,17 +27,15 @@ export default function PageTransition({
 }) {
   const pathname = usePathname();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if ("scrollRestoration" in window.history) {
       window.history.scrollRestoration = "manual";
     }
   }, []);
 
   const onExitComplete = useCallback(() => {
-    if (!isFullScreenPath(pathname)) {
-      window.scrollTo(0, 0);
-    }
-  }, [pathname]);
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, []);
 
   // Single AnimatePresence for all routes.
   // Exit duration is determined by the CURRENT page type at render time:

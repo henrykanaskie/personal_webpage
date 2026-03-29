@@ -3,9 +3,9 @@
 import { useRef } from "react";
 import {
   motion,
-  useInView,
   AnimatePresence,
 } from "framer-motion";
+import { useInViewFromBelow } from "../hooks/useInViewFromBelow";
 import AnimatedSvg from "./AnimatedSvg";
 import {
   InfoBubble,
@@ -52,10 +52,7 @@ export default function InfoBox({
   const boxRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile(1000);
   const isDark = useIsDark();
-  const isInView = useInView(boxRef, {
-    once: false,
-    amount: isMobile ? 0.15 : 0.1,
-  });
+  const isInView = useInViewFromBelow(boxRef, isMobile ? 0.15 : 0.1);
   const {
     isBubbleOpen,
     popRequested,
@@ -64,7 +61,6 @@ export default function InfoBox({
     handleVaporDone,
     openBubble,
     requestPop,
-    handleBubbleVisibility,
   } = useInfoBubble();
 
   const { svgProgress, onViewportEnter, onViewportLeave } = useSvgDrawAnimation(svgDrawDuration);
@@ -179,46 +175,29 @@ export default function InfoBox({
               style={{
                 marginTop: 0,
                 marginBottom: "4px",
-                fontSize: "clamp(1.0625rem, 1.6vw, 1.375rem)",
-                fontWeight: 700,
+                fontSize: "clamp(0.95rem, 1.3vw, 1.125rem)",
+                fontWeight: 500,
                 textAlign: "center",
                 letterSpacing: "-0.01em",
+                color: themed(isDark, cs.bodyColor.dark, cs.bodyColor.light),
               }}
             >
-              <FuzzyText>
-                <span
-                  className="bg-clip-text text-transparent"
-                  style={{
-                    WebkitBackgroundClip: "text",
-                    backgroundImage: themed(isDark, cs.body.dark, cs.body.light),
-                  }}
-                >
-                  {company}
-                </span>
-              </FuzzyText>
+              {company}
             </h3>
             <h4
               className="font-[family-name:var(--font-elevated)]"
               style={{
                 marginTop: 0,
                 marginBottom: "16px",
-                fontSize: "clamp(0.9375rem, 1.4vw, 1.25rem)",
-                fontWeight: 700,
+                fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)",
+                fontWeight: 500,
                 textAlign: "center",
-                letterSpacing: "-0.01em",
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                color: themed(isDark, cs.bodyColor.dark, cs.bodyColor.light),
               }}
             >
-              <FuzzyText>
-                <span
-                  className="bg-clip-text text-transparent"
-                  style={{
-                    WebkitBackgroundClip: "text",
-                    backgroundImage: themed(isDark, cs.body.dark, cs.body.light),
-                  }}
-                >
-                  {role}
-                </span>
-              </FuzzyText>
+              {role}
             </h4>
             <p
               className="font-[family-name:var(--font-elevated)]"
@@ -226,22 +205,13 @@ export default function InfoBox({
                 marginTop: 0,
                 marginBottom: 0,
                 fontSize: "clamp(0.875rem, 1.2vw, 1.125rem)",
-                fontWeight: 700,
+                fontWeight: 400,
                 letterSpacing: "-0.005em",
-                lineHeight: 1.6,
+                lineHeight: 1.7,
+                color: themed(isDark, cs.bodyColor.dark, cs.bodyColor.light),
               }}
             >
-              <FuzzyText>
-                <span
-                  className="bg-clip-text text-transparent"
-                  style={{
-                    WebkitBackgroundClip: "text",
-                    backgroundImage: themed(isDark, cs.body.dark, cs.body.light),
-                  }}
-                >
-                  {description}
-                </span>
-              </FuzzyText>
+              <FuzzyText>{description}</FuzzyText>
             </p>
 
             {/* Toggle Button */}
@@ -287,7 +257,6 @@ export default function InfoBox({
                 onPop={handlePop}
                 isMobile={isMobile}
                 popRequested={popRequested}
-                onVisibilityChange={handleBubbleVisibility}
                 parentInView={isInView}
               />
             )}

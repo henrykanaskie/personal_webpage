@@ -69,7 +69,7 @@ function TechPill({ label }: { label: string }) {
   return (
     <span
       className="text-black/70 dark:text-white/70 bg-black/[0.04] dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08]"
-      style={{ fontSize: 9, fontFamily: "monospace", padding: "2px 6px", borderRadius: 6, letterSpacing: "0.02em" }}
+      style={{ fontSize: 9, fontFamily: "var(--font-elevated)", padding: "2px 6px", borderRadius: 6, letterSpacing: "0.04em" }}
     >
       {label}
     </span>
@@ -125,35 +125,29 @@ function ExperienceCard({
               </span>
             </FuzzyText>
             <div style={{ marginTop: 2 }}>
-              <FuzzyText>
-                <span
-                  className="bg-clip-text text-transparent"
-                  style={{
-                    WebkitBackgroundClip: "text",
-                    backgroundImage: themed(isDark, cs.bodyShort.dark, cs.bodyShort.light),
-                    fontSize: "clamp(0.82rem, 1.1vw, 0.95rem)",
-                    fontWeight: 600,
-                  }}
-                >
-                  {company}
-                </span>
-              </FuzzyText>
+              <span
+                style={{
+                  fontSize: "clamp(0.82rem, 1.1vw, 0.95rem)",
+                  fontWeight: 500,
+                  color: themed(isDark, cs.bodyColor.dark, cs.bodyColor.light),
+                }}
+              >
+                {company}
+              </span>
               <span
                 className="text-black/55 dark:text-white/60"
-                style={{ fontSize: "0.78rem", marginLeft: 8, fontFamily: "monospace" }}
+                style={{ fontSize: "0.78rem", marginLeft: 8, fontFamily: "var(--font-elevated)", letterSpacing: "0.02em" }}
               >
                 {location}
               </span>
             </div>
           </div>
-          <FuzzyText>
-            <span
-              className="text-black/60 dark:text-white/65"
-              style={{ fontSize: "clamp(0.7rem, 0.95vw, 0.82rem)", fontFamily: "monospace" }}
-            >
-              {dates}
-            </span>
-          </FuzzyText>
+          <span
+            className="text-black/60 dark:text-white/65"
+            style={{ fontSize: "clamp(0.7rem, 0.95vw, 0.82rem)" }}
+          >
+            {dates}
+          </span>
         </div>
 
         {/* Tech tags */}
@@ -180,11 +174,11 @@ function ExperienceCard({
                 className="text-black/90 dark:text-white/90"
                 style={{
                   fontSize: "clamp(0.78rem, 1.05vw, 0.92rem)",
-                  fontWeight: 600,
+                  fontWeight: 400,
                   lineHeight: 1.55,
                 }}
               >
-                {bullet}
+                <FuzzyText>{bullet}</FuzzyText>
               </span>
             </li>
           ))}
@@ -384,21 +378,17 @@ function ResumeProjectCard({
         </div>
 
         {/* Description */}
-        <FuzzyText style={{ display: "block" }}>
-          <span
-            className="bg-clip-text text-transparent"
-            style={{
-              WebkitBackgroundClip: "text",
-              backgroundImage: themed(isDark, cs.bodyShort.dark, cs.bodyShort.light),
-              fontSize: "clamp(0.76rem, 1vw, 0.86rem)",
-              fontWeight: 600,
-              lineHeight: 1.55,
-              display: "block",
-            }}
-          >
-            {description}
-          </span>
-        </FuzzyText>
+        <span
+          style={{
+            fontSize: "clamp(0.76rem, 1vw, 0.86rem)",
+            fontWeight: 400,
+            lineHeight: 1.55,
+            display: "block",
+            color: themed(isDark, cs.bodyColor.dark, cs.bodyColor.light),
+          }}
+        >
+          <FuzzyText>{description}</FuzzyText>
+        </span>
 
         {/* Links */}
         {hasLinks && (
@@ -411,7 +401,8 @@ function ResumeProjectCard({
                 className="hover:opacity-80 transition-opacity"
                 style={{
                   fontSize: "0.72rem",
-                  fontFamily: "monospace",
+                  fontFamily: "var(--font-elevated)",
+                  letterSpacing: "0.04em",
                   textDecoration: "underline",
                   textUnderlineOffset: 3,
                   color: isDark ? "rgba(180,200,255,0.75)" : "rgba(80,95,130,0.8)",
@@ -428,7 +419,8 @@ function ResumeProjectCard({
                 className="hover:opacity-80 transition-opacity"
                 style={{
                   fontSize: "0.72rem",
-                  fontFamily: "monospace",
+                  fontFamily: "var(--font-elevated)",
+                  letterSpacing: "0.04em",
                   textDecoration: "underline",
                   textUnderlineOffset: 3,
                   color: isDark ? "rgba(180,200,255,0.75)" : "rgba(80,95,130,0.8)",
@@ -450,38 +442,38 @@ const experiences: ExperienceData[] = [
   {
     title: "Software Engineering Intern",
     company: "DZYNE Technologies",
-    dates: "Mar 2025 — Sep 2025",
+    dates: "Mar 2025 - Sep 2025",
     location: "Portland, OR",
     techStack: "Python, C, C++, SQL, React, Flask",
     bullets: [
-      "Reduced embedded system development time by 23% by refactoring anti-drone software modules in C and C++ for improved modularity and reuse across future product lines.",
-      "Increased automated testing efficiency by over 40% by restructuring the Python-based test framework, reducing manual intervention and accelerating release cycles.",
-      "Eliminated a 3+ minute operator workflow by building a full-stack GUI in React and Flask with real-time control of power, tracking, movement, and logging — reducing test-run response time to under 30 seconds.",
+      "23% faster embedded development after refactoring anti-drone C/C++ modules for modularity and reuse across product lines.",
+      "Restructured the Python test framework to eliminate manual intervention, lifting automated testing efficiency by over 40% and tightening release cycles.",
+      "A full-stack React/Flask GUI replaced a 3+ minute manual operator workflow, delivering real-time control of power, tracking, movement, and logging with sub-30-second test runs.",
     ],
   },
   {
     title: "Undergraduate Researcher – Applied Machine Learning",
     company: "Plasma, Energy, and Space Propulsion Laboratory",
-    dates: "May 2024 — Jun 2026",
+    dates: "May 2024 - Jun 2026",
     location: "Corvallis, OR",
     techStack: "MATLAB, Python, OR-tools",
     bullets: [
-      "Sped up impedance matching by 800% by developing an automated capacitor tuning algorithm with Google's OR-tools, dynamically maximizing power coupling and reducing reflected power in RF plasma systems.",
-      "Outperformed the industry-standard denoising filter by 80% by engineering a high-performance Python pipeline, extracting high-fidelity thruster health data from high-noise environments.",
-      "Accelerated plasma thruster analysis by 120% by implementing parallelized signal processing programs in MATLAB, enabling faster experimental iteration.",
-      "Boosted cancer-focused plasma model accuracy by 33% by engineering high-dimensional features from 10M+ data points across diverse treatment parameters.",
+      "Capacitor tuning algorithm built with Google OR-tools to dynamically maximize power coupling in RF plasma systems, delivering an 800% speedup over manual impedance matching.",
+      "Industry-standard denoising filter outperformed by 80% with a custom Python pipeline that reliably extracts thruster health data from high-noise environments.",
+      "120% faster plasma thruster analysis through parallelized MATLAB signal processing, enabling tighter experimental iteration.",
+      "High-dimensional features engineered from 10M+ data points across diverse treatment parameters boosted a cancer-focused plasma model's accuracy by 33%.",
     ],
   },
   {
     title: "Undergraduate Researcher",
     company: "Jason Clark Research Group",
-    dates: "Feb 2024 — Mar 2025",
+    dates: "Feb 2024 - Mar 2025",
     location: "Corvallis, OR",
     techStack: "VHDL, FPGA, Moku",
     bullets: [
-      "Enabled nano-ampere signal acquisition for the first time in the lab by developing VHDL modules for FPGA-based DSP, unlocking precise characterization of previously unmeasurable micro-sensors.",
-      "Improved sensor stability by integrating artificial damping algorithms via Hardware-in-the-Loop testing with Moku instrumentation, reducing mechanical noise across multiple test configurations.",
-      "Accelerated hardware debugging by designing comprehensive VHDL testbenches that simulated and validated signal responses, enabling rapid iterative prototyping.",
+      "First-ever nano-ampere signal acquisition in the lab, enabled by VHDL modules developed for FPGA-based DSP and unlocking characterization of previously unmeasurable micro-sensors.",
+      "Integrated artificial damping algorithms through Hardware-in-the-Loop testing with Moku instrumentation, stabilizing sensors and reducing mechanical noise across multiple test configurations.",
+      "Comprehensive VHDL testbenches simulating and validating signal responses shortened hardware debug cycles and enabled rapid iterative prototyping.",
     ],
   },
 ];
@@ -492,16 +484,16 @@ const projects: ProjectData[] = [
     techStack: "Python, React, JavaScript",
     description:
       "Full-stack AI recommendation engine using truncated SVD on Oregon Bee Atlas data to predict bee-flower interactions, enabling data-driven habitat restoration for land managers. Modeled complex ecological relationships via sparse matrix factorization to identify optimal plant species for local bee populations.",
-    githubUrl: "#", // TODO: replace with repo URL
-    siteUrl: "#", // TODO: replace with live site URL
+    githubUrl: "https://github.com/Kellen-Sullivan/bee-plant-data-exploration",
+    siteUrl: "https://kellen-sullivan.github.io/bee-plant-data-exploration/",
     thumbnailType: "matrix",
   },
   {
-    title: "Character Classification Neural Network — From Scratch",
+    title: "Character Classification Neural Network: From Scratch",
     techStack: "Python, NumPy, Pandas",
     description:
-      "Feed-forward neural network built from scratch in Python — no ML frameworks — implementing backpropagation, weight initialization, and hyperparameter tuning by hand. Achieved 85% test accuracy on EMNIST handwritten characters.",
-    githubUrl: "#", // TODO: replace with repo URL
+      "Feed-forward neural network built from scratch in Python (no ML frameworks), implementing backpropagation, weight initialization, and hyperparameter tuning by hand. Achieved 85% test accuracy on EMNIST handwritten characters.",
+    githubUrl: "https://github.com/henrykanaskie/emnist",
     thumbnailType: "confusion",
   },
 ];
@@ -623,7 +615,7 @@ export default function ResumePage() {
         <EducationCard
           school="Oregon State University"
           degree="Honors B.S. Computer Science"
-          timeline="Sep 2022 — Jun 2026"
+          timeline="Sep 2022 - Jun 2026"
           gpa="3.95 / 4.0"
           coursework={[
             "Data Structures & Algorithms",

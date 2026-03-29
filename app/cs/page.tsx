@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { motion, useInView, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import GlassTitle from "@/components/GlassTitle";
 import {
   GlassLayers,
@@ -34,13 +34,13 @@ import { nnPaths } from "@/svgs/nnPaths";
 function SectionDivider() {
   const isDark = useIsDark();
   return (
-    <div className="w-full px-[8%] my-8 md:my-16">
+    <div className="w-full px-[5%] my-12 md:my-24">
       <div
         style={{
-          height: "1px",
+          height: "2px",
           background: isDark
-            ? "linear-gradient(90deg, transparent, rgba(180,200,255,0.15) 30%, rgba(200,185,225,0.2) 50%, rgba(180,200,255,0.15) 70%, transparent)"
-            : "linear-gradient(90deg, transparent, rgba(22,90,139,0.45) 30%, rgba(22,90,139,0.58) 50%, rgba(22,90,139,0.45) 70%, transparent)",
+            ? "linear-gradient(90deg, transparent 5%, rgba(180,200,255,0.22) 25%, rgba(200,185,225,0.32) 50%, rgba(180,200,255,0.22) 75%, transparent 95%)"
+            : "linear-gradient(90deg, transparent 5%, rgba(22,90,139,0.5) 25%, rgba(22,90,139,0.65) 50%, rgba(22,90,139,0.5) 75%, transparent 95%)",
         }}
       />
     </div>
@@ -60,8 +60,13 @@ const projects = [
     title: "Bee Habitat Recommendation System",
     techStack: "Python, React, JavaScript",
     description:
-      "Oregon's native bee populations are declining, and the hardest part of habitat restoration is knowing which plants to actually put in the ground. This project tackled that problem by building a recommendation engine on top of the Oregon Bee Atlas that models bee-flower relationships as a sparse matrix and uses truncated SVD to surface the most ecologically relevant plant species for a given area. The goal was a tool land managers could actually use to make decisions.",
-    deployment: { progress: 100 },
+      "A recommendation engine built on the Oregon Bee Atlas that models bee-flower relationships as a sparse matrix and uses truncated SVD to surface ecologically relevant plant species for a given area — a practical tool for land managers making habitat restoration decisions.",
+    deployment: {
+      progress: 100,
+      githubUrl:
+        "https://github.com/Kellen-Sullivan/bee-plant-data-exploration",
+      siteUrl: "https://kellen-sullivan.github.io/bee-plant-data-exploration/",
+    },
     svgs: [
       {
         paths: beePaths,
@@ -74,11 +79,14 @@ const projects = [
     ],
   },
   {
-    title: "Character Classification Neural Network — From Scratch",
+    title: "Character Classification Neural Network: From Scratch",
     techStack: "Python, NumPy, Pandas",
     description:
-      "The goal here was understanding. I didn't want to just get a model to work, but know exactly why it works. I built a feed-forward neural network entirely from scratch, implementing backpropagation, weight initialization, and the full training loop without touching any ML frameworks. Training it on EMNIST handwritten characters and hitting 85% test accuracy was the payoff, but the real value was the intuition built along the way.",
-    deployment: { progress: 100 },
+      "A feed-forward neural network built entirely from scratch — backpropagation, weight initialization, and the full training loop without any ML framework. Trained on EMNIST handwritten characters, reaching 85% test accuracy. The goal was intuition, not just a working model.",
+    deployment: {
+      progress: 100,
+      githubUrl: "https://github.com/henrykanaskie/emnist",
+    },
     svgs: [
       {
         paths: nnPaths,
@@ -172,12 +180,6 @@ export default function CSPage() {
   }, []);
 
   // About section viewport refs for fade-in/out animations
-  const contactRef = useRef<HTMLDivElement>(null);
-  const contactInView = useInView(contactRef, {
-    once: true,
-    amount: 0.15,
-  });
-
   // About section modal state
   const [resumeOpen, setResumeOpen] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
@@ -227,10 +229,10 @@ export default function CSPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-            ...emailForm,
-            website: honeypot,
-            formOpenedAt: emailFormOpenedAt.current,
-          }),
+          ...emailForm,
+          website: honeypot,
+          formOpenedAt: emailFormOpenedAt.current,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -426,21 +428,16 @@ export default function CSPage() {
       </div>
 
       {/* ── About ──────────────────────────────────────────────────────── */}
-      <section
+      <motion.section
         id="about"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1.4, repeat: 0, ease: "easeInOut" }}
         style={{ scrollMarginTop: "80px" }}
         className="flex flex-col items-center gap-12 md:gap-28 pb-[5vh]"
       >
         {/* Single row: Photo + Name/Links + Bio */}
-        <motion.div
-          ref={contactRef}
-          initial={{ opacity: 0 }}
-          animate={contactInView ? { opacity: 1 } : { opacity: 0 }}
-          exit={{
-            opacity: 0,
-            transition: { duration: 0.55, ease: [0.5, 0, 0.75, 0] },
-          }}
-          transition={{ duration: 1.8, ease: "easeInOut" }}
+        <div
           style={{
             display: "flex",
             flexDirection: "row",
@@ -459,6 +456,7 @@ export default function CSPage() {
                 variant="crystalline"
                 containerClassName="justify-center items-center !pt-0 !pb-0"
                 fontSize="clamp(2rem, 11vw, 3.5rem)"
+                disableEntrance
               />
 
               {/* Photo — with side margins */}
@@ -656,6 +654,7 @@ export default function CSPage() {
                     containerClassName="justify-start items-start !pt-0 md:!pt-0 !pb-0 md:!pb-0"
                     fontSize="clamp(2.4rem, 7.5vw, 10rem)"
                     noWrap
+                    disableEntrance
                   />
                 </div>
 
@@ -673,7 +672,7 @@ export default function CSPage() {
               </div>
             </>
           )}
-        </motion.div>
+        </div>
 
         {/* Scroll hint */}
         <motion.div
@@ -902,7 +901,12 @@ export default function CSPage() {
                   tabIndex={-1}
                   aria-hidden="true"
                   autoComplete="off"
-                  style={{ position: "absolute", left: "-9999px", opacity: 0, pointerEvents: "none" }}
+                  style={{
+                    position: "absolute",
+                    left: "-9999px",
+                    opacity: 0,
+                    pointerEvents: "none",
+                  }}
                 />
                 {(["name", "email", "subject"] as const).map((field) => (
                   <div key={field}>
@@ -1091,7 +1095,7 @@ export default function CSPage() {
             </div>
           </div>
         )}
-      </section>
+      </motion.section>
 
       <SectionDivider />
 
@@ -1111,15 +1115,13 @@ export default function CSPage() {
           svgOffsetRight={{ x: 10, y: 10 }}
           svgSizeRight={47}
         />
-        <InfoBox side="left"
+        <InfoBox
+          side="left"
           title="Software Engineering Intern"
           company="DZYNE Technologies"
           role="Embedded Systems & Full-Stack"
           description={[
-            "DZYNE builds defense systems at the intersection of autonomy and embedded hardware. I joined a small engineering team working on anti-drone software.",
-            "Refactored C and C++ modules to be more modular and maintainable.",
-            "Rebuilt the Python test infrastructure to improve reliability and speed.",
-            "Designed and shipped an internal full-stack GUI giving operators real-time control over the entire test workflow.",
+            "I worked on a small team writing embedded C and C++ for anti-drone defense systems. The codebase had grown organically and needed serious cleanup — I refactored the core modules to be properly modular, which made a real difference in how fast the team could move. I also rebuilt the Python test infrastructure from scratch because the old one was slow and required too much manual babysitting. The most fun part was building a full-stack GUI in React and Flask that gave operators real-time control over power, tracking, and logging during test runs — something that previously meant running a bunch of scripts by hand.",
           ]}
           svgPaths={dronesPaths}
           svgSize={60}
@@ -1132,11 +1134,12 @@ export default function CSPage() {
             industry: "Defense Technology",
           }}
         />
-        <InfoBox side="right"
+        <InfoBox
+          side="right"
           title="Applied Machine Learning Researcher"
           company="Plasma, Energy, and Space Propulsion Laboratory"
           role="Signal Processing & ML"
-          description="The PESP Lab applies plasma physics to problems in aerospace propulsion and cancer treatment. My work sat at the intersection of ML and signal processing. I spent time making clean diagnostic signals out of high-noise environments and building predictive models from large experimental datasets. The research mission is to make plasma systems more efficient and to make them more precisely controlled. I contributed to that across both the thruster and biomedical sides of the lab."
+          description="I split my time between the thruster side and the biomedical side of the lab, doing ML and signal processing work on both. A big chunk of it was building pipelines to extract clean signals from really noisy sensor data — plasma environments are brutal for that. On the modeling side, I worked on predictive models trained on large experimental datasets. One of the more interesting problems was automating capacitor tuning for RF plasma systems using Google OR-tools, replacing a slow manual process with something that ran dynamically and maximized power coupling in real time."
           svgPaths={thrusterPaths}
           svgDrawDuration={6}
           svgSize={75}
@@ -1150,12 +1153,13 @@ export default function CSPage() {
             industry: "Aerospace Research",
           }}
         />
-        <InfoBox side="left"
+        <InfoBox
+          side="left"
           title="Undergraduate Researcher"
           company="Jason Clark Research Group"
           role="FPGA & DSP Engineering"
           description={[
-            "The Jason Clark Research Group pushes the limits of precision sensing at the micro and nano scale. I worked on the hardware side. I spent my time designing VHDL modules for FPGA-based signal processing so the lab could acquire and characterize nano-ampere signals that were previously impossible to measure. From writing testbenches to integrating damping algorithms via Hardware-in-the-Loop, the work was about giving researchers reliable, stable data they could actually trust.",
+            "The lab works on precision sensing at the micro and nano scale, and my job was building the FPGA-based DSP system that let them actually measure the signals they cared about. Nano-ampere acquisition was something the lab hadn't been able to do before, and getting there meant writing VHDL modules, building thorough testbenches, and then integrating artificial damping algorithms through Hardware-in-the-Loop testing with Moku instrumentation to get the sensors stable enough to trust.",
           ]}
           svgPaths={fpgaPaths}
           svgSize={65}
@@ -1175,33 +1179,33 @@ export default function CSPage() {
 
       {/* ── Projects ───────────────────────────────────────────────────── */}
       <section
-          id="projects"
-          style={{ scrollMarginTop: "80px" }}
-          className="flex flex-col gap-12 md:gap-20 pb-[10vh]"
-        >
-          <GlassTitle text="Projects" />
-          <div className="flex flex-col items-center gap-14 md:gap-24 px-4 md:px-[5%]">
-            {rows.map((row, rowIdx) => (
-              <div
-                key={rowIdx}
-                className="flex flex-col items-center gap-14 md:flex-row md:justify-center md:gap-16 w-full"
-              >
-                {row.map((project, colIdx) => (
-                  <ProjectCard
-                    key={project.title}
-                    title={project.title}
-                    techStack={project.techStack}
-                    description={project.description}
-                    deployment={project.deployment}
-                    bubbleSide={colIdx < row.length / 2 ? "left" : "right"}
-                    numCardsInRow={row.length}
-                    svgs={project.svgs}
-                  />
-                ))}
-              </div>
-            ))}
-          </div>
-        </section>
+        id="projects"
+        style={{ scrollMarginTop: "80px" }}
+        className="flex flex-col gap-12 md:gap-20 pb-[10vh]"
+      >
+        <GlassTitle text="Projects" />
+        <div className="flex flex-col items-center gap-14 md:gap-24 px-4 md:px-[5%]">
+          {rows.map((row, rowIdx) => (
+            <div
+              key={rowIdx}
+              className="flex flex-col items-center gap-14 md:flex-row md:justify-center md:gap-16 w-full"
+            >
+              {row.map((project, colIdx) => (
+                <ProjectCard
+                  key={project.title}
+                  title={project.title}
+                  techStack={project.techStack}
+                  description={project.description}
+                  deployment={project.deployment}
+                  bubbleSide={colIdx < row.length / 2 ? "left" : "right"}
+                  numCardsInRow={row.length}
+                  svgs={project.svgs}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </section>
 
       <SectionDivider />
 
@@ -1215,7 +1219,7 @@ export default function CSPage() {
         <EducationCard
           school="Oregon State University"
           degree="Honors B.S. Computer Science"
-          timeline="Sep 2022 — Jun 2026"
+          timeline="Sep 2022 - Jun 2026"
           gpa="3.95 / 4.0"
           coursework={[
             "Data Structures & Algorithms",

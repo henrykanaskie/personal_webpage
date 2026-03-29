@@ -7,7 +7,6 @@ export function useSvgDrawAnimation(svgDrawDuration: number) {
   const svgProgress = useMotionValue(0);
   const drawTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isPresent = useIsPresent();
-
   useEffect(() => {
     if (!isPresent) {
       if (drawTimer.current) clearTimeout(drawTimer.current);

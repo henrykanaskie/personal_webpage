@@ -76,6 +76,12 @@ export const cs = {
     dark: `linear-gradient(135deg, rgba(248,250,255,0.96) 0%, rgba(255,248,255,0.93) 50%, rgba(248,250,255,0.95) 100%)`,
   },
 
+  // Direct color for body/description text (no gradient needed at small sizes)
+  bodyColor: {
+    light: "rgba(10,10,20,0.92)",
+    dark: "rgba(248,250,255,0.94)",
+  },
+
   // Theme toggle icon colors
   toggle: {
     light: "rgb(100, 115, 145)",

@@ -5,7 +5,7 @@ import { motion, useMotionValue, animate } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useIsDark } from "@/lib/glass";
-import { themed } from "@/lib/tokens";
+import GlassTitle from "@/components/GlassTitle";
 
 const navLinks = [
   { name: "About", href: "/cs", sectionId: "about" },
@@ -241,17 +241,13 @@ function PhotoSide({ active, isDark }: { active: boolean; isDark: boolean }) {
       {/* Viewfinder corners */}
       <ViewfinderCorners color={cornerColor} />
 
-      {/* Centered composition */}
+      {/* Name */}
       <div
         style={{
           position: "absolute",
-          top: "50%",
+          top: "calc(50% - 70px)",
           left: "50%",
           transform: "translate(-50%,-50%)",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 14,
           whiteSpace: "nowrap",
         }}
       >
@@ -260,7 +256,7 @@ function PhotoSide({ active, isDark }: { active: boolean; isDark: boolean }) {
           style={{
             WebkitBackgroundClip: "text",
             backgroundImage: subGrad,
-            fontSize: "7.5px",
+            fontSize: "clamp(1rem, 1.8vw, 1.4rem)",
             letterSpacing: "0.55em",
             textTransform: "uppercase",
             margin: 0,
@@ -268,7 +264,21 @@ function PhotoSide({ active, isDark }: { active: boolean; isDark: boolean }) {
         >
           Henry Kanaskie
         </p>
-        <div style={{ width: 36, height: "0.5px", background: ruleColor }} />
+      </div>
+
+      {/* Upper rule */}
+      <div style={{ position: "absolute", top: "calc(50% - 38px)", left: "50%", transform: "translateX(-50%)", width: 36, height: "0.5px", background: ruleColor }} />
+
+      {/* Photography title */}
+      <div
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%,-50%)",
+          whiteSpace: "nowrap",
+        }}
+      >
         <h1
           className="bg-clip-text text-transparent"
           style={{
@@ -283,13 +293,27 @@ function PhotoSide({ active, isDark }: { active: boolean; isDark: boolean }) {
         >
           Photography
         </h1>
-        <div style={{ width: 36, height: "0.5px", background: ruleColor }} />
+      </div>
+
+      {/* Lower rule */}
+      <div style={{ position: "absolute", top: "calc(50% + 36px)", left: "50%", transform: "translateX(-50%)", width: 36, height: "0.5px", background: ruleColor }} />
+
+      {/* 35mm · Digital */}
+      <div
+        style={{
+          position: "absolute",
+          top: "calc(50% + 52px)",
+          left: "50%",
+          transform: "translate(-50%,-50%)",
+          whiteSpace: "nowrap",
+        }}
+      >
         <p
           className="bg-clip-text text-transparent"
           style={{
             WebkitBackgroundClip: "text",
             backgroundImage: mutedGrad,
-            fontSize: "7px",
+            fontSize: "10px",
             letterSpacing: "0.48em",
             textTransform: "uppercase",
             margin: 0,
@@ -299,7 +323,8 @@ function PhotoSide({ active, isDark }: { active: boolean; isDark: boolean }) {
         </p>
       </div>
 
-      {/* AF focus square — below centered composition */}
+
+      {/* AF focus square */}
       <div
         style={{
           position: "absolute",
@@ -392,7 +417,7 @@ function PhotoSide({ active, isDark }: { active: boolean; isDark: boolean }) {
               style={{
                 WebkitBackgroundClip: "text",
                 backgroundImage: mutedGrad,
-                fontSize: "7px",
+                fontSize: "10px",
                 letterSpacing: "0.28em",
                 textTransform: "uppercase",
               }}
@@ -420,7 +445,7 @@ function PhotoSide({ active, isDark }: { active: boolean; isDark: boolean }) {
           style={{
             WebkitBackgroundClip: "text",
             backgroundImage: mutedGrad,
-            fontSize: "7px",
+            fontSize: "10px",
             letterSpacing: "0.22em",
             fontVariantNumeric: "tabular-nums",
             fontFamily: "monospace",
@@ -444,49 +469,6 @@ function CSSide({
   isDark: boolean;
   isMobile: boolean;
 }) {
-  // Crystalline base — matches GlassTitle "crystalline" variant
-  const crystalBase: React.CSSProperties = {
-    WebkitBackgroundClip: "text",
-    backgroundImage: themed(
-      isDark,
-      "linear-gradient(180deg, rgba(255,255,255,0.52) 0%, rgba(225,238,255,0.26) 52%, rgba(255,255,255,0.18) 100%)",
-      "linear-gradient(180deg, rgba(16,22,34,0.52) 0%, rgba(18,26,40,0.30) 52%, rgba(12,18,28,0.18) 100%)",
-    ),
-    WebkitTextStroke: themed(isDark, "1.05px rgba(255,255,255,0.30)", "1.05px rgba(255,255,255,0.46)"),
-    textShadow: themed(
-      isDark,
-      "0 1px 0 rgba(255,255,255,0.10), 0 10px 38px rgba(0,0,0,0.55), 0 42px 160px rgba(0,0,0,0.90)",
-      "0 1px 0 rgba(255,255,255,0.28), 0 10px 34px rgba(0,0,0,0.14), 0 42px 140px rgba(0,0,0,0.16)",
-    ),
-    filter: themed(isDark, "contrast(1.14) saturate(1.02)", "contrast(1.06) saturate(0.96)"),
-  };
-  const crystalRefraction: React.CSSProperties = {
-    WebkitBackgroundClip: "text",
-    backgroundImage: themed(
-      isDark,
-      "radial-gradient(140% 90% at 12% 14%, rgba(255,255,255,0.52) 0%, rgba(255,255,255,0.16) 30%, rgba(255,255,255,0.05) 46%, transparent 62%), radial-gradient(120% 95% at 92% 88%, rgba(140,190,255,0.26) 0%, rgba(140,190,255,0.10) 34%, rgba(140,190,255,0.03) 54%, transparent 70%), linear-gradient(118deg, rgba(255,255,255,0.00) 0%, rgba(255,255,255,0.14) 24%, rgba(160,205,255,0.06) 40%, rgba(255,255,255,0.08) 54%, rgba(125,180,255,0.12) 70%, rgba(255,255,255,0.00) 100%)",
-      "radial-gradient(140% 90% at 12% 14%, rgba(255,255,255,0.34) 0%, rgba(255,255,255,0.12) 30%, rgba(255,255,255,0.04) 46%, transparent 62%), radial-gradient(120% 95% at 92% 88%, rgba(105,155,230,0.18) 0%, rgba(105,155,230,0.08) 34%, rgba(105,155,230,0.02) 54%, transparent 70%), linear-gradient(118deg, rgba(255,255,255,0.00) 0%, rgba(255,255,255,0.10) 24%, rgba(140,185,255,0.04) 40%, rgba(255,255,255,0.05) 54%, rgba(90,140,215,0.08) 70%, rgba(255,255,255,0.00) 100%)",
-    ),
-    filter: themed(isDark, "contrast(1.16)", "contrast(1.10)"),
-    opacity: themed(isDark, 0.88, 0.78) as unknown as number,
-  };
-  const crystalRim: React.CSSProperties = {
-    WebkitBackgroundClip: "text",
-    backgroundImage: themed(
-      isDark,
-      "linear-gradient(180deg, rgba(255,255,255,0.62) 0%, rgba(255,255,255,0.18) 38%, rgba(180,220,255,0.12) 62%, rgba(140,190,255,0.22) 100%)",
-      "linear-gradient(180deg, rgba(255,255,255,0.36) 0%, rgba(255,255,255,0.12) 38%, rgba(160,205,255,0.08) 62%, rgba(105,155,230,0.14) 100%)",
-    ),
-    filter: themed(isDark, "contrast(1.18)", "contrast(1.12)"),
-    opacity: themed(isDark, 0.78, 0.48) as unknown as number,
-    mixBlendMode: themed(isDark, "screen", "overlay") as unknown as React.CSSProperties["mixBlendMode"],
-  };
-  const dispersionBase: React.CSSProperties = {
-    opacity: themed(isDark, 0.22, 0.12) as unknown as number,
-    filter: undefined,
-    mixBlendMode: themed(isDark, "screen", "overlay") as unknown as React.CSSProperties["mixBlendMode"],
-  };
-
   const divColor = isDark ? "rgba(180,200,255,0.15)" : "rgba(80,100,140,0.18)";
   const dotColor = isDark ? "rgba(180,200,255,0.2)" : "rgba(80,100,140,0.22)";
 
@@ -500,7 +482,7 @@ function CSSide({
       <div
         style={{
           position: "absolute",
-          top: "calc(50% - 54px)",
+          top: "calc(50% - 70px)",
           left: "50%",
           transform: "translate(-50%,-50%)",
           whiteSpace: "nowrap",
@@ -509,8 +491,9 @@ function CSSide({
         <p
           style={{
             color: isDark ? "rgba(200,210,225,0.55)" : "rgba(80,90,110,0.55)",
-            fontSize: "11px",
-            letterSpacing: "0.45em",
+            fontFamily: "var(--font-elevated)",
+            fontSize: "clamp(1rem, 1.8vw, 1.4rem)",
+            letterSpacing: "0.5em",
             textTransform: "uppercase",
             fontWeight: 500,
             margin: 0,
@@ -527,37 +510,16 @@ function CSSide({
           top: "50%",
           left: "50%",
           transform: "translate(-50%,-50%)",
-          textAlign: "center",
-          whiteSpace: "nowrap",
         }}
       >
-        <span
-          className="relative inline-block font-bold select-none"
-          style={{
-            fontSize: isMobile ? "clamp(1.4rem, 7vw, 2.6rem)" : "clamp(2.8rem, 5.5vw, 5rem)",
-            letterSpacing: "-0.02em",
-            lineHeight: 1.1,
-          }}
-        >
-          <span className="relative bg-clip-text text-transparent" style={crystalBase}>
-            Computer Science
-          </span>
-          {/* Refraction */}
-          <span aria-hidden className="absolute inset-0 bg-clip-text text-transparent pointer-events-none" style={crystalRefraction}>
-            Computer Science
-          </span>
-          {/* Rim */}
-          <span aria-hidden className="absolute inset-0 bg-clip-text text-transparent pointer-events-none" style={crystalRim}>
-            Computer Science
-          </span>
-          {/* Dispersion */}
-          <span aria-hidden className="absolute inset-0 bg-clip-text text-transparent pointer-events-none" style={{ ...dispersionBase, backgroundImage: "linear-gradient(90deg, rgba(255,90,120,0.55), rgba(255,90,120,0.00) 60%)", transform: "translateX(-0.35px)" }}>
-            Computer Science
-          </span>
-          <span aria-hidden className="absolute inset-0 bg-clip-text text-transparent pointer-events-none" style={{ ...dispersionBase, backgroundImage: "linear-gradient(90deg, rgba(120,190,255,0.00) 40%, rgba(120,190,255,0.55))", transform: "translateX(0.35px)" }}>
-            Computer Science
-          </span>
-        </span>
+        <GlassTitle
+          text="Computer Science"
+          variant="crystalline"
+          fontSize={isMobile ? "clamp(1.6rem, 8vw, 3rem)" : "clamp(2.8rem, 5.5vw, 5rem)"}
+          containerClassName="!pt-0 !pb-0"
+          disableEntrance
+          noWrap
+        />
       </div>
 
       {/* Hairline divider */}
@@ -631,6 +593,10 @@ export default function HomePage() {
   const [isMobile, setIsMobile] = useState(false);
   const isDark = useIsDark();
   const router = useRouter();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, []);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);

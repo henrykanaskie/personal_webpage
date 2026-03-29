@@ -66,7 +66,7 @@ export const FuzzyText = ({
           borderRadius: "15px",
           transform: "translateZ(0)",
         }}
-        className="bg-[rgba(255,255,255,0.5)] dark:bg-[rgba(21,21,21,0.4)]"
+        className="bg-[rgba(255,255,255,0.45)] dark:bg-[rgba(21,21,21,0.4)]"
       />
       <span style={{ position: "relative", zIndex: 1 }} className={className}>
         {children}

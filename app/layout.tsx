@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
+import { DM_Sans, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import PageTransition from "@/components/PageTransition";
 import PhotographyBackground from "@/components/PhotographyBackground";
 
-const inter = Inter({ subsets: ["latin"] });
+const dmSans = DM_Sans({ subsets: ["latin"], weight: ["400", "500", "700"] });
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-elevated",
 });
 
 export const metadata: Metadata = {
-  title: "Personal Portfolio",
-  description: "A personal portfolio website",
+  title: "Henry Kanaskie",
+  description: "Machine learning engineer and photographer based in Salem, Oregon. I build software that makes a real difference and capture the world as I find it.",
 };
 
 export default function RootLayout({
@@ -48,7 +48,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.className} ${spaceGrotesk.variable}`}>
+      <body className={`${dmSans.className} ${spaceGrotesk.variable}`}>
         <PhotographyBackground />
         <div className="w-full">
           <Header />

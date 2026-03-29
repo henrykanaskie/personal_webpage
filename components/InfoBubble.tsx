@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useCallback, useState, useEffect, memo } from "react";
-import { motion, useInView } from "framer-motion";
+import { motion } from "framer-motion";
 import { FuzzyText, glassStyle, GlassLayers } from "../lib/glass";
 import { glassBubbleClassNames } from "../lib/tokens";
 
@@ -274,7 +274,6 @@ export function InfoBubble({
   onPop,
   isMobile,
   popRequested,
-  onVisibilityChange,
   parentInView,
   desktopX,
 }: {
@@ -283,17 +282,11 @@ export function InfoBubble({
   onPop: (x: number, y: number, w: number, h: number) => void;
   isMobile: boolean | null;
   popRequested?: boolean;
-  onVisibilityChange?: (inView: boolean) => void;
   parentInView?: boolean;
   desktopX?: number;
 }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
-  const isBubbleInView = useInView(bubbleRef, { once: false, amount: 0.4 });
   const showBelow = isMobile;
-
-  useEffect(() => {
-    onVisibilityChange?.(isBubbleInView);
-  }, [isBubbleInView, onVisibilityChange]);
   const [isPopping, setIsPopping] = useState(false);
   const isRight = side === "right";
   const [isPressed, setIsPressed] = useState(false);
@@ -400,7 +393,7 @@ export function InfoBubble({
                 y: "16px",
                 scaleX: isPopping || isPressed ? 1.08 : 1,
                 scaleY: isPopping || isPressed ? 1.08 : 1,
-                opacity: isBubbleInView || parentInView ? 1 : 0,
+                opacity: parentInView ? 1 : 0,
               }
             : {
                 y: "-50%",
@@ -412,7 +405,7 @@ export function InfoBubble({
                       : `calc(-100% - ${BUBBLE_REST_OFFSET - 200}px)`,
                 scaleX: isPopping || isPressed ? 1.08 : 1,
                 scaleY: isPopping || isPressed ? 1.08 : 1,
-                opacity: isBubbleInView || parentInView ? 1 : 0,
+                opacity: parentInView ? 1 : 0,
               }
         }
         transition={
@@ -424,10 +417,7 @@ export function InfoBubble({
             : {
                 duration: 0.75,
                 ease: [0.34, 1.56, 0.64, 1],
-                opacity: {
-                  duration: showBelow ? 1.8 : isBubbleInView ? 0.3 : 1.4,
-                  ease: "easeInOut",
-                },
+                opacity: { duration: 1.4, ease: "easeInOut" },
               }
         }
         exit={{ opacity: 0, transition: { duration: 0.001 } }}
@@ -505,10 +495,10 @@ export function InfoBubble({
                 className="text-black/90 dark:text-white/80 bg-black/[0.07] dark:bg-white/[0.06] border border-black/[0.18] dark:border-white/[0.08]"
                 style={{
                   fontSize: 9,
-                  fontFamily: "monospace",
+                  fontFamily: "var(--font-elevated)",
                   padding: "2px 6px",
                   borderRadius: 6,
-                  letterSpacing: "0.02em",
+                  letterSpacing: "0.04em",
                 }}
               >
                 {tech.trim()}
