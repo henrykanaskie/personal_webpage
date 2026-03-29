@@ -39,7 +39,7 @@ const GEAR: GearCategory[] = [
     title: "Accessories",
     items: [
       {
-        name: "Peak Design Sling",
+        name: "PGYTech Sling",
         spec: "Small · Camera Bag",
         note: "Daily carry",
       },
@@ -190,6 +190,8 @@ export default function PhotographyAboutPage() {
     subject: "",
     message: "",
   });
+  const [honeypot, setHoneypot] = useState("");
+  const emailFormOpenedAt = useRef(Date.now());
   const [emailStatus, setEmailStatus] = useState<
     "idle" | "sending" | "sent" | "error"
   >("idle");
@@ -219,7 +221,11 @@ export default function PhotographyAboutPage() {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(emailForm),
+        body: JSON.stringify({
+            ...emailForm,
+            website: honeypot,
+            formOpenedAt: emailFormOpenedAt.current,
+          }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -329,7 +335,6 @@ export default function PhotographyAboutPage() {
               style={{ width: 48, height: "0.5px", background: ruleColor }}
             />
 
-            {/* ── Replace the paragraphs below with your own bio ── */}
             <p
               style={{
                 fontSize: "clamp(0.875rem, 1.4vw, 0.975rem)",
@@ -340,9 +345,13 @@ export default function PhotographyAboutPage() {
                 fontWeight: 400,
               }}
             >
-              Replace this with a short intro about yourself — where you are
-              based, what draws you to photography, and the stories you want to
-              tell through your images.
+              Based in Salem, Oregon, I picked up a camera to document my
+              travels and adventures and never really put it back down. Street
+              photography and landscapes pull me in equal measure, but
+              astrophotography is the one that still genuinely amazes me every
+              time. Beyond all of that, I love capturing people as they are,
+              happy, candid, unguarded. For me, a photograph is just a way of
+              holding onto how something felt.
             </p>
             <p
               style={{
@@ -354,10 +363,12 @@ export default function PhotographyAboutPage() {
                 fontWeight: 400,
               }}
             >
-              A second paragraph about your style, influences, or the subjects
-              and moments that inspire you most. Keep it personal.
+              I shoot with a light touch on post-processing but put a lot of
+              thought into composition and framing. The dreamy, textured look of
+              film is a big influence on how I see things. More than anything, I
+              want a photo to carry the feeling I had when I took it. If it does
+              that, it is a good photo.
             </p>
-            {/* ── End bio ── */}
 
             <p
               style={{
@@ -529,6 +540,17 @@ export default function PhotographyAboutPage() {
             gap: 16,
           }}
         >
+          {/* Honeypot: visually hidden, bots fill it, humans never see it */}
+          <input
+            type="text"
+            name="website"
+            value={honeypot}
+            onChange={(e) => setHoneypot(e.target.value)}
+            tabIndex={-1}
+            aria-hidden="true"
+            autoComplete="off"
+            style={{ position: "absolute", left: "-9999px", opacity: 0, pointerEvents: "none" }}
+          />
           {(["name", "email", "subject"] as const).map((field) => (
             <div key={field}>
               <label

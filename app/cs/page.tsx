@@ -194,6 +194,8 @@ export default function CSPage() {
     subject: "",
     message: "",
   });
+  const [honeypot, setHoneypot] = useState("");
+  const emailFormOpenedAt = useRef(0);
   const [emailStatus, setEmailStatus] = useState<
     "idle" | "sending" | "sent" | "error"
   >("idle");
@@ -224,7 +226,11 @@ export default function CSPage() {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(emailForm),
+        body: JSON.stringify({
+            ...emailForm,
+            website: honeypot,
+            formOpenedAt: emailFormOpenedAt.current,
+          }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -489,6 +495,7 @@ export default function CSPage() {
                     action: () => {
                       setEmailOpen(true);
                       setEmailStatus("idle");
+                      emailFormOpenedAt.current = Date.now();
                     },
                   },
                   {
@@ -585,6 +592,7 @@ export default function CSPage() {
                       action: () => {
                         setEmailOpen(true);
                         setEmailStatus("idle");
+                        emailFormOpenedAt.current = Date.now();
                       },
                     },
                     {
@@ -885,6 +893,17 @@ export default function CSPage() {
                 noValidate
                 className="relative z-[1] p-6 flex flex-col gap-4"
               >
+                {/* Honeypot: visually hidden, bots fill it, humans never see it */}
+                <input
+                  type="text"
+                  name="website"
+                  value={honeypot}
+                  onChange={(e) => setHoneypot(e.target.value)}
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  autoComplete="off"
+                  style={{ position: "absolute", left: "-9999px", opacity: 0, pointerEvents: "none" }}
+                />
                 {(["name", "email", "subject"] as const).map((field) => (
                   <div key={field}>
                     <FuzzyText>
