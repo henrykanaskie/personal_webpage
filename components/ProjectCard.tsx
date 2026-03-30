@@ -10,7 +10,6 @@ import {
   glassStyle,
   GlassLayers,
   FuzzyText,
-  useIsMobile,
   useIsDark,
 } from "../lib/glass";
 import {
@@ -132,6 +131,7 @@ const BubbleShell = memo(function BubbleShell({
   desktopX,
   mobileYOffset,
   mobileBubbleX,
+  onHeightChange,
   children,
 }: {
   side: "left" | "right";
@@ -143,11 +143,21 @@ const BubbleShell = memo(function BubbleShell({
   desktopX?: number;
   mobileYOffset?: number;
   mobileBubbleX?: string;
+  onHeightChange?: (height: number) => void;
   children: React.ReactNode;
 }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(bubbleRef, { once: false, amount: 0.4 });
   const showBelow = isMobile;
+
+  useEffect(() => {
+    if (!onHeightChange || !bubbleRef.current) return;
+    const el = bubbleRef.current;
+    const ro = new ResizeObserver(() => onHeightChange(el.offsetHeight));
+    ro.observe(el);
+    onHeightChange(el.offsetHeight);
+    return () => ro.disconnect();
+  }, [onHeightChange]);
   const [isPopping, setIsPopping] = useState(false);
   const isRight = side === "right";
   const [isPressed, setIsPressed] = useState(false);
@@ -208,8 +218,9 @@ const BubbleShell = memo(function BubbleShell({
         const t = e.changedTouches[0];
         const dx = t.clientX - touchStartRef.current.x;
         const dy = t.clientY - touchStartRef.current.y;
-        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) handleClick();
         touchStartRef.current = null;
+        if ((e.target as Element).closest("a")) return;
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) handleClick();
       }}
       initial={
         showBelow
@@ -465,9 +476,9 @@ export default function ProjectCard({
 }: ProjectCardProps) {
   const boxRef = useRef<HTMLDivElement>(null);
   const isMobile = useBubbleMobile(boxRef, numCardsInRow);
-  const isTrulyMobile = useIsMobile(768);
+
   const isDark = useIsDark();
-  const isInView = useInViewFromBelow(boxRef, isMobile ? 0.4 : 0.35);
+  const isInView = useInViewFromBelow(boxRef, isMobile ? 0.2 : 0.15);
 
   const thumbnailBubble = useInfoBubble();
   const deploymentBubble = useInfoBubble();
@@ -508,8 +519,7 @@ export default function ProjectCard({
       : BUBBLE_STACK_OFFSET
     : 0;
 
-  // Side-by-side when below but not truly mobile
-  const showSideBySide = isMobile && !isTrulyMobile && bothBubblesOpen;
+  const showSideBySide = false;
 
   // Mobile: stacked vertically on true mobile, side by side otherwise
   const thumbnailMobileYOffset = 0;
@@ -520,6 +530,24 @@ export default function ProjectCard({
       : 0;
   const thumbnailMobileBubbleX = showSideBySide ? "calc(-100% - 8px)" : "-50%";
   const deploymentMobileBubbleX = showSideBySide ? "8px" : "-50%";
+
+  // Measure bubble heights for dynamic spacer
+  const [thumbnailHeight, setThumbnailHeight] = useState(0);
+  const [deploymentHeight, setDeploymentHeight] = useState(0);
+  const onThumbnailHeight = useCallback((h: number) => setThumbnailHeight(h), []);
+  const onDeploymentHeight = useCallback((h: number) => setDeploymentHeight(h), []);
+
+  const BUBBLE_TOP_GAP = 16;
+  const BUBBLE_BOTTOM_GAP = 20;
+  const spacerHeight = (() => {
+    if (!isMobile || !anyBubbleOpen) return 0;
+    if (showSideBySide)
+      return BUBBLE_TOP_GAP + Math.max(thumbnailHeight, deploymentHeight) + BUBBLE_BOTTOM_GAP;
+    if (bothBubblesOpen)
+      return 320 + BUBBLE_TOP_GAP + deploymentHeight + BUBBLE_BOTTOM_GAP;
+    const h = thumbnailBubble.isBubbleOpen ? thumbnailHeight : deploymentHeight;
+    return BUBBLE_TOP_GAP + h + BUBBLE_BOTTOM_GAP;
+  })();
 
   // SVG draw progress
   const { svgProgress, onViewportEnter, onViewportLeave } =
@@ -770,6 +798,7 @@ export default function ProjectCard({
                 desktopYOffset={thumbnailDesktopY}
                 mobileYOffset={thumbnailMobileYOffset}
                 mobileBubbleX={thumbnailMobileBubbleX}
+                onHeightChange={onThumbnailHeight}
               >
                 <DescriptionBubbleContent
                   description={description}
@@ -791,6 +820,7 @@ export default function ProjectCard({
                 desktopYOffset={deploymentDesktopY}
                 mobileYOffset={deploymentMobileYOffset}
                 mobileBubbleX={deploymentMobileBubbleX}
+                onHeightChange={onDeploymentHeight}
               >
                 <DeploymentBubbleContent
                   deployment={deployment}
@@ -803,16 +833,9 @@ export default function ProjectCard({
         </motion.div>
       </motion.div>
 
-      {/* Mobile spacer — always rendered so it animates smoothly when isMobile changes */}
+      {/* Mobile spacer — height driven by actual bubble measurements */}
       <motion.div
-        animate={{
-          height:
-            isMobile && anyBubbleOpen
-              ? bothBubblesOpen && !showSideBySide
-                ? 580
-                : 340
-              : 0,
-        }}
+        animate={{ height: spacerHeight }}
         transition={{ duration: 0.75, ease: [0.25, 1, 0.5, 1] }}
         style={{ overflow: "hidden" }}
       />
