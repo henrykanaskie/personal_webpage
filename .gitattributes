@@ -1,0 +1,6 @@
+# Machine-generated SVG path coordinate data — ~5 MB of exported path strings.
+# Excluded from language stats so the bar reflects hand-written source.
+svgs/*Paths.ts linguist-generated=true
+
+# Large raw SVG exports, kept for reference rather than authored here.
+svgs/svg_data/** linguist-vendored=true
