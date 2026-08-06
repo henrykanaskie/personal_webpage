@@ -40,15 +40,18 @@ const STAGE_COLORS: Record<string, [string, string]> = {
   scaffold: ["#bc8cff", "#8957e5"],
 };
 
+// Stage is a band of the progress figure, not an independent label, so a
+// scaffold can never outrank something active:
+//   scaffold < 25 <= in progress < 45 <= active < 90 <= shipped
 const PROJECTS: [string, string, string, number][] = [
   ["Cap_Match_Net", "Capacitor matching via OR-Tools", "shipped", 1.0],
   ["small-shell", "Unix shell in C: jobs, signals, redirection", "shipped", 1.0],
   ["ML_quantitative_research", "Block bootstrap, log-return modeling", "active", 0.6],
-  ["rLog", "Voice-driven logging tool", "active", 0.55],
+  ["rLog", "Voice-driven logging, code not yet pushed", "active", 0.55],
   ["gpt-scratch", "Attention and foundations done, no GPT yet", "active", 0.45],
-  ["GrowthApp", "SwiftUI habit tracker, WidgetKit suite", "scaffold", 0.3],
-  ["me-tutor", "3 of ~14 modules written and verified", "active", 0.25],
-  ["pitwall", "Tire-degradation regression, early", "in progress", 0.2],
+  ["me-tutor", "3 of ~14 modules written and verified", "in progress", 0.25],
+  ["GrowthApp", "Running skeleton, one orb variant real", "scaffold", 0.22],
+  ["pitwall", "One regression file, frontend empty", "scaffold", 0.18],
 ];
 
 const FOCUS: [string, string][] = [
@@ -271,7 +274,7 @@ function cardProjects(t: Theme) {
   // percentage, stage label. The unfilled track is tinted with the row's own
   // stage colour rather than left grey, which was reading as a stray pill.
   const w = 900, pad = 28, rowH = 56, headH = 72;
-  const h = headH + PROJECTS.length * rowH + 18;
+  const h = headH + PROJECTS.length * rowH + 40;
   const barX = 452, barW = 250, barH = 8;
   const pctX = 766;                       // right edge; clears the widest stage label
   const labelX = w - pad;                 // right edge of the stage label
@@ -305,6 +308,7 @@ function cardProjects(t: Theme) {
     body += `<text x="${labelX}" y="${midY + 4}" fill="${accent}" fill-opacity="0.85" font-size="9.5" font-weight="600" letter-spacing="0.9" text-anchor="end">${fade(delay + 0.5)}${esc(stage.toUpperCase())}</text>`;
   });
 
+  body += `<text x="${pad}" y="${h - 14}" fill="${t.muted}" font-size="10">scaffold under 25%  ·  in progress 25 to 45  ·  active 45 to 90  ·  shipped 90 and up</text>`;
   return shell(w, h, t, body, defs);
 }
 
