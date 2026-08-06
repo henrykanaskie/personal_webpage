@@ -267,7 +267,14 @@ function cardActivity(series: [Date, number][], top: [string, number][], last: s
 }
 
 function cardProjects(t: Theme) {
-  const w = 900, pad = 24, rowH = 46, top = 62;
+  // Four fixed columns. The bar used to start at x=470, which left a wide dead
+  // gap after the text and crowded the percentage and pill together at the far
+  // right; the pills were also drawn to fit their label, so the right edge came
+  // out ragged. Fixed column stops and one pill width fix both.
+  const w = 900, pad = 24, rowH = 50, top = 62;
+  const barX = 420, barW = 280;
+  const pctX = 748;                      // right edge of the percentage
+  const pillX = 772, pillW = 100;        // uniform pill, right edge at 872
   const h = top + PROJECTS.length * rowH + 24;
   let defs = "";
   for (const [stage, [c1, c2]] of Object.entries(STAGE_COLORS))
@@ -276,7 +283,6 @@ function cardProjects(t: Theme) {
   let body = `<text x="${pad}" y="34" fill="${t.title}" font-size="15" font-weight="600">Project stage</text>`;
   body += `<text x="${pad}" y="52" fill="${t.muted}" font-size="11.5">Where each project actually sits. A status readout, not a roadmap.</text>`;
 
-  const barX = 470, barW = 250;
   PROJECTS.forEach(([name, desc, stage, frac], i) => {
     const y = top + i * rowH + 22;
     const [c1, c2] = STAGE_COLORS[stage];
@@ -285,13 +291,11 @@ function cardProjects(t: Theme) {
     body += `<text x="${pad}" y="${y + 15}" fill="${t.muted}" font-size="11">${esc(desc)}</text>`;
     body += `<rect x="${barX}" y="${y - 9}" width="${barW}" height="9" rx="4.5" fill="${t.track}"/>`;
     body += `<rect x="${barX}" y="${y - 9}" width="${(barW * frac).toFixed(1)}" height="9" rx="4.5" fill="url(#g${stage.replace(/ /g, "")})">${grow("width", (barW * frac).toFixed(1), delay)}</rect>`;
-    body += `<text x="${barX + barW + 12}" y="${y}" fill="${t.muted}" font-size="11.5" font-weight="500">${fade(delay + 0.5)}${Math.round(frac * 100)}%</text>`;
-    const px = barX + barW + 56;
-    const pw = 8 + stage.length * 6.6;
+    body += `<text x="${pctX}" y="${y}" fill="${t.muted}" font-size="11.5" font-weight="500" text-anchor="end">${fade(delay + 0.5)}${Math.round(frac * 100)}%</text>`;
     body +=
       `<g>${fade(delay + 0.55)}` +
-      `<rect x="${px}" y="${y - 13}" width="${pw.toFixed(0)}" height="18" rx="9" fill="${c2}" fill-opacity="0.16" stroke="${c2}" stroke-opacity="0.45"/>` +
-      `<text x="${(px + pw / 2).toFixed(0)}" y="${y}" fill="${c1}" font-size="10.5" font-weight="600" text-anchor="middle">${esc(stage)}</text></g>`;
+      `<rect x="${pillX}" y="${y - 13}" width="${pillW}" height="18" rx="9" fill="${c2}" fill-opacity="0.16" stroke="${c2}" stroke-opacity="0.45"/>` +
+      `<text x="${pillX + pillW / 2}" y="${y}" fill="${c1}" font-size="10.5" font-weight="600" text-anchor="middle">${esc(stage)}</text></g>`;
   });
   return shell(w, h, t, body, defs);
 }
