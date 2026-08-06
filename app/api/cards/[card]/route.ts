@@ -41,14 +41,14 @@ const STAGE_COLORS: Record<string, [string, string]> = {
 };
 
 const PROJECTS: [string, string, string, number][] = [
-  ["gpt-scratch", "GPT built from first principles", "shipped", 1.0],
   ["Cap_Match_Net", "Capacitor matching via OR-Tools", "shipped", 1.0],
   ["small-shell", "Unix shell in C: jobs, signals, redirection", "shipped", 1.0],
-  ["ML_quantitative_research", "Block bootstrap, log-return modeling", "active", 0.7],
-  ["rLog", "Voice-driven logging tool", "active", 0.6],
-  ["me-tutor", "Agents generating a verified ME curriculum", "active", 0.5],
-  ["pitwall", "Motorsport strategy and telemetry", "in progress", 0.4],
+  ["ML_quantitative_research", "Block bootstrap, log-return modeling", "active", 0.6],
+  ["rLog", "Voice-driven logging tool", "active", 0.55],
+  ["gpt-scratch", "Attention and foundations done, no GPT yet", "active", 0.45],
   ["GrowthApp", "SwiftUI habit tracker, WidgetKit suite", "scaffold", 0.3],
+  ["me-tutor", "3 of ~14 modules written and verified", "active", 0.25],
+  ["pitwall", "Tire-degradation regression, early", "in progress", 0.2],
 ];
 
 const FOCUS: [string, string][] = [
@@ -267,36 +267,44 @@ function cardActivity(series: [Date, number][], top: [string, number][], last: s
 }
 
 function cardProjects(t: Theme) {
-  // Four fixed columns. The bar used to start at x=470, which left a wide dead
-  // gap after the text and crowded the percentage and pill together at the far
-  // right; the pills were also drawn to fit their label, so the right edge came
-  // out ragged. Fixed column stops and one pill width fix both.
-  const w = 900, pad = 24, rowH = 50, top = 62;
-  const barX = 420, barW = 280;
-  const pctX = 748;                      // right edge of the percentage
-  const pillX = 772, pillW = 100;        // uniform pill, right edge at 872
-  const h = top + PROJECTS.length * rowH + 24;
+  // Rows are a four-column grid: status dot + name/description, progress bar,
+  // percentage, stage label. The unfilled track is tinted with the row's own
+  // stage colour rather than left grey, which was reading as a stray pill.
+  const w = 900, pad = 28, rowH = 56, headH = 72;
+  const h = headH + PROJECTS.length * rowH + 18;
+  const barX = 452, barW = 250, barH = 8;
+  const pctX = 766;                       // right edge; clears the widest stage label
+  const labelX = w - pad;                 // right edge of the stage label
+
   let defs = "";
   for (const [stage, [c1, c2]] of Object.entries(STAGE_COLORS))
     defs += `<linearGradient id="g${stage.replace(/ /g, "")}" x1="0" x2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient>`;
 
-  let body = `<text x="${pad}" y="34" fill="${t.title}" font-size="15" font-weight="600">Project stage</text>`;
-  body += `<text x="${pad}" y="52" fill="${t.muted}" font-size="11.5">Where each project actually sits. A status readout, not a roadmap.</text>`;
+  let body = `<text x="${pad}" y="34" fill="${t.title}" font-size="16" font-weight="600" letter-spacing="-0.2">Project stage</text>`;
+  body += `<text x="${pad}" y="54" fill="${t.muted}" font-size="11.5">Where each project actually sits. A status readout, not a roadmap.</text>`;
+  body += `<line x1="${pad}" y1="${headH - 0.5}" x2="${w - pad}" y2="${headH - 0.5}" stroke="${t.border}"/>`;
 
   PROJECTS.forEach(([name, desc, stage, frac], i) => {
-    const y = top + i * rowH + 22;
-    const [c1, c2] = STAGE_COLORS[stage];
-    const delay = 0.2 + i * 0.09;
-    body += `<text x="${pad}" y="${y}" fill="${t.text}" font-size="13" font-weight="600">${esc(name)}</text>`;
-    body += `<text x="${pad}" y="${y + 15}" fill="${t.muted}" font-size="11">${esc(desc)}</text>`;
-    body += `<rect x="${barX}" y="${y - 9}" width="${barW}" height="9" rx="4.5" fill="${t.track}"/>`;
-    body += `<rect x="${barX}" y="${y - 9}" width="${(barW * frac).toFixed(1)}" height="9" rx="4.5" fill="url(#g${stage.replace(/ /g, "")})">${grow("width", (barW * frac).toFixed(1), delay)}</rect>`;
-    body += `<text x="${pctX}" y="${y}" fill="${t.muted}" font-size="11.5" font-weight="500" text-anchor="end">${fade(delay + 0.5)}${Math.round(frac * 100)}%</text>`;
-    body +=
-      `<g>${fade(delay + 0.55)}` +
-      `<rect x="${pillX}" y="${y - 13}" width="${pillW}" height="18" rx="9" fill="${c2}" fill-opacity="0.16" stroke="${c2}" stroke-opacity="0.45"/>` +
-      `<text x="${pillX + pillW / 2}" y="${y}" fill="${c1}" font-size="10.5" font-weight="600" text-anchor="middle">${esc(stage)}</text></g>`;
+    const gid = "g" + stage.replace(/ /g, "");
+    const accent = adapt(STAGE_COLORS[stage][0], t.name);
+    const rowY = headH + i * rowH;
+    const midY = rowY + rowH / 2;
+    const delay = 0.18 + i * 0.08;
+
+    if (i) body += `<line x1="${pad}" y1="${rowY - 0.5}" x2="${w - pad}" y2="${rowY - 0.5}" stroke="${t.border}" stroke-opacity="0.5"/>`;
+
+    body += `<circle cx="${pad + 4}" cy="${midY - 5}" r="4" fill="${accent}"/>`;
+    body += `<text x="${pad + 18}" y="${midY - 1}" fill="${t.text}" font-size="13.5" font-weight="600">${esc(name)}</text>`;
+    body += `<text x="${pad + 18}" y="${midY + 15}" fill="${t.muted}" font-size="11">${esc(desc)}</text>`;
+
+    // Track tinted with the stage colour, then the gradient fill over it.
+    body += `<rect x="${barX}" y="${midY - barH / 2}" width="${barW}" height="${barH}" rx="${barH / 2}" fill="${accent}" fill-opacity="0.14"/>`;
+    body += `<rect x="${barX}" y="${midY - barH / 2}" width="${(barW * frac).toFixed(1)}" height="${barH}" rx="${barH / 2}" fill="url(#${gid})">${grow("width", (barW * frac).toFixed(1), delay)}</rect>`;
+
+    body += `<text x="${pctX}" y="${midY + 4}" fill="${accent}" font-size="13" font-weight="700" text-anchor="end">${fade(delay + 0.45)}${Math.round(frac * 100)}%</text>`;
+    body += `<text x="${labelX}" y="${midY + 4}" fill="${accent}" fill-opacity="0.85" font-size="9.5" font-weight="600" letter-spacing="0.9" text-anchor="end">${fade(delay + 0.5)}${esc(stage.toUpperCase())}</text>`;
   });
+
   return shell(w, h, t, body, defs);
 }
 
