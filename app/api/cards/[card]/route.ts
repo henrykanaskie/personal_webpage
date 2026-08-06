@@ -110,16 +110,34 @@ async function gh<T>(url: string): Promise<T> {
 
 type Repo = { name: string; fork: boolean; languages_url: string };
 
-async function fetchLanguages(): Promise<[string, number][]> {
+/**
+ * Language mix with every repository weighted equally.
+ *
+ * Summing raw bytes lets a single verbose project speak for the whole profile:
+ * one Next.js site was 359 KB of the 787 KB total and read as 46% TypeScript,
+ * against Python being the primary language in seven of nine repositories. So
+ * each repo contributes its own percentage breakdown and those are averaged.
+ * Byte totals are still returned for the "code written" figure.
+ */
+async function fetchLanguages(): Promise<{ dist: [string, number][]; bytes: number }> {
   const repos = await gh<Repo[]>(`https://api.github.com/users/${USER}/repos?per_page=100`);
-  const totals: Record<string, number> = {};
   const sets = await Promise.all(
     repos.filter((r) => !r.fork).map((r) => gh<Record<string, number>>(r.languages_url).catch(() => ({}))),
   );
-  for (const set of sets)
-    for (const [k, v] of Object.entries(set))
-      if (!EXCLUDE_LANGS.has(k)) totals[k] = (totals[k] ?? 0) + v;
-  return Object.entries(totals).sort((a, b) => b[1] - a[1]);
+
+  const acc: Record<string, number> = {};
+  let bytes = 0;
+  let counted = 0;
+  for (const set of sets) {
+    const kept = Object.entries(set).filter(([k]) => !EXCLUDE_LANGS.has(k));
+    const sum = kept.reduce((a, [, v]) => a + v, 0);
+    bytes += sum;
+    if (sum < 500) continue;          // skip empty or placeholder repos
+    counted++;
+    for (const [k, v] of kept) acc[k] = (acc[k] ?? 0) + v / sum;
+  }
+  void counted;
+  return { dist: Object.entries(acc).sort((a, b) => b[1] - a[1]), bytes };
 }
 
 type Ev = { type: string; created_at: string; repo: { name: string } };
@@ -186,7 +204,7 @@ function cardLanguages(langs: [string, number][], t: Theme) {
   });
 
   const h = 88 + Math.ceil(shown.length / 2) * 26 + 26;
-  body += `<text x="${pad}" y="${h - 12}" fill="${t.muted}" font-size="10.5">live from the GitHub API, generated and vendored files excluded</text>`;
+  body += `<text x="${pad}" y="${h - 12}" fill="${t.muted}" font-size="10.5">each repo weighted equally, generated and vendored files excluded</text>`;
   return shell(w, h, t, body, defs);
 }
 
@@ -306,7 +324,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ card: string }>
   try {
     switch (card.replace(/\.svg$/, "")) {
       case "languages":
-        svg = cardLanguages(await fetchLanguages(), t);
+        svg = cardLanguages((await fetchLanguages()).dist, t);
         break;
       case "focus":
         svg = cardFocus(t);
@@ -325,14 +343,14 @@ export async function GET(req: Request, ctx: { params: Promise<{ card: string }>
           fetchActivity(),
           gh<{ public_repos: number; created_at: string }>(`https://api.github.com/users/${USER}`),
         ]);
-        const total = langs.reduce((a, [, v]) => a + v, 0) || 1;
-        const [topName, topVal] = langs[0] ?? ["n/a", 0];
+        const total = langs.dist.reduce((a, [, v]) => a + v, 0) || 1;
+        const [topName, topVal] = langs.dist[0] ?? ["n/a", 0];
         svg = cardStats(
           [
             ["Public repos", String(user.public_repos), "#58a6ff"],
-            ["Languages", String(langs.length), "#bc8cff"],
+            ["Languages", String(langs.dist.length), "#bc8cff"],
             [topName, `${Math.round((100 * topVal) / total)}%`, "#3572A5"],
-            ["Code written", `${Math.round(total / 1024)} KB`, "#3fb950"],
+            ["Code written", `${Math.round(langs.bytes / 1024)} KB`, "#3fb950"],
             [`Pushes, last ${ACTIVITY_DAYS}d`, String(act.series.reduce((a, [, n]) => a + n, 0)), "#f34b7d"],
             ["On GitHub since", user.created_at.slice(0, 4), "#d29922"],
           ],
