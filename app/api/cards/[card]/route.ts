@@ -170,14 +170,19 @@ function cardLanguages(langs: [string, number][], t: Theme) {
   body += `</g></g>`;
 
   shown.forEach(([name, val], i) => {
-    const lx = pad + (i % 2) * (barW / 2);
+    const col = i % 2;
+    const lx = pad + col * (barW / 2);
     const ly = 88 + Math.floor(i / 2) * 26;
+    // Anchor each percentage to its column's right edge rather than a fixed
+    // offset from the name, so the right-hand column ends flush with the bar
+    // instead of stopping short of it.
+    const pctX = col === 0 ? pad + barW / 2 - 24 : pad + barW;
     const dot = adapt(LANG_COLORS[name] ?? "#8b949e", t.name);
     body +=
       `<g>${fade(0.4 + i * 0.07)}` +
       `<circle cx="${lx + 5}" cy="${ly - 4}" r="5" fill="${dot}"/>` +
       `<text x="${lx + 18}" y="${ly}" fill="${t.text}" font-size="12.5" font-weight="500">${esc(name)}</text>` +
-      `<text x="${(lx + 150).toFixed(0)}" y="${ly}" fill="${t.muted}" font-size="12.5" text-anchor="end">${((100 * val) / total).toFixed(1)}%</text></g>`;
+      `<text x="${pctX.toFixed(0)}" y="${ly}" fill="${t.muted}" font-size="12.5" text-anchor="end">${((100 * val) / total).toFixed(1)}%</text></g>`;
   });
 
   const h = 88 + Math.ceil(shown.length / 2) * 26 + 26;
