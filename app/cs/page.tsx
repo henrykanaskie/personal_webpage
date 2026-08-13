@@ -27,9 +27,6 @@ import { fpgaPaths } from "@/svgs/fpgaPaths";
 import { dronesPaths } from "@/svgs/dronesPaths";
 import { thrusterPaths } from "@/svgs/thrusterPaths";
 import { cpuPaths } from "@/svgs/cpuPaths";
-import { beePaths } from "@/svgs/beePaths";
-import { nnPaths } from "@/svgs/nnPaths";
-import { satPaths } from "@/svgs/satPaths";
 
 // ── Section divider ───────────────────────────────────────────────────────────
 function SectionDivider() {
@@ -61,6 +58,18 @@ function splitIntoRows<T>(items: T[]): T[][] {
   return rows;
 }
 
+// Placeholder corner art. Every card uses the same one so the cards stay
+// identical components differing only in content — swap `paths` per project
+// once there is artwork for each.
+const placeholderSvg = {
+  paths: cpuPaths,
+  corner: "top-right" as const,
+  size: 46,
+  rotate: 6,
+  offset: { x: -20, y: 8 },
+  drawDuration: 4,
+};
+
 const projects = [
   {
     title: "AccliMate: Codebase Onboarding Assistant",
@@ -71,16 +80,7 @@ const projects = [
       progress: 100,
       githubUrl: "https://github.com/henrykanaskie/beaverhacks26",
     },
-    svgs: [
-      {
-        paths: satPaths,
-        corner: "top-left" as const,
-        size: 44,
-        rotate: -8,
-        offset: { x: 30, y: -10 },
-        drawDuration: 3.5,
-      },
-    ],
+    svgs: [placeholderSvg],
   },
   {
     title: "Sprite Room: Agents as Pixel Art",
@@ -91,16 +91,7 @@ const projects = [
       progress: 80,
       githubUrl: "https://github.com/henrykanaskie/animAgent",
     },
-    svgs: [
-      {
-        paths: cpuPaths,
-        corner: "top-right" as const,
-        size: 46,
-        rotate: 6,
-        offset: { x: -20, y: 8 },
-        drawDuration: 4,
-      },
-    ],
+    svgs: [placeholderSvg],
   },
   {
     title: "Monte Carlo Portfolio Risk Engine",
@@ -111,7 +102,7 @@ const projects = [
       progress: 70,
       githubUrl: "https://github.com/henrykanaskie/ML_quantitative_research",
     },
-    svgs: [],
+    svgs: [placeholderSvg],
   },
   {
     title: "GPT From Scratch",
@@ -122,16 +113,7 @@ const projects = [
       progress: 40,
       githubUrl: "https://github.com/henrykanaskie/gpt-scratch",
     },
-    svgs: [
-      {
-        paths: nnPaths,
-        corner: "top-right" as const,
-        size: 60,
-        rotate: 0,
-        offset: { x: -10, y: 10 },
-        drawDuration: 4,
-      },
-    ],
+    svgs: [placeholderSvg],
   },
   {
     title: "Capacitor Matching Network Solver",
@@ -142,16 +124,7 @@ const projects = [
       progress: 100,
       githubUrl: "https://github.com/henrykanaskie/Cap_Match_Net",
     },
-    svgs: [
-      {
-        paths: fpgaPaths,
-        corner: "top-left" as const,
-        size: 60,
-        rotate: -6,
-        offset: { x: 30, y: -5 },
-        drawDuration: 3.5,
-      },
-    ],
+    svgs: [placeholderSvg],
   },
   {
     title: "smallsh: A Unix Shell in C",
@@ -162,7 +135,7 @@ const projects = [
       progress: 100,
       githubUrl: "https://github.com/henrykanaskie/small-shell",
     },
-    svgs: [],
+    svgs: [placeholderSvg],
   },
   {
     title: "Bee Habitat Recommendation System",
@@ -175,16 +148,7 @@ const projects = [
         "https://github.com/Kellen-Sullivan/bee-plant-data-exploration",
       siteUrl: "https://kellen-sullivan.github.io/bee-plant-data-exploration/",
     },
-    svgs: [
-      {
-        paths: beePaths,
-        corner: "top-left" as const,
-        size: 75,
-        rotate: -10,
-        offset: { x: 25, y: -20 },
-        drawDuration: 3,
-      },
-    ],
+    svgs: [placeholderSvg],
   },
   {
     title: "Character Classification Neural Network: From Scratch",
@@ -195,16 +159,7 @@ const projects = [
       progress: 100,
       githubUrl: "https://github.com/henrykanaskie/emnist",
     },
-    svgs: [
-      {
-        paths: nnPaths,
-        corner: "top-right" as const,
-        size: 60,
-        rotate: 0,
-        offset: { x: -10, y: 10 },
-        drawDuration: 4,
-      },
-    ],
+    svgs: [placeholderSvg],
   },
 ];
 
