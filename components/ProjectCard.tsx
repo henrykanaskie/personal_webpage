@@ -463,6 +463,8 @@ const DeploymentBubbleContent = memo(function DeploymentBubbleContent({
 // ─── Project Card ───
 
 const BUBBLE_STACK_OFFSET = 125; // px the second bubble shifts when both open
+const BUBBLE_STACK_GAP = 12; // px between the two stacked mobile bubbles
+const FALLBACK_STACK_OFFSET = 320; // used until the first bubble has been measured
 
 export default function ProjectCard({
   title,
@@ -521,21 +523,25 @@ export default function ProjectCard({
 
   const showSideBySide = false;
 
-  // Mobile: stacked vertically on true mobile, side by side otherwise
-  const thumbnailMobileYOffset = 0;
-  const deploymentMobileYOffset = showSideBySide
-    ? 0
-    : bothBubblesOpen
-      ? 320
-      : 0;
-  const thumbnailMobileBubbleX = showSideBySide ? "calc(-100% - 8px)" : "-50%";
-  const deploymentMobileBubbleX = showSideBySide ? "8px" : "-50%";
-
-  // Measure bubble heights for dynamic spacer
+  // Measure bubble heights so both the stacked layout and the spacer follow
+  // the real content instead of a fixed guess that longer copy overflows.
   const [thumbnailHeight, setThumbnailHeight] = useState(0);
   const [deploymentHeight, setDeploymentHeight] = useState(0);
   const onThumbnailHeight = useCallback((h: number) => setThumbnailHeight(h), []);
   const onDeploymentHeight = useCallback((h: number) => setDeploymentHeight(h), []);
+
+  // Mobile: stacked vertically on true mobile, side by side otherwise
+  const stackedBubbleOffset = thumbnailHeight
+    ? thumbnailHeight + BUBBLE_STACK_GAP
+    : FALLBACK_STACK_OFFSET;
+  const thumbnailMobileYOffset = 0;
+  const deploymentMobileYOffset = showSideBySide
+    ? 0
+    : bothBubblesOpen
+      ? stackedBubbleOffset
+      : 0;
+  const thumbnailMobileBubbleX = showSideBySide ? "calc(-100% - 8px)" : "-50%";
+  const deploymentMobileBubbleX = showSideBySide ? "8px" : "-50%";
 
   const BUBBLE_TOP_GAP = 16;
   const BUBBLE_BOTTOM_GAP = 20;
@@ -544,7 +550,12 @@ export default function ProjectCard({
     if (showSideBySide)
       return BUBBLE_TOP_GAP + Math.max(thumbnailHeight, deploymentHeight) + BUBBLE_BOTTOM_GAP;
     if (bothBubblesOpen)
-      return 320 + BUBBLE_TOP_GAP + deploymentHeight + BUBBLE_BOTTOM_GAP;
+      return (
+        stackedBubbleOffset +
+        BUBBLE_TOP_GAP +
+        deploymentHeight +
+        BUBBLE_BOTTOM_GAP
+      );
     const h = thumbnailBubble.isBubbleOpen ? thumbnailHeight : deploymentHeight;
     return BUBBLE_TOP_GAP + h + BUBBLE_BOTTOM_GAP;
   })();
@@ -554,7 +565,7 @@ export default function ProjectCard({
     useSvgDrawAnimation(3);
 
   return (
-    <>
+    <div className="flex flex-col items-center w-full md:w-auto">
       {/* Vapor clouds */}
       {thumbnailBubble.vaporOrigin && (
         <VaporCloud
@@ -833,12 +844,16 @@ export default function ProjectCard({
         </motion.div>
       </motion.div>
 
-      {/* Mobile spacer — height driven by actual bubble measurements */}
+      {/* Spacer reserving room for the below-card bubbles — height driven by
+          actual bubble measurements. It lives inside this column (rather than
+          beside the card as a row-level flex item) so that on a multi-row grid
+          it pushes the following row down instead of only growing the row. */}
       <motion.div
+        className="w-full"
         animate={{ height: spacerHeight }}
         transition={{ duration: 0.75, ease: [0.25, 1, 0.5, 1] }}
         style={{ overflow: "hidden" }}
       />
-    </>
+    </div>
   );
 }
