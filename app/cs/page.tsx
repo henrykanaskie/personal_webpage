@@ -48,14 +48,107 @@ function SectionDivider() {
 }
 
 // ── Projects helpers ──────────────────────────────────────────────────────────
+// Two cards per row keeps each card at full width and leaves room for the
+// side bubbles; a trailing odd card simply centres itself.
+const CARDS_PER_ROW = 2;
+
 function splitIntoRows<T>(items: T[]): T[][] {
-  const n = items.length;
-  if (n <= 3) return [items];
-  const topCount = Math.floor(n / 2);
-  return [items.slice(0, topCount), items.slice(topCount)];
+  const rows: T[][] = [];
+  for (let i = 0; i < items.length; i += CARDS_PER_ROW) {
+    rows.push(items.slice(i, i + CARDS_PER_ROW));
+  }
+  return rows;
 }
 
+// Stand-in corner art for the projects that don't have their own drawing yet.
+// Mirrored so a card in the left column gets top-left art and one in the right
+// column gets top-right, matching the cards that do have real art. Replace a
+// card's `svgs` entry with its own paths/size/offset when the drawing exists.
+const placeholderSvgLeft = {
+  paths: cpuPaths,
+  corner: "top-left" as const,
+  size: 46,
+  rotate: -6,
+  offset: { x: 20, y: 8 },
+  drawDuration: 4,
+};
+
+const placeholderSvgRight = {
+  paths: cpuPaths,
+  corner: "top-right" as const,
+  size: 46,
+  rotate: 6,
+  offset: { x: -20, y: 8 },
+  drawDuration: 4,
+};
+
 const projects = [
+  {
+    title: "AccliMate: Codebase Onboarding Assistant",
+    techStack: "Python, FastAPI, ChromaDB, D3.js",
+    description:
+      "Paste a GitHub URL, get an interactive guide to the repository. Source is chunked by AST rather than line count and reranked before an LLM answers, so every claim cites the exact lines behind it. Q&A, architecture walkthroughs, an agentic mode, and dependency tracing. Built at BeaverHacks 2026.",
+    deployment: {
+      progress: 100,
+      githubUrl: "https://github.com/henrykanaskie/beaverhacks26",
+    },
+    svgs: [placeholderSvgLeft],
+  },
+  {
+    title: "Sprite Room: Agents as Pixel Art",
+    techStack: "Swift 6, SpriteKit, AppKit",
+    description:
+      "A macOS app that drops from the notch and renders a live coding agent's activity as a pixel-art room — each agent a character, each tool call something it is visibly doing. Read-only by design: it never controls an agent or shows prompt content. 396 tests and a replay harness keep the scene deterministic.",
+    deployment: {
+      progress: 80,
+      githubUrl: "https://github.com/henrykanaskie/animAgent",
+    },
+    svgs: [placeholderSvgRight],
+  },
+  {
+    title: "Monte Carlo Portfolio Risk Engine",
+    techStack: "Python, NumPy, Pandas, SciPy",
+    description:
+      "A risk and planning tool, not a predictor — it reports the distribution of portfolio outcomes, especially the ugly tail. Log returns throughout, correlation from joint historical sampling, and a block bootstrap measured against a Gaussian baseline over a survivorship-unbiased price panel.",
+    deployment: {
+      progress: 70,
+      githubUrl: "https://github.com/henrykanaskie/ML_quantitative_research",
+    },
+    svgs: [placeholderSvgLeft],
+  },
+  {
+    title: "GPT From Scratch",
+    techStack: "Python, PyTorch, NumPy",
+    description:
+      "Transformer internals written by hand rather than imported: self-attention, multi-head attention, positional encoding, and layer, batch, and RMS normalization over a BPE tokenizer. Built up from a single neuron and backprop, so no layer of the stack stays a black box. In progress toward a full GPT.",
+    deployment: {
+      progress: 40,
+      githubUrl: "https://github.com/henrykanaskie/gpt-scratch",
+    },
+    svgs: [placeholderSvgRight],
+  },
+  {
+    title: "Capacitor Matching Network Solver",
+    techStack: "Python, OR-Tools, NumPy",
+    description:
+      "Constraint programming applied to an RF layout problem: pick four capacitors from a real, discrete inventory so a bridge network lands on a target capacitance. CP-SAT balances range compliance, absolute accuracy, and set spread, so the answer is electrically symmetric rather than merely close on paper.",
+    deployment: {
+      progress: 100,
+      githubUrl: "https://github.com/henrykanaskie/Cap_Match_Net",
+    },
+    svgs: [placeholderSvgLeft],
+  },
+  {
+    title: "smallsh: A Unix Shell in C",
+    techStack: "C, POSIX",
+    description:
+      "A shell with the parts that actually bite: job control, foreground and background execution, I/O redirection, variable expansion, and custom SIGINT and SIGTSTP handlers that stay correct once a process has been backgrounded and signalled at the wrong moment.",
+    deployment: {
+      progress: 100,
+      githubUrl: "https://github.com/henrykanaskie/small-shell",
+    },
+    svgs: [placeholderSvgRight],
+  },
   {
     title: "Bee Habitat Recommendation System",
     techStack: "Python, React, JavaScript",
@@ -1188,7 +1281,7 @@ export default function CSPage() {
           {rows.map((row, rowIdx) => (
             <div
               key={rowIdx}
-              className="flex flex-col items-center gap-14 md:flex-row md:justify-center md:gap-16 w-full"
+              className="flex flex-col items-center gap-14 md:flex-row md:items-start md:justify-center md:gap-16 w-full"
             >
               {row.map((project, colIdx) => (
                 <ProjectCard
