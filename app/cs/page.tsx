@@ -98,7 +98,7 @@ const projects = [
     title: "Sprite Room: Agents as Pixel Art",
     techStack: "Swift 6, SpriteKit, AppKit",
     description:
-      "A macOS app that drops from the notch and renders live Claude Code activity as a pixel-art room — each agent a character, each tool call something it is visibly doing. Read-only by design: it never controls an agent or shows prompt content. 396 tests and a replay harness keep the scene deterministic.",
+      "A macOS app that drops from the notch and renders a live coding agent's activity as a pixel-art room — each agent a character, each tool call something it is visibly doing. Read-only by design: it never controls an agent or shows prompt content. 396 tests and a replay harness keep the scene deterministic.",
     deployment: {
       progress: 80,
       githubUrl: "https://github.com/henrykanaskie/animAgent",
