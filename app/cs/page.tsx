@@ -98,7 +98,7 @@ const projects = [
     title: "Sprite Room: Agents as Pixel Art",
     techStack: "Swift 6, SpriteKit, AppKit",
     description:
-      "A macOS app that drops from the notch and renders a live coding agent's activity as a pixel-art room — each agent a character, each tool call something it is visibly doing. Read-only by design: it never controls an agent or shows prompt content. 396 tests and a replay harness keep the scene deterministic.",
+      "A macOS app that drops from the notch and renders a live coding agent's activity as a pixel-art room: each agent a character, each tool call something it is visibly doing. Read-only by design: it never controls an agent or shows prompt content. 396 tests and a replay harness keep the scene deterministic.",
     deployment: {
       progress: 80,
       githubUrl: "https://github.com/henrykanaskie/animAgent",
@@ -109,7 +109,7 @@ const projects = [
     title: "Monte Carlo Portfolio Risk Engine",
     techStack: "Python, NumPy, Pandas, SciPy",
     description:
-      "A risk and planning tool, not a predictor — it reports the distribution of portfolio outcomes, especially the ugly tail. Log returns throughout, correlation from joint historical sampling, and a block bootstrap measured against a Gaussian baseline over a survivorship-unbiased price panel.",
+      "A risk and planning tool, not a predictor: it reports the distribution of portfolio outcomes, especially the ugly tail. Log returns throughout, correlation from joint historical sampling, and a block bootstrap measured against a Gaussian baseline over a survivorship-unbiased price panel.",
     deployment: {
       progress: 70,
       githubUrl: "https://github.com/henrykanaskie/ML_quantitative_research",
@@ -153,7 +153,7 @@ const projects = [
     title: "Bee Habitat Recommendation System",
     techStack: "Python, React, JavaScript",
     description:
-      "A recommendation engine built on the Oregon Bee Atlas that models bee-flower relationships as a sparse matrix and uses truncated SVD to surface ecologically relevant plant species for a given area — a practical tool for land managers making habitat restoration decisions.",
+      "A recommendation engine built on the Oregon Bee Atlas that models bee-flower relationships as a sparse matrix and uses truncated SVD to surface ecologically relevant plant species for a given area: a practical tool for land managers making habitat restoration decisions.",
     deployment: {
       progress: 100,
       githubUrl:
@@ -175,7 +175,7 @@ const projects = [
     title: "Character Classification Neural Network: From Scratch",
     techStack: "Python, NumPy, Pandas",
     description:
-      "A feed-forward neural network built entirely from scratch — backpropagation, weight initialization, and the full training loop without any ML framework. Trained on EMNIST handwritten characters, reaching 85% test accuracy. The goal was intuition, not just a working model.",
+      "A feed-forward neural network built entirely from scratch: backpropagation, weight initialization, and the full training loop without any ML framework. Trained on EMNIST handwritten characters, reaching 85% test accuracy. The goal was intuition, not just a working model.",
     deployment: {
       progress: 100,
       githubUrl: "https://github.com/henrykanaskie/emnist",
@@ -201,13 +201,13 @@ export default function CSPage() {
   // Active section for nav dots
   const [activeSection, setActiveSection] = useState("about");
   const [hasScrolled, setHasScrolled] = useState(false);
-  // Direct DOM ref for the progress fill — avoids re-renders on every scroll tick
+  // Direct DOM ref for the progress fill: avoids re-renders on every scroll tick
   const navFillRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const sectionIds = ["about", "experience", "projects", "education"];
     const N = sectionIds.length;
 
-    // Cache section positions — only recomputed on resize, not on every scroll
+    // Cache section positions: only recomputed on resize, not on every scroll
     let sectionTops: number[] = new Array(N).fill(0);
     let lastSectionBottom = 0;
 
@@ -236,7 +236,7 @@ export default function CSPage() {
       }
       setActiveSection(sectionIds[activeIdx]);
 
-      // Progress bar — pure math, no DOM reads
+      // Progress bar: pure math, no DOM reads
       const currentTop = sectionTops[activeIdx];
       const nextTop =
         activeIdx < N - 1 ? sectionTops[activeIdx + 1] : lastSectionBottom;
@@ -552,7 +552,7 @@ export default function CSPage() {
                 disableEntrance
               />
 
-              {/* Photo — with side margins */}
+              {/* Photo: with side margins */}
               <div
                 style={{
                   position: "relative",
@@ -646,7 +646,7 @@ export default function CSPage() {
           ) : (
             /* ── Desktop layout ── */
             <>
-              {/* Left column — photo + links stacked */}
+              {/* Left column: photo + links stacked */}
               <div
                 className="flex flex-col gap-3 shrink-0 items-center"
                 style={{ width: "300px" }}
@@ -734,7 +734,7 @@ export default function CSPage() {
                 </div>
               </div>
 
-              {/* Right column — name top, blurb bottom */}
+              {/* Right column: name top, blurb bottom */}
               <div
                 className="flex flex-col gap-4 flex-1 min-w-0"
                 style={{ minHeight: "400px" }}
@@ -1214,7 +1214,7 @@ export default function CSPage() {
           company="DZYNE Technologies"
           role="Embedded Systems & Full-Stack"
           description={[
-            "I worked on a small team writing embedded C and C++ for anti-drone defense systems. The codebase had grown organically and needed serious cleanup — I refactored the core modules to be properly modular, which made a real difference in how fast the team could move. I also rebuilt the Python test infrastructure from scratch because the old one was slow and required too much manual babysitting. The most fun part was building a full-stack GUI in React and Flask that gave operators real-time control over power, tracking, and logging during test runs — something that previously meant running a bunch of scripts by hand.",
+            "I worked on a small team writing embedded C and C++ for anti-drone defense systems. The codebase had grown organically and needed serious cleanup: I refactored the core modules to be properly modular, which made a real difference in how fast the team could move. I also rebuilt the Python test infrastructure from scratch because the old one was slow and required too much manual babysitting. The most fun part was building a full-stack GUI in React and Flask that gave operators real-time control over power, tracking, and logging during test runs: something that previously meant running a bunch of scripts by hand.",
           ]}
           svgPaths={dronesPaths}
           svgSize={60}
@@ -1232,7 +1232,7 @@ export default function CSPage() {
           title="Applied Machine Learning Researcher"
           company="Plasma, Energy, and Space Propulsion Laboratory"
           role="Signal Processing & ML"
-          description="I split my time between the thruster side and the biomedical side of the lab, doing ML and signal processing work on both. A big chunk of it was building pipelines to extract clean signals from really noisy sensor data — plasma environments are brutal for that. On the modeling side, I worked on predictive models trained on large experimental datasets. One of the more interesting problems was automating capacitor tuning for RF plasma systems using Google OR-tools, replacing a slow manual process with something that ran dynamically and maximized power coupling in real time."
+          description="I split my time between the thruster side and the biomedical side of the lab, doing ML and signal processing work on both. A big chunk of it was building pipelines to extract clean signals from really noisy sensor data: plasma environments are brutal for that. On the modeling side, I worked on predictive models trained on large experimental datasets. One of the more interesting problems was automating capacitor tuning for RF plasma systems using Google OR-tools, replacing a slow manual process with something that ran dynamically and maximized power coupling in real time."
           svgPaths={thrusterPaths}
           svgDrawDuration={6}
           svgSize={75}

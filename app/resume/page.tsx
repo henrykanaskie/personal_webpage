@@ -208,7 +208,7 @@ function Thumbnail({ type, isDark }: { type: ThumbnailType; isDark: boolean }) {
   };
 
   if (type === "matrix") {
-    // Sparse matrix visualization — represents SVD/matrix factorization
+    // Sparse matrix visualization: represents SVD/matrix factorization
     const cols = 9;
     const pattern = [
       [0, 1, 0, 0, 1, 0, 0, 1, 0],
@@ -243,7 +243,7 @@ function Thumbnail({ type, isDark }: { type: ThumbnailType; isDark: boolean }) {
   }
 
   if (type === "confusion") {
-    // 4×4 confusion matrix — diagonal = correct predictions (bright), off-diag = dim
+    // 4×4 confusion matrix: diagonal = correct predictions (bright), off-diag = dim
     const n = 4;
     const cSize = 17;
     const totalW = n * cSize;
@@ -285,7 +285,7 @@ function Thumbnail({ type, isDark }: { type: ThumbnailType; isDark: boolean }) {
     );
   }
 
-  // terminal — represents POSIX shell / systems programming
+  // terminal: represents POSIX shell / systems programming
   const lines = [
     { text: "$ ./smallsh", color: isDark ? "rgba(180,200,255,0.85)" : "rgba(100,115,145,0.85)" },
     { text: "> ls -la /proc", color: isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.5)" },

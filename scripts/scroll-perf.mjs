@@ -113,6 +113,6 @@ if (pct(95) <= 16) {
 const sd = after.ScriptDuration - before.ScriptDuration;
 const ld = after.LayoutDuration - before.LayoutDuration;
 const rd = after.RecalcStyleDuration - before.RecalcStyleDuration;
-if (ld > 0.05) console.log("  ⚠  High layout time — forced reflows during scroll");
-if (rd > 0.1)  console.log("  ⚠  High style recalc — compositing / class churn");
-if (sd > 1.0)  console.log("  ⚠  High JS time — main-thread work during scroll");
+if (ld > 0.05) console.log("  ⚠  High layout time: forced reflows during scroll");
+if (rd > 0.1)  console.log("  ⚠  High style recalc: compositing / class churn");
+if (sd > 1.0)  console.log("  ⚠  High JS time: main-thread work during scroll");

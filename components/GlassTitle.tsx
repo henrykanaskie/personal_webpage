@@ -263,7 +263,7 @@ export default function GlassTitle({
       style={{ willChange: "transform, opacity" }}
       className={`flex justify-center items-center pt-12 md:pt-18 pb-4 md:pb-8 select-none ${containerClassName ?? ""}`}
     >
-      {/* Left SVG — overlaps into text with negative margin */}
+      {/* Left SVG: overlaps into text with negative margin */}
       {showLeft && (
         <div
           className="pointer-events-none hidden md:flex items-center shrink-0"
@@ -360,7 +360,7 @@ export default function GlassTitle({
           </>
         )}
 
-        {/* Shine — driven by scroll direction/speed */}
+        {/* Shine: driven by scroll direction/speed */}
         <span
           ref={shineRef}
           aria-hidden
@@ -431,7 +431,7 @@ export default function GlassTitle({
         )}
       </span>
 
-      {/* Right SVG — overlaps into text with negative margin, mirrored */}
+      {/* Right SVG: overlaps into text with negative margin, mirrored */}
       {showRight && (
         <div
           className="pointer-events-none hidden md:flex items-center shrink-0"

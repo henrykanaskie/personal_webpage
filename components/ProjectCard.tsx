@@ -844,7 +844,7 @@ export default function ProjectCard({
         </motion.div>
       </motion.div>
 
-      {/* Spacer reserving room for the below-card bubbles — height driven by
+      {/* Spacer reserving room for the below-card bubbles: height driven by
           actual bubble measurements. It lives inside this column (rather than
           beside the card as a row-level flex item) so that on a multi-row grid
           it pushes the following row down instead of only growing the row. */}

@@ -11,7 +11,7 @@ export default function PhotographyLayout({
 
   return (
     <div className="-mx-3" style={{ minHeight: "100vh", position: "relative" }}>
-      {/* Shared fixed background — persists across photography page transitions */}
+      {/* Shared fixed background: persists across photography page transitions */}
       <div
         style={{
           position: "fixed",

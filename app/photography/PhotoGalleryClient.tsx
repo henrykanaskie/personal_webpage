@@ -69,7 +69,7 @@ function Lightbox({
       }}
       onClick={onClose}
     >
-      {/* Image — fills as much of the viewport as possible */}
+      {/* Image: fills as much of the viewport as possible */}
       <motion.div
         initial={{ opacity: 0, scale: 0.97 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -94,7 +94,7 @@ function Lightbox({
           priority
         />
 
-        {/* Close button — overlaid top-right on the image */}
+        {/* Close button: overlaid top-right on the image */}
         <button
           type="button"
           onClick={onClose}
@@ -122,7 +122,7 @@ function Lightbox({
           </span>
         </button>
 
-        {/* Caption — overlaid bottom of image */}
+        {/* Caption: overlaid bottom of image */}
         <div
           style={{
             position: "absolute",
@@ -159,7 +159,7 @@ function Lightbox({
         </div>
       </motion.div>
 
-      {/* Prev arrow — outside the photo, fixed to viewport left */}
+      {/* Prev arrow: outside the photo, fixed to viewport left */}
       {gi > 0 && (
         <button
           type="button"
@@ -191,7 +191,7 @@ function Lightbox({
         </button>
       )}
 
-      {/* Next arrow — outside the photo, fixed to viewport right */}
+      {/* Next arrow: outside the photo, fixed to viewport right */}
       {gi < photos.length - 1 && (
         <button
           type="button"
@@ -488,7 +488,7 @@ function PhotoSectionPreview({
         </div>
       </motion.div>
 
-      {/* Scroll gallery — full viewport width regardless of container max-width */}
+      {/* Scroll gallery: full viewport width regardless of container max-width */}
       <div
         style={{
           width: "100vw",

@@ -30,7 +30,7 @@ export default function PhotographyBackground() {
   // Suppress the body's grid background on photography pages so it can't
   // bleed through at the bottom on mobile (avoids z-index/stacking issues).
   // Tied to isPhoto (not visible) so styles are restored immediately on
-  // navigation away — the overlay div fades out independently, preventing a
+  // navigation away: the overlay div fades out independently, preventing a
   // flash of the photography color on the transparent CS side of the home page.
   useEffect(() => {
     const bgColor = isDark ? "#050507" : "#f8f5f0";

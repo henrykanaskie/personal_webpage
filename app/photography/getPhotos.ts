@@ -40,7 +40,7 @@ async function getPhotosForDir(dirName: string): Promise<PhotoEntry[]> {
     return [];
   }
 
-  // Sort alphabetically by filename — camera filenames (DSC####) are sequential
+  // Sort alphabetically by filename: camera filenames (DSC####) are sequential
   // so this preserves the order photos were added to the folder.
   const files = fs
     .readdirSync(dir)

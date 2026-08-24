@@ -352,7 +352,7 @@ export default function Header() {
           className={`${glassBubbleClassNames} flex items-center justify-center w-12 h-12 rounded-full shrink-0`}
           style={{ ...glassStyle, pointerEvents: "auto" }}
         >
-          {/* Reuse the CS home icon — it matches the split motif */}
+          {/* Reuse the CS home icon: it matches the split motif */}
           <svg
             width="20"
             height="20"
@@ -509,7 +509,7 @@ export default function Header() {
           {homeSvg}
         </Link>
 
-        {/* ── Desktop nav bubbles — evenly spaced ── */}
+        {/* ── Desktop nav bubbles: evenly spaced ── */}
         <div
           className="hidden md:flex flex-1 items-center justify-evenly"
           style={{

@@ -1,5 +1,5 @@
 /**
- * Baseline profiler — measures frame timing with NO scroll (page idle).
+ * Baseline profiler: measures frame timing with NO scroll (page idle).
  * Helps distinguish scroll-specific cost from baseline rendering cost.
  */
 import puppeteer from "puppeteer";

@@ -40,7 +40,7 @@ export default function PageTransition({
   // Single AnimatePresence for all routes.
   // Exit duration is determined by the CURRENT page type at render time:
   //   - Full-screen (home, photography): exit instantly so photo→photo navigation
-  //     has no double-load feel — the old page snaps away, new page fades in.
+  //     has no double-load feel: the old page snaps away, new page fades in.
   //   - CS pages: slow 0.6s exit so navigating to any destination (including
   //     the split-screen home) has a deliberate, smooth fade-out.
   return (

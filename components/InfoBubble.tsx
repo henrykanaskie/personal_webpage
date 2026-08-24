@@ -457,7 +457,7 @@ export function InfoBubble({
                 className="text-black/60 dark:text-white/40"
                 style={{ fontSize: 9, letterSpacing: "0.04em" }}
               >
-                {extraInfo.startDate} — {extraInfo.endDate}
+                {extraInfo.startDate} – {extraInfo.endDate}
               </span>
             </FuzzyText>
           </div>
@@ -623,7 +623,7 @@ export function useInfoBubble() {
 
       setIsBubbleVisibleDelayed(true);
     } else {
-      // No delay on fade-out — they fade together
+      // No delay on fade-out: they fade together
       setIsBubbleVisibleDelayed(false);
     }
   }, []);

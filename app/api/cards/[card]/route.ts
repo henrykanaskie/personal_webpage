@@ -31,7 +31,7 @@ const THEMES: Record<string, Theme> = {
 // isolation, so Python (#3572A5) and TypeScript (#3178c6) are the same blue and
 // the bar reads as one undifferentiated block, while C (#555555) is a muddy
 // grey. These are eight categorical slots checked for colorblind separation
-// against both card backgrounds — [light, dark] per slot, the dark step chosen
+// against both card backgrounds: [light, dark] per slot, the dark step chosen
 // for #0d1117 rather than lightened from the light value.
 const LANG_SLOTS: [string, string][] = [
   ["#2a78d6", "#3987e5"],   // blue
@@ -236,7 +236,7 @@ function cardLanguages(langs: [string, number][], t: Theme) {
   body += `</g></g>`;
 
   // Two fixed columns with a gutter, each percentage flush to its own column's
-  // right edge — the pair of columns then ends flush with the bar above.
+  // right edge: the pair of columns then ends flush with the bar above.
   const gutter = 22, top = 96, rowH = 24;
   const colW = (barW - gutter) / 2;
   shown.forEach(([name, val], i) => {

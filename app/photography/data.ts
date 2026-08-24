@@ -23,7 +23,7 @@ export interface Section {
   photos: PhotoEntry[];
 }
 
-// Section metadata only — photos are populated server-side from the filesystem.
+// Section metadata only: photos are populated server-side from the filesystem.
 // To add a new section: add an entry here and create the matching folder under public/photography/<dir>/.
 export const SECTION_META: Omit<Section, "photos">[] = [
   {

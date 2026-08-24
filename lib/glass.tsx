@@ -88,7 +88,7 @@ export function GlassLayers({
 } = {}) {
   return (
     <>
-      {/* Specular highlight — top */}
+      {/* Specular highlight - top */}
       <div
         className="dark:hidden"
         style={{
@@ -118,7 +118,7 @@ export function GlassLayers({
         }}
       />
 
-      {/* Specular highlight — bottom */}
+      {/* Specular highlight - bottom */}
       <div
         className="dark:hidden"
         style={{
@@ -175,7 +175,7 @@ export function GlassLayers({
         }}
       />
 
-      {/* Edge distortion — heavier blur at edges */}
+      {/* Edge distortion: heavier blur at edges */}
       <div
         style={{
           position: "absolute",

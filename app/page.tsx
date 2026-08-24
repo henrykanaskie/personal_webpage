@@ -121,7 +121,7 @@ function FloatingBokeh({ c, color }: { c: (typeof BOKEH)[0]; color: string }) {
   );
 }
 
-// ─── Divider — slow breathing pulse on hover ─────────────────────────────────
+// ─── Divider: slow breathing pulse on hover ─────────────────────────────────
 
 function AnimatedDivider({
   hovered,
@@ -216,7 +216,7 @@ function PhotoSide({ active, isDark }: { active: boolean; isDark: boolean }) {
         style={{ background: vignette }}
       />
 
-      {/* Bokeh — each circle floats freely */}
+      {/* Bokeh: each circle floats freely */}
       {BOKEH.map((c) => (
         <FloatingBokeh key={c.id} c={c} color={c.v === "a" ? bokehA : bokehB} />
       ))}
@@ -397,7 +397,7 @@ function PhotoSide({ active, isDark }: { active: boolean; isDark: boolean }) {
         </motion.div>
       </div>
 
-      {/* Camera metadata — bottom center */}
+      {/* Camera metadata: bottom center */}
       <div
         style={{
           position: "absolute",
@@ -431,7 +431,7 @@ function PhotoSide({ active, isDark }: { active: boolean; isDark: boolean }) {
         ))}
       </div>
 
-      {/* Frame counter — bottom-right corner */}
+      {/* Frame counter: bottom-right corner */}
       <div
         style={{
           position: "absolute",
@@ -503,7 +503,7 @@ function CSSide({
         </p>
       </div>
 
-      {/* Title — crystalline */}
+      {/* Title: crystalline */}
       <div
         style={{
           position: "absolute",
@@ -535,7 +535,7 @@ function CSSide({
         }}
       />
 
-      {/* Horizontal nav — hidden on mobile */}
+      {/* Horizontal nav: hidden on mobile */}
       {!isMobile && (
         <div
           style={{

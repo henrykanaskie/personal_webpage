@@ -264,7 +264,7 @@ export default function InfoBox({
         </motion.div>
       </motion.div>
 
-      {/* Mobile spacer — only needed for absolute-positioned mobile bubble */}
+      {/* Mobile spacer: only needed for absolute-positioned mobile bubble */}
       {isMobile && (
         <motion.div
           animate={{ height: isBubbleOpen ? 340 : 0 }}

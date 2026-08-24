@@ -290,7 +290,7 @@ export default function CategoryPageClient({ section }: { section: Section }) {
           </p>
         </motion.div>
 
-        {/* Photo grid — flex-column masonry */}
+        {/* Photo grid: flex-column masonry */}
         {(() => {
 
           const cols: { photo: PhotoEntry }[][] = Array.from(
@@ -538,7 +538,7 @@ export default function CategoryPageClient({ section }: { section: Section }) {
             })()}
           </motion.div>
 
-          {/* Prev arrow — outside the photo, fixed to viewport left */}
+          {/* Prev arrow: outside the photo, fixed to viewport left */}
           {selected.gi > 0 && (
             <button
               type="button"
@@ -574,7 +574,7 @@ export default function CategoryPageClient({ section }: { section: Section }) {
             </button>
           )}
 
-          {/* Next arrow — outside the photo, fixed to viewport right */}
+          {/* Next arrow: outside the photo, fixed to viewport right */}
           {selected.gi < displayOrderRef.current.length - 1 && (
             <button
               type="button"

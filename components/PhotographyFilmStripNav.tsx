@@ -161,7 +161,7 @@ export function PhotographyFilmStripNav({
         }}
       />
 
-      {/* Left controls — pinned to the left, never scrolls away */}
+      {/* Left controls: pinned to the left, never scrolls away */}
       {leftControls && (
         <div
           style={{
@@ -177,7 +177,7 @@ export function PhotographyFilmStripNav({
         </div>
       )}
 
-      {/* Left scroll arrow — only shown when content overflows */}
+      {/* Left scroll arrow: only shown when content overflows */}
       {canScroll && (
         <button
           type="button"
@@ -200,7 +200,7 @@ export function PhotographyFilmStripNav({
         </button>
       )}
 
-      {/* Scrollable nav items — takes all available space */}
+      {/* Scrollable nav items: takes all available space */}
       <div
         ref={scrollRef}
         className="scrollbar-hide"
@@ -337,7 +337,7 @@ export function PhotographyFilmStripNav({
         })}
       </div>
 
-      {/* Right scroll arrow — only shown when content overflows */}
+      {/* Right scroll arrow: only shown when content overflows */}
       {canScroll && (
         <button
           type="button"
@@ -360,7 +360,7 @@ export function PhotographyFilmStripNav({
         </button>
       )}
 
-      {/* Controls — pinned to the right, never scrolls away */}
+      {/* Controls: pinned to the right, never scrolls away */}
       {bottomControls && (
         <div
           style={{

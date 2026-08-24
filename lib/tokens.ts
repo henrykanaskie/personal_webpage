@@ -10,43 +10,43 @@ export const themed = <T>(isDark: boolean, dark: T, light: T): T =>
 // ─── CS Palette (cool iridescent blue/purple) ───────────────────────────────
 
 export const cs = {
-  // 8-stop 135deg — primary titles (GlassTitle, InfoBox h2, ProjectCard h2, EducationCard h2)
+  // 8-stop 135deg: primary titles (GlassTitle, InfoBox h2, ProjectCard h2, EducationCard h2)
   iridescent: {
     light: `linear-gradient(135deg, rgb(100,115,145) 0%, rgb(125,110,135) 15%, rgb(105,130,150) 30%, rgb(130,115,130) 45%, rgb(100,125,145) 60%, rgb(120,110,140) 75%, rgb(105,120,148) 90%, rgb(128,115,135) 100%)`,
     dark: `linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 15%, rgb(180,210,235) 30%, rgb(215,190,215) 45%, rgb(170,200,230) 60%, rgb(200,185,225) 75%, rgb(180,195,235) 90%, rgb(210,185,220) 100%)`,
   },
 
-  // 8-stop 135deg — active/hover state
+  // 8-stop 135deg: active/hover state
   iridescentActive: {
     light: `linear-gradient(135deg, rgb(70,85,115) 0%, rgb(95,80,105) 15%, rgb(75,100,120) 30%, rgb(100,85,100) 45%, rgb(70,95,115) 60%, rgb(90,80,110) 75%, rgb(75,90,118) 90%, rgb(98,85,105) 100%)`,
     dark: `linear-gradient(135deg, rgb(220,235,255) 0%, rgb(245,230,250) 15%, rgb(220,245,255) 30%, rgb(250,235,245) 45%, rgb(215,240,255) 60%, rgb(240,230,250) 75%, rgb(220,238,255) 90%, rgb(245,230,248) 100%)`,
   },
 
-  // 8-stop 90deg — SkillBar fill, progress bars
+  // 8-stop 90deg: SkillBar fill, progress bars
   iridescentHorizontal: {
     light: `linear-gradient(90deg, rgb(100,115,145) 0%, rgb(125,110,135) 15%, rgb(105,130,150) 30%, rgb(130,115,130) 45%, rgb(100,125,145) 60%, rgb(120,110,140) 75%, rgb(105,120,148) 90%, rgb(128,115,135) 100%)`,
     dark: `linear-gradient(90deg, rgb(180,200,255) 0%, rgb(210,185,230) 15%, rgb(180,210,235) 30%, rgb(215,190,215) 45%, rgb(170,200,230) 60%, rgb(200,185,225) 75%, rgb(180,195,235) 90%, rgb(210,185,220) 100%)`,
   },
 
-  // 5-stop 90deg — ProjectCard deployment progress bar
+  // 5-stop 90deg: ProjectCard deployment progress bar
   progressBar: {
     light: `linear-gradient(90deg, rgb(100,115,145), rgb(125,110,135), rgb(105,130,150), rgb(130,115,130), rgb(100,125,145))`,
     dark: `linear-gradient(90deg, rgb(180,200,255), rgb(210,185,230), rgb(180,210,235), rgb(215,190,215), rgb(180,200,255))`,
   },
 
-  // 2-stop 135deg — GPA, nav dot gradient, short accent
+  // 2-stop 135deg: GPA, nav dot gradient, short accent
   iridescentShort: {
     light: `linear-gradient(135deg, rgb(100,115,145), rgb(125,110,135))`,
     dark: `linear-gradient(135deg, rgb(180,200,255), rgb(210,185,230))`,
   },
 
-  // 3-stop 180deg — section nav dot fill
+  // 3-stop 180deg: section nav dot fill
   iridescentVertical: {
     light: `linear-gradient(180deg, rgb(100,115,145), rgb(125,110,135), rgb(105,130,150))`,
     dark: `linear-gradient(180deg, rgb(180,200,255), rgb(210,185,230), rgb(180,210,235))`,
   },
 
-  // 3-stop 135deg — mid-weight accent (project section headings, etc.)
+  // 3-stop 135deg: mid-weight accent (project section headings, etc.)
   iridescentMedium: {
     light: `linear-gradient(135deg, rgb(100,115,145) 0%, rgb(125,110,135) 50%, rgb(105,130,150) 100%)`,
     dark: `linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 50%, rgb(180,210,235) 100%)`,
@@ -58,19 +58,19 @@ export const cs = {
     dark: `linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 15%, rgb(180,210,235) 30%, rgb(215,190,215) 45%, rgb(170,200,230) 60%, rgb(200,185,225) 75%, rgb(180,195,235) 90%, rgb(210,185,220) 100%)`,
   },
 
-  // Standalone color (for stroke, color props — not gradients)
+  // Standalone color (for stroke, color props, not gradients)
   color: {
     light: "rgb(100,115,145)",
     dark: "rgb(180,200,255)",
   },
 
-  // 8-stop 135deg — company/role/description text (near-white dark, near-black light)
+  // 8-stop 135deg: company/role/description text (near-white dark, near-black light)
   body: {
     light: `linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(25,15,35,0.92) 15%, rgba(10,20,30,0.94) 30%, rgba(30,15,25,0.9) 45%, rgba(10,20,28,0.93) 60%, rgba(22,12,32,0.91) 75%, rgba(12,18,30,0.94) 90%, rgba(28,15,28,0.91) 100%)`,
     dark: `linear-gradient(135deg, rgba(248,250,255,0.96) 0%, rgba(255,248,255,0.93) 15%, rgba(248,252,255,0.95) 30%, rgba(255,250,255,0.92) 45%, rgba(245,250,255,0.94) 60%, rgba(255,248,255,0.93) 75%, rgba(248,250,255,0.95) 90%, rgba(255,248,255,0.93) 100%)`,
   },
 
-  // 3-stop 135deg — SkillBar label, EducationCard extras
+  // 3-stop 135deg: SkillBar label, EducationCard extras
   bodyShort: {
     light: `linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(25,15,35,0.92) 50%, rgba(12,18,30,0.94) 100%)`,
     dark: `linear-gradient(135deg, rgba(248,250,255,0.96) 0%, rgba(255,248,255,0.93) 50%, rgba(248,250,255,0.95) 100%)`,

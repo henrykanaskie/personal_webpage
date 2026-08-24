@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { motion, useInView } from "framer-motion";
 import { useIsDark } from "@/lib/glass";
 
-// ─── Gear data — update with your actual kit ─────────────────────────────────
+// ─── Gear data: update with your actual kit ─────────────────────────────────
 
 type GearItem = { name: string; spec: string; note: string };
 type GearCategory = { num: string; title: string; items: GearItem[] };

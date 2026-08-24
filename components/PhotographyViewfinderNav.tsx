@@ -99,7 +99,7 @@ export function PhotographyViewfinderNav({
 
   return (
     <>
-      {/* Desktop: bottom bar — viewfinder + choices row + controls */}
+      {/* Desktop: bottom bar: viewfinder + choices row + controls */}
       <header className="hidden md:flex" style={containerStyle}>
         {/* Viewfinder frame (camera LCD / eyepiece) */}
         <div
@@ -298,7 +298,7 @@ export function PhotographyViewfinderNav({
         )}
       </header>
 
-      {/* Mobile: bottom bar — viewfinder + choices + controls */}
+      {/* Mobile: bottom bar: viewfinder + choices + controls */}
       <header
         className="md:hidden"
         style={{
