@@ -576,8 +576,11 @@ export function InfoBubble({
   );
 }
 // ─── Hook for managing bubble state ───
-export function useInfoBubble() {
-  const [isBubbleOpen, setIsBubbleOpen] = useState(true);
+// `initialOpen` defaults to true for InfoBox, whose bubble is part of the box's
+// resting composition. ProjectCard opts out: eight cards' worth of bubbles open
+// at once buries the cards they belong to.
+export function useInfoBubble(initialOpen = true) {
+  const [isBubbleOpen, setIsBubbleOpen] = useState(initialOpen);
   const [isBubbleVisible, setIsBubbleVisible] = useState(false);
   const [popRequested, setPopRequested] = useState(false);
   const [vaporOrigin, setVaporOrigin] = useState<{

@@ -482,8 +482,8 @@ export default function ProjectCard({
   const isDark = useIsDark();
   const isInView = useInViewFromBelow(boxRef, isMobile ? 0.2 : 0.15);
 
-  const thumbnailBubble = useInfoBubble();
-  const deploymentBubble = useInfoBubble();
+  const thumbnailBubble = useInfoBubble(false);
+  const deploymentBubble = useInfoBubble(false);
 
   // Track which bubble opened first so the second one pushes the first down
   const firstOpenedRef = useRef<"thumbnail" | "deployment" | null>(null);
@@ -714,10 +714,9 @@ export default function ProjectCard({
             </div>
 
             {/* Thumbnail: sits behind the same glass as the card, so it reads
-                as embedded rather than pasted on. Desaturated at rest, it
-                warms and lifts slightly on hover. */}
+                as embedded rather than pasted on. Static, no hover state. */}
             <div
-              className="group relative"
+              className="relative"
               style={{
                 borderRadius: 12,
                 overflow: "hidden",
@@ -744,13 +743,12 @@ export default function ProjectCard({
                     decoding="async"
                     width={1600}
                     height={900}
-                    className="h-full w-full object-cover block saturate-[0.82] contrast-[1.02] scale-100 transition-[filter,transform] duration-500 ease-out group-hover:saturate-[1.06] group-hover:scale-[1.035]"
-                    style={{ willChange: "transform, filter" }}
+                    className="h-full w-full object-cover block saturate-[0.82] contrast-[1.02]"
                   />
                   {/* specular sheen, matching the glass surfaces around it */}
                   <span
                     aria-hidden
-                    className="pointer-events-none absolute inset-0 opacity-70 transition-opacity duration-500 group-hover:opacity-35"
+                    className="pointer-events-none absolute inset-0 opacity-70"
                     style={{
                       background: isDark
                         ? "linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 38%, rgba(6,8,14,0.22) 100%)"
