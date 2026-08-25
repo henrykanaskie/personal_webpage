@@ -122,6 +122,7 @@ const projects = [
   {
     title: "GPT From Scratch",
     techStack: "Python, PyTorch, NumPy",
+    thumbnail: "/projects/gpt-scratch.webp",
     description:
       "Transformer internals written by hand rather than imported: self-attention, multi-head attention, positional encoding, and layer, batch, and RMS normalization over a BPE tokenizer. Built up from a single neuron and backprop, so no layer of the stack stays a black box. In progress toward a full GPT.",
     deployment: {
@@ -180,6 +181,7 @@ const projects = [
   {
     title: "Character Classification Neural Network: From Scratch",
     techStack: "Python, NumPy, Pandas",
+    thumbnail: "/projects/emnist.webp",
     description:
       "A feed-forward neural network built entirely from scratch: backpropagation, weight initialization, and the full training loop without any ML framework. Trained on EMNIST handwritten characters, reaching 85% test accuracy. The goal was intuition, not just a working model.",
     deployment: {
