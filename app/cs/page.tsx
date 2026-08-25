@@ -86,6 +86,7 @@ const projects = [
   {
     title: "AccliMate: Codebase Onboarding Assistant",
     techStack: "Python, FastAPI, ChromaDB, D3.js",
+    thumbnail: "/projects/acclimate.webp",
     description:
       "Paste a GitHub URL, get an interactive guide to the repository. Source is chunked by AST rather than line count and reranked before an LLM answers, so every claim cites the exact lines behind it. Q&A, architecture walkthroughs, an agentic mode, and dependency tracing. Built at BeaverHacks 2026.",
     deployment: {
@@ -97,6 +98,7 @@ const projects = [
   {
     title: "Sprite Room: Agents as Pixel Art",
     techStack: "Swift 6, SpriteKit, AppKit",
+    thumbnail: "/projects/sprite-room.webp",
     description:
       "A macOS app that drops from the notch and renders a live coding agent's activity as a pixel-art room: each agent a character, each tool call something it is visibly doing. Read-only by design: it never controls an agent or shows prompt content. 396 tests and a replay harness keep the scene deterministic.",
     deployment: {
@@ -108,6 +110,7 @@ const projects = [
   {
     title: "Monte Carlo Portfolio Risk Engine",
     techStack: "Python, NumPy, Pandas, SciPy",
+    thumbnail: "/projects/monte-carlo.webp",
     description:
       "A risk and planning tool, not a predictor: it reports the distribution of portfolio outcomes, especially the ugly tail. Log returns throughout, correlation from joint historical sampling, and a block bootstrap measured against a Gaussian baseline over a survivorship-unbiased price panel.",
     deployment: {
@@ -130,6 +133,7 @@ const projects = [
   {
     title: "Capacitor Matching Network Solver",
     techStack: "Python, OR-Tools, NumPy",
+    thumbnail: "/projects/cap-match-net.webp",
     description:
       "Constraint programming applied to an RF layout problem: pick four capacitors from a real, discrete inventory so a bridge network lands on a target capacitance. CP-SAT balances range compliance, absolute accuracy, and set spread, so the answer is electrically symmetric rather than merely close on paper.",
     deployment: {
@@ -141,6 +145,7 @@ const projects = [
   {
     title: "smallsh: A Unix Shell in C",
     techStack: "C, POSIX",
+    thumbnail: "/projects/smallsh.webp",
     description:
       "A shell with the parts that actually bite: job control, foreground and background execution, I/O redirection, variable expansion, and custom SIGINT and SIGTSTP handlers that stay correct once a process has been backgrounded and signalled at the wrong moment.",
     deployment: {
@@ -152,6 +157,7 @@ const projects = [
   {
     title: "Bee Habitat Recommendation System",
     techStack: "Python, React, JavaScript",
+    thumbnail: "/projects/bee-atlas.webp",
     description:
       "A recommendation engine built on the Oregon Bee Atlas that models bee-flower relationships as a sparse matrix and uses truncated SVD to surface ecologically relevant plant species for a given area: a practical tool for land managers making habitat restoration decisions.",
     deployment: {
@@ -1289,6 +1295,7 @@ export default function CSPage() {
                   title={project.title}
                   techStack={project.techStack}
                   description={project.description}
+                  thumbnail={project.thumbnail}
                   deployment={project.deployment}
                   bubbleSide={colIdx < row.length / 2 ? "left" : "right"}
                   numCardsInRow={row.length}

@@ -713,8 +713,11 @@ export default function ProjectCard({
               ))}
             </div>
 
-            {/* Thumbnail */}
+            {/* Thumbnail: sits behind the same glass as the card, so it reads
+                as embedded rather than pasted on. Desaturated at rest, it
+                warms and lifts slightly on hover. */}
             <div
+              className="group relative"
               style={{
                 borderRadius: 12,
                 overflow: "hidden",
@@ -724,22 +727,37 @@ export default function ProjectCard({
                 background: isDark
                   ? "rgba(255,255,255,0.05)"
                   : "rgba(0,0,0,0.06)",
+                boxShadow: isDark
+                  ? "inset 0 0 0 1px rgba(255,255,255,0.09), 0 6px 18px -10px rgba(0,0,0,0.7)"
+                  : "inset 0 0 0 1px rgba(20,30,60,0.10), 0 6px 18px -12px rgba(20,30,60,0.45)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
               {thumbnail ? (
-                <img
-                  src={thumbnail}
-                  alt="Project thumbnail"
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    display: "block",
-                  }}
-                />
+                <>
+                  <img
+                    src={thumbnail}
+                    alt={`${title} preview`}
+                    loading="lazy"
+                    decoding="async"
+                    width={1600}
+                    height={900}
+                    className="h-full w-full object-cover block saturate-[0.82] contrast-[1.02] scale-100 transition-[filter,transform] duration-500 ease-out group-hover:saturate-[1.06] group-hover:scale-[1.035]"
+                    style={{ willChange: "transform, filter" }}
+                  />
+                  {/* specular sheen, matching the glass surfaces around it */}
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 opacity-70 transition-opacity duration-500 group-hover:opacity-35"
+                    style={{
+                      background: isDark
+                        ? "linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 38%, rgba(6,8,14,0.22) 100%)"
+                        : "linear-gradient(180deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0) 42%, rgba(20,30,60,0.10) 100%)",
+                    }}
+                  />
+                </>
               ) : (
                 <span
                   className="text-black/20 dark:text-white/20"
