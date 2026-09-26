@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { animate, motion, useMotionValue, useScroll } from "framer-motion";
+import { animate, motion, useMotionValue, useReducedMotion, useScroll } from "framer-motion";
 import type { PhotoEntry } from "@/app/photography/data";
-import { EASE_OUT, exposureLine, pad2 } from "./utils";
+import { EASE_OUT, exposureLine, frameClock, pad2, smoothing } from "./utils";
 
 const BLADES = 9;
 const IRIS_OPEN = 160;
@@ -55,6 +55,7 @@ export default function IrisHero({
   const [isNarrow, setIsNarrow] = useState(false);
   const iris = useMotionValue(0);
   const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start start", "end start"] });
+  const reduceMotion = !!useReducedMotion();
 
   const current = items[active];
 
@@ -79,12 +80,12 @@ export default function IrisHero({
   useEffect(() => {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;
-    const open = () => animate(iris, IRIS_OPEN, { duration: 1.3, ease: [0.16, 1, 0.3, 1] });
+    const open = () => animate(iris, IRIS_OPEN, { duration: reduceMotion ? 0 : 1.3, ease: [0.16, 1, 0.3, 1] });
     const cycle = () => {
       timer = setTimeout(async () => {
         // Don't cycle while the hero is scrolled away
         if (scrollYProgress.get() > 0.5) return cycle();
-        await animate(iris, 0, { duration: 0.55, ease: [0.7, 0, 0.84, 0] });
+        await animate(iris, 0, { duration: reduceMotion ? 0 : 0.55, ease: [0.7, 0, 0.84, 0] });
         if (cancelled) return;
         setActive((a) => (a + 1) % items.length);
         await new Promise((r) => setTimeout(r, 140));
@@ -102,7 +103,7 @@ export default function IrisHero({
       clearTimeout(intro);
       clearTimeout(timer);
     };
-  }, [iris, items.length, scrollYProgress]);
+  }, [iris, items.length, scrollYProgress, reduceMotion]);
 
   // Lens: follows the pointer, drifts on its own when idle or on touch
   useEffect(() => {
@@ -123,18 +124,20 @@ export default function IrisHero({
       lastMove = performance.now();
     };
 
+    const clock = frameClock();
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
+      const k = smoothing(0.085, clock(now));
       const w = stage.clientWidth;
       const h = stage.clientHeight;
-      if (now - lastMove > 2600) {
+      if (now - lastMove > 2600 && !reduceMotion) {
         // Lissajous drift so the lens keeps hunting across the frame
         const s = now / 1000;
         target.x = 0.5 + Math.sin(s * 0.37) * 0.28;
         target.y = 0.48 + Math.sin(s * 0.53 + 1.2) * 0.2;
       }
-      pos.x += (target.x - pos.x) * 0.085;
-      pos.y += (target.y - pos.y) * 0.085;
+      pos.x += (target.x - pos.x) * k;
+      pos.y += (target.y - pos.y) * k;
 
       const p = Math.min(1, scrollYProgress.get() * 1.6);
       const base = Math.min(w, h) * (w < 640 ? 0.26 : 0.19);
@@ -182,7 +185,7 @@ export default function IrisHero({
       cancelAnimationFrame(raf);
       window.removeEventListener("pointermove", onMove);
     };
-  }, [scrollYProgress]);
+  }, [scrollYProgress, reduceMotion]);
 
   const mono: React.CSSProperties = {
     fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",

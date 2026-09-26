@@ -35,6 +35,7 @@ interface Box {
 const LOUPE_SIZE = 220;
 const PANEL_W = 320;
 const STRIP_H = 92;
+const SHEET_VH = 0.44;
 
 function fitBox(ratio: number, panelOpen: boolean): Box {
   const vw = window.innerWidth;
@@ -44,7 +45,9 @@ function fitBox(ratio: number, panelOpen: boolean): Box {
   const margin = desktop ? 84 : 12;
   const top = desktop ? 40 : 64;
   const availW = vw - panel - margin * 2;
-  const availH = vh - top - STRIP_H - (desktop ? 12 : 8);
+  // On phones the info sheet slides up from the bottom, so the photo moves up to sit above it
+  const sheet = !desktop && panelOpen ? Math.round(vh * SHEET_VH) : 0;
+  const availH = vh - top - STRIP_H - (desktop ? 12 : 8) - sheet;
   let width = availW;
   let height = width / ratio;
   if (height > availH) {
@@ -207,6 +210,11 @@ export default function Lightbox({
       style={{ position: "fixed", inset: 0, zIndex: 70, overflow: "hidden" }}
       onClick={onClose}
       onTouchStart={(e) => {
+        // Gestures that begin on the filmstrip or the info sheet scroll those, not the viewer
+        if ((e.target as Element).closest("[data-own-gestures]")) {
+          touchStart.current = null;
+          return;
+        }
         touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       }}
       onTouchEnd={(e) => {
@@ -359,6 +367,24 @@ export default function Lightbox({
         </motion.div>
       )}
 
+      {/* Warm the cache for the neighbours; same sizes/quality as the main image so the browser picks the same file */}
+      <div aria-hidden style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", opacity: 0, pointerEvents: "none" }}>
+        {[index - 1, index + 1]
+          .filter((i) => i >= 0 && i < items.length)
+          .map((i) => (
+            <Image
+              key={items[i].photo.src}
+              src={items[i].photo.src}
+              alt=""
+              width={items[i].photo.width}
+              height={items[i].photo.height}
+              sizes="(min-width: 1024px) 75vw, 100vw"
+              quality={90}
+              loading="eager"
+            />
+          ))}
+      </div>
+
       {/* Top bar */}
       <div
         onClick={(e) => e.stopPropagation()}
@@ -446,6 +472,7 @@ export default function Lightbox({
         {panelOpen && (
           <motion.aside
             key="panel"
+            data-own-gestures
             onClick={(e) => e.stopPropagation()}
             initial={isDesktop ? { x: PANEL_W, opacity: 0 } : { y: 40, opacity: 0 }}
             animate={{ x: 0, y: 0, opacity: 1 }}
@@ -455,7 +482,7 @@ export default function Lightbox({
               position: "absolute",
               ...(isDesktop
                 ? { top: 64, right: 12, bottom: STRIP_H + 12, width: PANEL_W - 24 }
-                : { left: 10, right: 10, bottom: STRIP_H + 6, maxHeight: "52vh" }),
+                : { left: 10, right: 10, bottom: STRIP_H + 6, maxHeight: `${SHEET_VH * 100 - 1}vh`, overscrollBehavior: "contain" }),
               overflowY: "auto",
               padding: "22px 20px",
               borderRadius: 18,
@@ -465,8 +492,9 @@ export default function Lightbox({
               WebkitBackdropFilter: "blur(24px) saturate(1.5)",
               boxShadow: isDark ? "inset 0 1px 0 rgba(255,255,255,0.06)" : "inset 0 1px 0 rgba(255,255,255,0.8)",
               color: t.ink,
-              display: "flex",
-              flexDirection: "column",
+              // Grid rather than flex: flex children would shrink to nothing inside the scrolling mobile sheet
+              display: "grid",
+              alignContent: "start",
               gap: 20,
             }}
           >
@@ -560,6 +588,7 @@ export default function Lightbox({
 
       {/* Filmstrip */}
       <div
+        data-own-gestures
         onClick={(e) => e.stopPropagation()}
         style={{
           position: "absolute",

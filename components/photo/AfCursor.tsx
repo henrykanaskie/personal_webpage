@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { frameClock, smoothing } from "./utils";
 
 const IDLE = 34;
 const TARGETS = "[data-af], a, button";
@@ -69,8 +70,10 @@ export default function AfCursor() {
       html.classList.toggle("af-cursor", !suspended);
     };
 
-    const tick = () => {
+    const clock = frameClock();
+    const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
+      const dt = clock(now);
       const root = rootRef.current;
       const box = boxRef.current;
       if (!root || !box) return;
@@ -91,7 +94,7 @@ export default function AfCursor() {
         tw = s;
         th = s;
       }
-      const k = locked ? 0.22 : 0.35;
+      const k = smoothing(locked ? 0.22 : 0.35, dt);
       cur.x += (tx - cur.x) * k;
       cur.y += (ty - cur.y) * k;
       cur.w += (tw - cur.w) * k;

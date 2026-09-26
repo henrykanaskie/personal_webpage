@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion, useInView } from "framer-motion";
 import type { Section } from "@/app/photography/data";
-import { EASE_OUT, aspect, pad2, photoTheme } from "./utils";
+import { EASE_OUT, aspect, frameClock, pad2, photoTheme, smoothing } from "./utils";
 
 const PREVIEW_W = 300;
 
@@ -61,12 +61,14 @@ export default function ChapterIndex({ sections, isDark }: { sections: Section[]
       target.x = e.clientX;
       target.y = e.clientY;
     };
-    const tick = () => {
+    const clock = frameClock();
+    const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
+      const k = smoothing(0.12, clock(now));
       const dx = target.x - pos.x;
       const dy = target.y - pos.y;
-      pos.x += dx * 0.12;
-      pos.y += dy * 0.12;
+      pos.x += dx * k;
+      pos.y += dy * k;
       const el = floatRef.current;
       if (!el) return;
       const skew = Math.max(-14, Math.min(14, dx * 0.08));
@@ -92,6 +94,7 @@ export default function ChapterIndex({ sections, isDark }: { sections: Section[]
 
   return (
     <section
+      id="chapters"
       aria-label="Chapters"
       style={{
         position: "relative",

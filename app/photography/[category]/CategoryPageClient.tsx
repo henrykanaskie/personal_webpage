@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import Image, { getImageProps } from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { useIsDark } from "@/lib/glass";
 import type { Section, PhotoEntry } from "../data";
@@ -85,6 +85,10 @@ export default function CategoryPageClient({
   const [nextHover, setNextHover] = useState(false);
   const photos = section.photos;
   const cover = photos[0];
+  // Optimised, resized copy for the photo-filled title instead of the 2400px original
+  const coverUrl = cover
+    ? getImageProps({ src: cover.src, alt: "", width: 1600, height: Math.round(1600 / aspect(cover)), quality: 70 }).props.src
+    : undefined;
 
   useEffect(() => {
     // Enough columns that the tallest print still fits on screen
@@ -141,7 +145,7 @@ export default function CategoryPageClient({
   };
 
   // Long titles get a smaller viewport-relative size so they fit on one line
-  const titleSize = `clamp(2.8rem, ${Math.min(17, 150 / section.title.length).toFixed(1)}vw, 15rem)`;
+  const titleSize = `clamp(1.9rem, ${Math.min(17, 150 / section.title.length).toFixed(1)}vw, 15rem)`;
 
   return (
     <>
@@ -172,7 +176,7 @@ export default function CategoryPageClient({
 
         {/* Title filled with the chapter's own photograph */}
         <header style={{ marginTop: "clamp(40px, 9vh, 110px)", marginBottom: "clamp(28px, 5vh, 56px)" }}>
-          <div style={{ overflow: "hidden", paddingBottom: "0.08em" }}>
+          <div style={{ overflow: "hidden", paddingBottom: "0.2em", marginBottom: "-0.12em" }}>
             <motion.h1
               initial={{ y: "100%", opacity: 0 }}
               animate={{ y: "0%", opacity: 1 }}
@@ -185,7 +189,7 @@ export default function CategoryPageClient({
                 lineHeight: 0.86,
                 letterSpacing: "-0.045em",
                 color: "transparent",
-                backgroundImage: cover ? `url("${cover.src}")` : undefined,
+                backgroundImage: coverUrl ? `url("${coverUrl}")` : undefined,
                 backgroundColor: cover ? undefined : t.ink,
                 backgroundSize: "140% auto",
                 WebkitBackgroundClip: "text",

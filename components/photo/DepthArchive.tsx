@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { useScroll } from "framer-motion";
+import { useReducedMotion, useScroll } from "framer-motion";
 import type { Section } from "@/app/photography/data";
 import type { LightboxItem } from "./Lightbox";
-import { aspect, exposureLine, pad2, photoTheme, rgbTriplet } from "./utils";
+import { aspect, exposureLine, frameClock, pad2, photoTheme, rgbTriplet, smoothing } from "./utils";
 
 const SPACING = 760; // world units between planes
 const FAR = 5200; // planes further than this are fully fogged
@@ -50,6 +50,7 @@ export default function DepthArchive({
   const gaugeRef = useRef<HTMLDivElement>(null);
   const [near, setNear] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+  const reduceMotion = !!useReducedMotion();
   const { scrollYProgress } = useScroll({ target: outerRef, offset: ["start start", "end end"] });
 
   useEffect(() => {
@@ -99,13 +100,16 @@ export default function DepthArchive({
       lookTarget.y = (e.clientY / window.innerHeight - 0.5) * 2;
     };
 
-    const tick = () => {
+    const clock = frameClock();
+    const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
+      const dt = clock(now);
       const target = scrollYProgress.get() * depth;
       // Eased camera so fast scroll-wheel steps glide instead of jumping
-      camZ += (target - camZ) * 0.09;
-      look.x += (lookTarget.x - look.x) * 0.05;
-      look.y += (lookTarget.y - look.y) * 0.05;
+      camZ += (target - camZ) * (reduceMotion ? 1 : smoothing(0.09, dt));
+      const kl = reduceMotion ? 0 : smoothing(0.05, dt);
+      look.x += (lookTarget.x - look.x) * kl;
+      look.y += (lookTarget.y - look.y) * kl;
 
       const vw = window.innerWidth;
       const vh = window.innerHeight;
@@ -152,7 +156,7 @@ export default function DepthArchive({
       cancelAnimationFrame(raf);
       window.removeEventListener("pointermove", onMove);
     };
-  }, [planes, depth, scrollYProgress]);
+  }, [planes, depth, scrollYProgress, reduceMotion]);
 
   const nearItem = items[near];
   const glow = nearItem ? rgbTriplet(nearItem.photo.palette[1] ?? nearItem.photo.color) : "120,120,160";
@@ -351,6 +355,31 @@ export default function DepthArchive({
           <div>{nearItem?.sectionTitle}</div>
           <div style={{ color: t.faint }}>{nearItem ? exposureLine(nearItem.photo.exif) : ""}</div>
         </div>
+
+        {/* The walk is long by design; let visitors in a hurry jump past it */}
+        <button
+          type="button"
+          onClick={() => document.getElementById("chapters")?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" })}
+          style={{
+            ...mono,
+            position: "absolute",
+            left: "50%",
+            bottom: "calc(clamp(20px, 4vh, 40px) + env(safe-area-inset-bottom))",
+            transform: "translateX(-50%)",
+            fontSize: 9,
+            color: t.ink,
+            padding: "11px 18px",
+            borderRadius: 999,
+            border: `1px solid ${t.rule}`,
+            background: t.glass,
+            backdropFilter: "blur(14px) saturate(1.4)",
+            WebkitBackdropFilter: "blur(14px) saturate(1.4)",
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Skip to chapters ↓
+        </button>
       </div>
     </section>
   );

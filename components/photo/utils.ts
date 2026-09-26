@@ -9,6 +9,25 @@ export function aspect(photo: PhotoEntry): number {
   return w / h || 1.5;
 }
 
+/**
+ * Frame-rate independent smoothing factor. `perFrame` is the fraction of the
+ * remaining distance to close per 60fps frame; `dt` is elapsed ms. On a 120Hz
+ * screen each frame closes less, so motion feels identical at any refresh rate.
+ */
+export function smoothing(perFrame: number, dt: number): number {
+  return 1 - Math.pow(1 - perFrame, Math.min(dt, 100) / (1000 / 60));
+}
+
+/** Tracks the time between animation frames, starting from the first call. */
+export function frameClock() {
+  let last = 0;
+  return (now: number) => {
+    const dt = last ? now - last : 1000 / 60;
+    last = now;
+    return dt;
+  };
+}
+
 export const pad2 = (n: number) => String(n).padStart(2, "0");
 
 // Model codes as written to EXIF, mapped to the names people actually use
