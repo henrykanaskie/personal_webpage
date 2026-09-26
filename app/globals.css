@@ -394,8 +394,8 @@ body {
      at low strength, so the glass reads slightly lighter than what's behind
      it (never a grey slab painted over it). */
   background: var(--bubble-fill);
-  -webkit-backdrop-filter: blur(2.6px) saturate(1.25) brightness(var(--bubble-lift));
-  backdrop-filter: blur(2.6px) saturate(1.25) brightness(var(--bubble-lift));
+  -webkit-backdrop-filter: blur(3px) saturate(1.25) brightness(var(--bubble-lift));
+  backdrop-filter: blur(3px) saturate(1.25) brightness(var(--bubble-lift));
   box-shadow: var(--bubble-edge);
   color: var(--ink-2);
   --bubble-fill: rgba(255, 255, 255, 0.2);
@@ -415,24 +415,6 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.28), inset 0 -1px 0 rgba(255, 255, 255, 0.06),
     inset 0 0 0 1px rgba(255, 255, 255, 0.09), inset 0 0 26px -10px rgba(255, 255, 255, 0.14),
     0 24px 48px -24px rgba(0, 0, 0, 0.85);
-}
-/* Frost: the fine grain of the etched surface, which is what makes it read
-   as frosted rather than tinted. */
-.glass-bubble::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 1.6 -0.3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 160px 160px;
-  mix-blend-mode: overlay;
-  opacity: 0.22;
-  pointer-events: none;
-  z-index: -1; /* over the glass, under the text */
-}
-.dark .glass-bubble::before {
-  mix-blend-mode: screen;
-  opacity: 0.07;
 }
 /* Thin film: the colours a soap film or coated glass throws at its edge,
    a narrow band at the rim where the film is seen most obliquely, slowly
