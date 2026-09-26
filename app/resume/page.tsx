@@ -152,9 +152,12 @@ function ExperienceCard({
 
         {/* Tech tags */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 10 }}>
-          {techStack.split(",").map((t) => (
-            <TechPill key={t.trim()} label={t.trim()} />
-          ))}
+          {techStack
+            .split(",")
+            .filter((t) => t.trim())
+            .map((t) => (
+              <TechPill key={t.trim()} label={t.trim()} />
+            ))}
         </div>
 
         {/* Divider */}
@@ -372,9 +375,12 @@ function ResumeProjectCard({
 
         {/* Tech tags */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "center", marginBottom: 10 }}>
-          {techStack.split(",").map((t) => (
-            <TechPill key={t.trim()} label={t.trim()} />
-          ))}
+          {techStack
+            .split(",")
+            .filter((t) => t.trim())
+            .map((t) => (
+              <TechPill key={t.trim()} label={t.trim()} />
+            ))}
         </div>
 
         {/* Description */}
@@ -439,6 +445,17 @@ function ResumeProjectCard({
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 const experiences: ExperienceData[] = [
+  // TODO(henry): fill in title, dates, location and stack once they're public.
+  {
+    title: "Intern",
+    company: "Daimler Truck North America",
+    dates: "Now",
+    location: "",
+    techStack: "",
+    bullets: [
+      "Joining the company behind Freightliner as an intern. Details to follow once there's work I can talk about.",
+    ],
+  },
   {
     title: "Software Engineering Intern",
     company: "DZYNE Technologies",
@@ -524,7 +541,7 @@ export default function ResumePage() {
               fontWeight: 500,
             }}
           >
-            CS honors student at Oregon State · Applied ML &amp; Systems Programming
+            CS master&apos;s student at Oregon State · Applied ML &amp; Systems Programming
           </span>
         </FuzzyText>
 
@@ -612,6 +629,11 @@ export default function ResumePage() {
       {/* ── Education ── */}
       <div className="flex flex-col gap-4 md:gap-5">
         <SectionLabel label="Education" isDark={isDark} />
+        <EducationCard
+          school="Oregon State University"
+          degree="M.S. Computer Science"
+          timeline="2026 - Present"
+        />
         <EducationCard
           school="Oregon State University"
           degree="Honors B.S. Computer Science"

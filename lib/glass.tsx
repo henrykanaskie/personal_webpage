@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { glass } from "./tokens";
 
 // ─── Hooks ──────────────────────────────────────────────────────────────────
 
@@ -31,13 +30,13 @@ export function useIsDark() {
 }
 
 // ─── Glass Style (inline) ───────────────────────────────────────────────────
+// Blur and saturation now come from .glass-panel / .glass-pill in globals.css.
+// Kept as an object so existing call sites can keep spreading it.
 
-export const glassStyle: React.CSSProperties = {
-  backdropFilter: glass.backdropFilter,
-  WebkitBackdropFilter: glass.backdropFilter,
-};
+export const glassStyle: React.CSSProperties = {};
 
 // ─── FuzzyText ──────────────────────────────────────────────────────────────
+// A soft halo that lifts text off the dot grid where it isn't sitting on glass.
 
 export const FuzzyText = ({
   children,
@@ -66,7 +65,7 @@ export const FuzzyText = ({
           borderRadius: "15px",
           transform: "translateZ(0)",
         }}
-        className="bg-[rgba(255,255,255,0.45)] dark:bg-[rgba(21,21,21,0.4)]"
+        className="bg-[color-mix(in_srgb,var(--paper)_40%,transparent)]"
       />
       <span style={{ position: "relative", zIndex: 1 }} className={className}>
         {children}
@@ -76,94 +75,34 @@ export const FuzzyText = ({
 };
 
 // ─── GlassLayers ────────────────────────────────────────────────────────────
-// Renders the 5 decorator divs shared across all glass panels:
-// specular top/bottom (light+dark), chromatic aberration, refraction, edge distortion
+// Decorates a .glass-panel: a hairline satin-metal rim, a specular line along
+// the top edge, and a faint brushed sheen that catches light from the upper left.
 
 export function GlassLayers({
   refractionSide = "left",
-  specularInset = "10%",
+  specularInset = "8%",
 }: {
   refractionSide?: "left" | "right";
   specularInset?: string;
 } = {}) {
+  const lightX = refractionSide === "left" ? "18%" : "82%";
   return (
     <>
-      {/* Specular highlight - top */}
+      <div className="metal-ring" style={{ zIndex: 0 }} />
       <div
-        className="dark:hidden"
         style={{
           position: "absolute",
           top: 0,
           left: specularInset,
           right: specularInset,
-          height: "1px",
-          background: glass.specular.top.light,
-          borderRadius: "inherit",
+          height: 1,
+          background:
+            "linear-gradient(90deg, transparent, rgba(255,255,255,0.9) 30%, rgba(255,255,255,1) 50%, rgba(255,255,255,0.9) 70%, transparent)",
+          opacity: 0.55,
           pointerEvents: "none",
           zIndex: 1,
         }}
       />
-      <div
-        className="hidden dark:block"
-        style={{
-          position: "absolute",
-          top: 0,
-          left: specularInset,
-          right: specularInset,
-          height: "1px",
-          background: glass.specular.top.dark,
-          borderRadius: "inherit",
-          pointerEvents: "none",
-          zIndex: 1,
-        }}
-      />
-
-      {/* Specular highlight - bottom */}
-      <div
-        className="dark:hidden"
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: specularInset,
-          right: specularInset,
-          height: "1px",
-          background: glass.specular.bottom.light,
-          borderRadius: "inherit",
-          pointerEvents: "none",
-          zIndex: 1,
-        }}
-      />
-      <div
-        className="hidden dark:block"
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: specularInset,
-          right: specularInset,
-          height: "1px",
-          background: glass.specular.bottom.dark,
-          borderRadius: "inherit",
-          pointerEvents: "none",
-          zIndex: 1,
-        }}
-      />
-
-      {/* Chromatic aberration */}
-      <div
-        style={{
-          position: "absolute",
-          top: -1,
-          left: -1,
-          right: -1,
-          bottom: -1,
-          borderRadius: "inherit",
-          pointerEvents: "none",
-          zIndex: 0,
-          boxShadow: glass.chromaticAberration,
-        }}
-      />
-
-      {/* Internal refraction gradient */}
       <div
         style={{
           position: "absolute",
@@ -171,22 +110,7 @@ export function GlassLayers({
           borderRadius: "inherit",
           pointerEvents: "none",
           zIndex: 0,
-          background: glass.refraction[refractionSide],
-        }}
-      />
-
-      {/* Edge distortion: heavier blur at edges */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          borderRadius: "inherit",
-          pointerEvents: "none",
-          zIndex: 0,
-          WebkitMaskImage: glass.edgeMask,
-          maskImage: glass.edgeMask,
-          backdropFilter: glass.edgeBlur,
-          WebkitBackdropFilter: glass.edgeBlur,
+          background: `radial-gradient(90% 60% at ${lightX} 0%, rgba(255,255,255,0.18), transparent 60%)`,
         }}
       />
     </>

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useIsDark } from "@/lib/glass";
 import GlassTitle from "@/components/GlassTitle";
+import DotField from "@/components/DotField";
 
 const navLinks = [
   { name: "About", href: "/cs", sectionId: "about" },
@@ -478,6 +479,11 @@ function CSSide({
       animate={{ scale: active ? 1.018 : 1 }}
       transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
     >
+      {/* Drafting sheet: the dot grid, live under the cursor, with glass drifting over it */}
+      <div className="absolute inset-0" aria-hidden>
+        <DotField origin={{ x: 0.5, y: 0.5 }} />
+      </div>
+
       {/* Name */}
       <div
         style={{
@@ -490,7 +496,7 @@ function CSSide({
       >
         <p
           style={{
-            color: isDark ? "rgba(200,210,225,0.55)" : "rgba(80,90,110,0.55)",
+            color: "var(--ink-2)",
             fontFamily: "var(--font-elevated)",
             fontSize: "clamp(1rem, 1.8vw, 1.4rem)",
             letterSpacing: "0.5em",
@@ -514,7 +520,7 @@ function CSSide({
       >
         <GlassTitle
           text="Computer Science"
-          variant="crystalline"
+          variant="metal"
           fontSize={isMobile ? "clamp(1.6rem, 8vw, 3rem)" : "clamp(2.8rem, 5.5vw, 5rem)"}
           containerClassName="!pt-0 !pb-0"
           disableEntrance
@@ -562,7 +568,7 @@ function CSSide({
                 className="px-3 py-1.5 rounded-full font-semibold tracking-wide transition-colors duration-200 hover:bg-white/[0.05] dark:hover:bg-white/[0.06]"
                 style={{ fontSize: "15px" }}
               >
-                <span style={{ color: isDark ? "rgba(200,210,225,0.55)" : "rgba(80,90,110,0.55)" }}>
+                <span style={{ color: "var(--ink-2)" }}>
                   {link.name}
                 </span>
               </Link>

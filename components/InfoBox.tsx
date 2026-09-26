@@ -219,13 +219,7 @@ export default function InfoBox({
               <div className="mt-6 flex justify-center">
                 <button
                   onClick={isBubbleOpen ? requestPop : openBubble}
-                  className="
-                  group relative px-4 py-2 rounded-full text-sm font-medium
-                  text-black dark:text-white
-                  bg-blue-500/3 hover:bg-blue-500/5 dark:bg-white/5 dark:hover:bg-white/10
-                  border border-[rgba(100,130,200,0.2)]
-                  dark:border-[rgba(255,255,255,0.05)] transition-all duration-300
-                "
+                  className="glass-pill group relative px-4 py-2 rounded-full text-sm font-medium hover:-translate-y-px"
                 >
                   <span className="relative z-10">
                     {isBubbleOpen ? "Close" : "More Info"}

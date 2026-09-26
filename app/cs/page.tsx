@@ -15,13 +15,14 @@ import {
   cs,
   themed,
   glassBoxClassNames,
-  glassBubbleClassNames,
+  metalClassNames,
 } from "@/lib/tokens";
 import { CrystallineText } from "@/components/Header";
 import InfoBox from "@/components/InfoBox";
 import AboutBlurb from "@/components/AboutBlurb";
 import ProjectCard from "@/components/ProjectCard";
 import EducationCard from "@/components/EducationCard";
+import DotField from "@/components/DotField";
 import { rocketPaths } from "@/svgs/rocketPaths";
 import { fpgaPaths } from "@/svgs/fpgaPaths";
 import { dronesPaths } from "@/svgs/dronesPaths";
@@ -29,23 +30,21 @@ import { thrusterPaths } from "@/svgs/thrusterPaths";
 import { cpuPaths } from "@/svgs/cpuPaths";
 import { beePaths } from "@/svgs/beePaths";
 import { nnPaths } from "@/svgs/nnPaths";
+import { daimlerPaths } from "@/svgs/daimlerPaths";
+import PartsList from "@/components/PartsList";
 
 // ── Section divider ───────────────────────────────────────────────────────────
 function SectionDivider() {
-  const isDark = useIsDark();
   return (
-    <div className="w-full px-[5%] my-12 md:my-24">
-      <div
-        style={{
-          height: "2px",
-          background: isDark
-            ? "linear-gradient(90deg, transparent 5%, rgba(180,200,255,0.22) 25%, rgba(200,185,225,0.32) 50%, rgba(180,200,255,0.22) 75%, transparent 95%)"
-            : "linear-gradient(90deg, transparent 5%, rgba(22,90,139,0.5) 25%, rgba(22,90,139,0.65) 50%, rgba(22,90,139,0.5) 75%, transparent 95%)",
-        }}
-      />
+    <div className="w-full px-[5%] my-12 md:my-24" aria-hidden>
+      <div className="dot-rule" />
     </div>
   );
 }
+
+// ── About ─────────────────────────────────────────────────────────────────────
+const ABOUT =
+  "Hey there! My name's Henry. I'm a Computer Science master's student at Oregon State University, where I also finished my honors undergrad, and I'm joining Daimler Truck North America as an intern. I'm passionate about machine learning, space, and medicine, and I love working on software and impactful technology that helps people. I'm driven by problems where computation meets real-world change and improvement. Outside of engineering, I'm usually behind a camera, on the slopes, lifting, or finding new music. I value growth and learning above everything, and I'm always excited to connect with others who share that mindset!";
 
 // ── Projects helpers ──────────────────────────────────────────────────────────
 // Two cards per row keeps each card at full width and leaves room for the
@@ -91,7 +90,7 @@ const projects = [
       "Paste a GitHub URL, get an interactive guide to the repository. Source is chunked by AST rather than line count and reranked before an LLM answers, so every claim cites the exact lines behind it. Q&A, architecture walkthroughs, an agentic mode, and dependency tracing. Built at BeaverHacks 2026.",
     deployment: {
       progress: 100,
-      githubUrl: "https://github.com/henrykanaskie/beaverhacks26",
+      githubUrl: "https://github.com/henrykanaskie/accliMate",
     },
     svgs: [placeholderSvgLeft],
   },
@@ -100,9 +99,9 @@ const projects = [
     techStack: "Swift 6, SpriteKit, AppKit",
     thumbnail: "/projects/sprite-room.webp",
     description:
-      "A macOS app that drops from the notch and renders a live coding agent's activity as a pixel-art room: each agent a character, each tool call something it is visibly doing. Read-only by design: it never controls an agent or shows prompt content. 396 tests and a replay harness keep the scene deterministic.",
+      "A macOS app that drops from the notch and renders a live coding agent's activity as a pixel-art room: each agent a character, each tool call something it is visibly doing. Read-only by design: it never controls an agent or shows prompt content. 871 tests across 87 suites and a replay harness keep the scene deterministic.",
     deployment: {
-      progress: 80,
+      progress: 100,
       githubUrl: "https://github.com/henrykanaskie/animAgent",
     },
     svgs: [placeholderSvgRight],
@@ -534,9 +533,25 @@ export default function CSPage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 1.4, repeat: 0, ease: "easeInOut" }}
-        style={{ scrollMarginTop: "80px" }}
+        style={{ scrollMarginTop: "80px", position: "relative" }}
         className="flex flex-col items-center gap-12 md:gap-28 pb-[5vh]"
       >
+        {/* The sheet under the hero: dots that answer the cursor, glass drifting over them */}
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: "calc(50% - 50vw)",
+            width: "100vw",
+            top: -140,
+            bottom: 0,
+            zIndex: 0,
+            pointerEvents: "none",
+          }}
+        >
+          <DotField origin={{ x: 0.5, y: 0.32 }} />
+        </div>
+
         {/* Single row: Photo + Name/Links + Bio */}
         <div
           style={{
@@ -546,7 +561,7 @@ export default function CSPage() {
             minHeight: isMobile ? undefined : "400px",
             gap: "clamp(1rem, 3vw, 2.5rem)",
           }}
-          className="w-full px-2 md:px-[5%] pt-8 md:pt-14"
+          className="relative z-[1] w-full px-2 md:px-[5%] pt-8 md:pt-14"
         >
           {isMobile ? (
             /* ── Mobile layout ── */
@@ -554,7 +569,7 @@ export default function CSPage() {
               {/* Name */}
               <GlassTitle
                 text="Henry Kanaskie"
-                variant="crystalline"
+                variant="metal"
                 containerClassName="justify-center items-center !pt-0 !pb-0"
                 fontSize="clamp(2rem, 11vw, 3.5rem)"
                 disableEntrance
@@ -608,7 +623,7 @@ export default function CSPage() {
                     action: () => setResumeOpen(true),
                   },
                 ].map((item) => {
-                  const pillClassName = `${glassBubbleClassNames} rounded-full font-semibold transition-all duration-200 hover:scale-105 active:scale-95`;
+                  const pillClassName = `${metalClassNames} rounded-full font-semibold transition-transform duration-200 hover:-translate-y-px active:translate-y-px`;
                   const pillStyle: React.CSSProperties = {
                     ...glassStyle,
                     fontSize: "0.85rem",
@@ -647,7 +662,7 @@ export default function CSPage() {
               {/* Blurb */}
               <AboutBlurb
                 about={
-                  "Hey there! My name's Henry. I'm a Computer Science honors student at Oregon State University, passionate about machine learning, space, and medicine. I love working on software and impactful technology that helps people. I'm driven by problems where computation meets real-world change and improvement. Outside of engineering, I'm usually behind a camera, on the slopes, lifting, or finding new music. I value growth and learning above everything, and I'm always excited to connect with others who share that mindset!"
+                  ABOUT
                 }
               />
             </div>
@@ -705,7 +720,7 @@ export default function CSPage() {
                       action: () => setResumeOpen(true),
                     },
                   ].map((item) => {
-                    const pillClassName = `${glassBubbleClassNames} rounded-full font-semibold transition-all duration-200 hover:scale-105 active:scale-95`;
+                    const pillClassName = `${metalClassNames} rounded-full font-semibold transition-transform duration-200 hover:-translate-y-px active:translate-y-px`;
                     const pillStyle: React.CSSProperties = {
                       ...glassStyle,
                       fontSize: "0.8rem",
@@ -751,7 +766,7 @@ export default function CSPage() {
                 <div className="shrink-0">
                   <GlassTitle
                     text="Henry Kanaskie"
-                    variant="crystalline"
+                    variant="metal"
                     containerClassName="justify-start items-start !pt-0 md:!pt-0 !pb-0 md:!pb-0"
                     fontSize="clamp(2.4rem, 7.5vw, 10rem)"
                     noWrap
@@ -766,7 +781,7 @@ export default function CSPage() {
                 <div>
                   <AboutBlurb
                     about={
-                      "Hey there! My name's Henry. I'm a Computer Science honors student at Oregon State University, passionate about machine learning, space, and medicine. I love working on software and impactful technology that helps people. I'm driven by problems where computation meets real-world change and improvement. Outside of engineering, I'm usually behind a camera, on the slopes, lifting, or finding new music. I value growth and learning above everything, and I'm always excited to connect with others who share that mindset!"
+                      ABOUT
                     }
                   />
                 </div>
@@ -779,12 +794,12 @@ export default function CSPage() {
         <motion.div
           animate={{ opacity: hasScrolled ? 0 : 1 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="flex flex-col items-center gap-1 pointer-events-none select-none -mt-6 md:-mt-14"
+          className="relative z-[1] flex flex-col items-center gap-1 pointer-events-none select-none -mt-6 md:-mt-14"
           style={{ opacity: 1 }}
         >
           <span
             style={{
-              color: isDark ? "rgba(255,255,255,0.92)" : "rgba(22,90,139,0.85)",
+              color: "var(--ink-2)",
               fontSize: "0.65rem",
               fontWeight: 600,
               letterSpacing: "0.18em",
@@ -806,9 +821,8 @@ export default function CSPage() {
                 viewBox="0 0 24 14"
                 fill="none"
                 style={{
-                  stroke: isDark
-                    ? `rgba(255,255,255,${i === 0 ? 0.7 : 0.3})`
-                    : `rgba(22,90,139,${i === 0 ? 0.7 : 0.35})`,
+                  stroke: "var(--ink)",
+                  opacity: i === 0 ? 0.6 : 0.28,
                   strokeWidth: 2,
                   strokeLinecap: "round",
                   strokeLinejoin: "round",
@@ -1216,8 +1230,21 @@ export default function CSPage() {
           svgOffsetRight={{ x: 10, y: 10 }}
           svgSizeRight={47}
         />
+        {/* TODO(henry): add the role, team, dates and stack once they're public, and an
+            extraInfo block like the others so the "More Info" bubble appears. */}
         <InfoBox
           side="left"
+          title="Intern"
+          company="Daimler Truck North America"
+          role="Commercial Vehicles"
+          description="I'm joining Daimler Truck North America, the company behind Freightliner, as an intern. It's early, so this entry is short on purpose: I'll write it up properly once there's work here I can talk about."
+          svgPaths={daimlerPaths}
+          svgSize={78}
+          svgDrawDuration={5}
+          svgOffset={{ x: -10, y: 40 }}
+        />
+        <InfoBox
+          side="right"
           title="Software Engineering Intern"
           company="DZYNE Technologies"
           role="Embedded Systems & Full-Stack"
@@ -1236,7 +1263,7 @@ export default function CSPage() {
           }}
         />
         <InfoBox
-          side="right"
+          side="left"
           title="Applied Machine Learning Researcher"
           company="Plasma, Energy, and Space Propulsion Laboratory"
           role="Signal Processing & ML"
@@ -1255,7 +1282,7 @@ export default function CSPage() {
           }}
         />
         <InfoBox
-          side="left"
+          side="right"
           title="Undergraduate Researcher"
           company="Jason Clark Research Group"
           role="FPGA & DSP Engineering"
@@ -1307,6 +1334,7 @@ export default function CSPage() {
             </div>
           ))}
         </div>
+        <PartsList />
       </section>
 
       <SectionDivider />
@@ -1318,6 +1346,11 @@ export default function CSPage() {
         className="flex flex-col gap-12 md:gap-28 pb-[10vh]"
       >
         <GlassTitle text="Education" />
+        <EducationCard
+          school="Oregon State University"
+          degree="M.S. Computer Science"
+          timeline="2026 - Present"
+        />
         <EducationCard
           school="Oregon State University"
           degree="Honors B.S. Computer Science"

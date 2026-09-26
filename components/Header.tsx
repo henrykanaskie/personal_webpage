@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { PhotographyFilmStripNav } from "./PhotographyFilmStripNav";
 import { glassStyle } from "../lib/glass";
-import { glassBubbleClassNames, cs, photo, themed } from "../lib/tokens";
+import { glassBubbleClassNames, metalClassNames, cs, photo } from "../lib/tokens";
 
 // ─── Navigation links ─────────────────────────────────────────────────────────
 
@@ -23,48 +23,19 @@ const csNavLinks = [
 export function CrystallineText({
   children,
   active = false,
-  isDark = false,
 }: {
   children: React.ReactNode;
   active?: boolean;
   isDark?: boolean;
 }) {
-  const base: React.CSSProperties = {
-    WebkitBackgroundClip: "text",
-    backgroundImage: themed(
-      isDark,
-      "linear-gradient(180deg, rgba(225,238,255,0.92) 0%, rgba(200,218,255,0.62) 52%, rgba(220,208,248,0.46) 100%)",
-      "linear-gradient(180deg, rgba(75,95,145,0.97) 0%, rgba(95,110,165,0.88) 52%, rgba(105,85,130,0.78) 100%)",
-    ),
-    WebkitTextStroke: themed(isDark, "1.05px rgba(180,200,255,0.35)", "0px transparent"),
-    textShadow: themed(
-      isDark,
-      "0 1px 0 rgba(180,200,255,0.18), 0 10px 38px rgba(0,0,0,0.55)",
-      "0 1px 0 rgba(255,255,255,0.28), 0 10px 34px rgba(0,0,0,0.14)",
-    ),
-    filter: themed(isDark, "contrast(1.14)", "contrast(1.10)"),
-    opacity: active ? 1 : themed(isDark, 0.72, 0.88),
-  };
-  const rim: React.CSSProperties = {
-    WebkitBackgroundClip: "text",
-    backgroundImage: themed(
-      isDark,
-      "linear-gradient(180deg, rgba(220,235,255,0.65) 0%, rgba(180,200,255,0.22) 38%, rgba(160,190,255,0.14) 62%, rgba(140,190,255,0.28) 100%)",
-      "linear-gradient(180deg, rgba(200,215,255,0.38) 0%, rgba(160,185,240,0.16) 38%, rgba(140,170,230,0.10) 62%, rgba(105,140,220,0.18) 100%)",
-    ),
-    filter: themed(isDark, "contrast(1.18)", "contrast(1.12)"),
-    opacity: themed(isDark, active ? 0.9 : 0.78, 0) as unknown as number,
-    mixBlendMode: themed(isDark, "screen", "normal") as unknown as React.CSSProperties["mixBlendMode"],
-  };
-
+  // Nav and pill labels: plain ink. The active item sits on chrome, which
+  // carries its own ink colour, so it only needs to inherit.
   return (
-    <span className="relative inline-block">
-      <span className="relative bg-clip-text text-transparent" style={base}>
-        {children}
-      </span>
-      <span aria-hidden className="absolute inset-0 bg-clip-text text-transparent pointer-events-none" style={rim}>
-        {children}
-      </span>
+    <span
+      className="relative inline-block"
+      style={{ color: active ? "inherit" : undefined, letterSpacing: "-0.01em" }}
+    >
+      {children}
     </span>
   );
 }
@@ -461,12 +432,6 @@ export default function Header() {
   }
 
   // ── CS side: individual glass bubble nav ──
-  const activeBubbleStyle: React.CSSProperties = {
-    ...glassStyle,
-    border: isDark ? cs.navActiveBorder.dark : cs.navActiveBorder.light,
-    boxShadow: isDark ? cs.navActiveShadow.dark : cs.navActiveShadow.light,
-  };
-
   const homeSvg = (
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="2" y="3" width="7" height="14" rx="1.5"
@@ -543,8 +508,8 @@ export default function Header() {
                     }
                   }
                 }}
-                className={`${glassBubbleClassNames} px-7 py-3 rounded-full font-semibold text-lg transition-all duration-200`}
-                style={active ? activeBubbleStyle : glassStyle}
+                className={`${active ? metalClassNames : glassBubbleClassNames} px-7 py-3 rounded-full font-semibold text-lg transition-all duration-200`}
+                style={glassStyle}
               >
                 <CrystallineText active={active} isDark={isDark}>
                   {link.name}

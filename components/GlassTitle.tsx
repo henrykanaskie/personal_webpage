@@ -7,7 +7,7 @@ import { useIsDark } from "../lib/glass";
 import { cs, themed } from "../lib/tokens";
 import { registerShineEffect } from "../lib/scrollVelocity";
 
-type GlassTitleVariant = "iridescent" | "crystalline" | "crystalline-blur";
+type GlassTitleVariant = "metal" | "iridescent" | "crystalline" | "crystalline-blur";
 
 export default function GlassTitle({
   text = "experience",
@@ -20,7 +20,7 @@ export default function GlassTitle({
   svgOffsetRight = { x: 0, y: 0 },
   svgSizeRight = 80,
   svgSizeLeft = 80,
-  variant = "crystalline",
+  variant = "metal",
   debugVariantToggle = false,
   fontSize,
   containerClassName,
@@ -55,7 +55,7 @@ export default function GlassTitle({
   const drawTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const variants = useMemo(
-    () => ["crystalline", "crystalline-blur", "iridescent"] as const,
+    () => ["metal", "crystalline", "crystalline-blur", "iridescent"] as const,
     [],
   );
   const [debugVariant, setDebugVariant] = useState<GlassTitleVariant>(variant);
@@ -64,10 +64,22 @@ export default function GlassTitle({
       ? debugVariant
       : variant;
 
+  const isMetal = effectiveVariant === "metal";
   const isCrystalline = effectiveVariant === "crystalline";
   const isCrystallineBlur = effectiveVariant === "crystalline-blur";
 
   const titleStyles: React.CSSProperties = useMemo(() => {
+    if (effectiveVariant === "metal") {
+      // Fill comes from .metal-text. The shadow sits on a filter, not text-shadow,
+      // because text-shadow paints over a background-clipped fill and dulls it.
+      return {
+        filter: themed(
+          isDark,
+          "drop-shadow(0 1px 0 rgba(255,255,255,0.10)) drop-shadow(0 18px 30px rgba(0,0,0,0.55))",
+          "drop-shadow(0 1px 0 rgba(255,255,255,0.95)) drop-shadow(0 14px 22px rgba(20,24,32,0.16))",
+        ),
+      };
+    }
     if (effectiveVariant === "iridescent") {
       return {
         WebkitBackgroundClip: "text",
@@ -295,7 +307,7 @@ export default function GlassTitle({
         {/* Title text */}
         <span
           ref={textMeasureRef}
-          className="relative bg-clip-text text-transparent"
+          className={`relative bg-clip-text text-transparent ${isMetal ? "metal-text" : ""}`}
           style={titleStyles}
         >
           {text}

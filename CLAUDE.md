@@ -14,8 +14,13 @@ The voice is confident but never loud: precision over promotion. Every interacti
 **Visual tone:** A fusion of technical minimalism and atmospheric elegance. Clean structure with rich, layered surfaces: glass morphism, iridescent gradients, film grain, and vapor effects create depth without clutter.
 
 **Existing design language:**
+- CS side is built from three materials on one sheet (tokens in `app/globals.css`, mirrored in `lib/tokens.ts`):
+  - **Paper**: a dot grid. `components/DotField.tsx` redraws it in WebGL over the hero so dots part around the cursor, configure in a wave on load, and sit under refracting glass bubbles. It must paint dots at exactly the CSS positions (`paper` token).
+  - **Satin metal**: brushed chrome for titles (`.metal-text`, the `metal` GlassTitle variant) and primary controls (`.metal-surface`, including the active nav item).
+  - **Glass**: frosted panels with a hairline metal rim (`.glass-panel` + `GlassLayers`), glass pills for secondary controls.
+- Projects also appear as a bill of materials (`components/PartsList.tsx`, data in `lib/parts.ts`), mirroring the GitHub profile's `data/profile.toml`
 - Glass morphism with subtle blur, saturation, and specular highlights
-- Iridescent color shifts (cool blue/purple for CS, warm rose/periwinkle for Photography)
+- Iridescent color shifts (warm rose/periwinkle for Photography; on the CS side only as a faint thin-film tint on glass)
 - Film grain overlay for photographic texture
 - Vapor particle effects for interactive delight
 - Animated SVG line drawings for technical illustration

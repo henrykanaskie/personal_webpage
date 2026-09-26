@@ -53,9 +53,10 @@ export const cs = {
   },
 
   // Liquid glass / crystalline text gradient (matches GlassTitle crystalline variant)
+  // Satin metal for headings inside cards: the page's --metal-text, tuned for smaller sizes.
   liquidGlass: {
-    light: `linear-gradient(180deg, rgba(14,18,52,0.88) 0%, rgba(22,32,80,0.72) 48%, rgba(30,45,100,0.52) 100%)`,
-    dark: `linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 15%, rgb(180,210,235) 30%, rgb(215,190,215) 45%, rgb(170,200,230) 60%, rgb(200,185,225) 75%, rgb(180,195,235) 90%, rgb(210,185,220) 100%)`,
+    light: `linear-gradient(180deg, #5b616b 0%, #2a2e36 45%, #0f1115 56%, #3a3f48 72%, #5d636d 100%)`,
+    dark: `linear-gradient(180deg, #ffffff 0%, #dde1e7 42%, #9aa0aa 55%, #c9cdd4 70%, #f3f4f6 100%)`,
   },
 
   // Standalone color (for stroke, color props, not gradients)
@@ -96,12 +97,12 @@ export const cs = {
 
   // Nav active bubble border/shadow
   navActiveBorder: {
-    light: "1px solid rgba(100,115,145,0.25)",
-    dark: "1px solid rgba(180,200,255,0.3)",
+    light: "none",
+    dark: "none",
   },
   navActiveShadow: {
-    light: "inset 0 1px 0 rgba(255,255,255,0.5), 0 4px 16px rgba(100,115,145,0.1)",
-    dark: "inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 16px rgba(180,200,255,0.1)",
+    light: "var(--metal-rim)",
+    dark: "var(--metal-rim)",
   },
 
   // SkillBar fill glow
@@ -115,6 +116,17 @@ export const cs = {
     light: `0 1px 2px rgba(0,0,0,0.06), 0 4px 8px rgba(0,0,0,0.04), 0 1px 0 rgba(255,255,255,0.15), 2px 0 8px rgba(255,0,80,0.04), -2px 0 8px rgba(0,100,255,0.04), 0 2px 8px rgba(255,200,0,0.03), 0 -2px 8px rgba(0,200,255,0.03)`,
     dark: `0 1px 2px rgba(0,0,0,0.2), 0 4px 8px rgba(0,0,0,0.1), 0 1px 0 rgba(255,255,255,0.05)`,
   },
+} as const;
+
+// ─── Paper ──────────────────────────────────────────────────────────────────
+// Mirrors --paper, --dot and --dot-gap in app/globals.css. The WebGL dot field
+// paints over the CSS dots, so these must match exactly or the seam shows.
+
+export const paper = {
+  gap: 24,
+  dotRadius: 1.15,
+  light: { bg: [0xef, 0xf0, 0xf2], dot: [38, 46, 62], dotAlpha: 0.26 },
+  dark: { bg: [0x0c, 0x0d, 0x10], dot: [196, 204, 222], dotAlpha: 0.16 },
 } as const;
 
 // ─── Photography Palette (warm rose/periwinkle) ─────────────────────────────
@@ -169,35 +181,11 @@ export const glass = {
 
 // ─── Tailwind Class Strings ─────────────────────────────────────────────────
 
-export const glassBubbleClassNames = `
-  bg-white/[0.35]
-  border border-[rgba(80,150,255,0.18)]
-  border-t-[rgba(16,112,196,0.38)]
-  border-r-[rgba(16,112,196,0.18)]
-  border-b-[rgba(16,112,196,0.22)]
-  shadow-[inset_0_1px_0_rgba(80,150,255,0.12)]
-  shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]
-
-  dark:bg-white/[0.02]
-  dark:border-[rgba(255,255,255,0.06)]
-  dark:border-t-[rgba(255,255,255,0.1)]
-  dark:border-r-[rgba(255,255,255,0.04)]
-  dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]
-`;
-
-export const glassBoxClassNames = `
-  bg-transparent
-  border border-[rgba(16,112,196,0.14)]
-  border-t-[rgba(16,112,196,0.36)]
-  border-r-[rgba(16,112,196,0.14)]
-  border-b-[rgba(16,112,196,0.22)]
-  shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]
-
-  dark:border-[rgba(255,255,255,0.06)]
-  dark:border-t-[rgba(255,255,255,0.1)]
-  dark:border-r-[rgba(255,255,255,0.04)]
-  dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]
-`;
+// The materials themselves live in app/globals.css (.glass-pill, .glass-panel,
+// .metal-surface) so light and dark resolve through CSS variables, not React state.
+export const glassBubbleClassNames = "glass-pill";
+export const glassBoxClassNames = "glass-panel";
+export const metalClassNames = "metal-surface";
 
 // ─── Radii ──────────────────────────────────────────────────────────────────
 
