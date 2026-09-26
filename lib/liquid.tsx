@@ -242,8 +242,10 @@ void main() {
   // clear, iridescent one.
   float isDrop = uBubble * smoothstep(1.0, -1.0, drop(p) - cardStub(p));
   float stretch = max(smoothstep(2.0, 38.0, dc), isDrop);
-  // thin film colour: the hue runs round the edge and drifts slowly
-  vec3 film = 0.5 + 0.5 * cos(6.2831 * (vec3(0.0, 0.33, 0.67) + atan(n.y, n.x) * 0.16 + uTime * 0.05));
+  // thin film colour, the same as the settled bubble's (.glass-bubble::after):
+  // pink on the left edge, cyan on the right, violet on top, gold below
+  float wl = max(-n.x, 0.0), wr = max(n.x, 0.0), wt = max(-n.y, 0.0), wb = max(n.y, 0.0);
+  vec3 film = (vec3(1.0, 0.59, 0.8) * wl + vec3(0.47, 0.8, 1.0) * wr + vec3(0.73, 0.63, 1.0) * wt + vec3(1.0, 0.86, 0.55) * wb) / (wl + wr + wt + wb + 1e-3);
 
   if (cover > 0.0) {
     float rim = 1.0 - clamp(-d / 26.0, 0.0, 1.0);
@@ -254,8 +256,8 @@ void main() {
     vec4 cardM = vec4(col, 1.0);
     // bubble material: a light see-through fill, the film glowing toward the rim
     float f = pow(1.0 - clamp(-d / 14.0, 0.0, 1.0), 2.0);
-    float fa = f * (0.26 + 0.06 * uDark);
-    vec4 bubM = vec4(vec3(uBubA) + mix(vec3(1.0), film, 0.6) * fa, uBubA + fa);
+    float fa = f * (0.1 + 0.04 * uDark);
+    vec4 bubM = vec4(vec3(uBubA) + film * fa, uBubA + fa);
     outc = mix(outc, mix(cardM, bubM, stretch), cover);
   }
 
@@ -264,15 +266,20 @@ void main() {
   // the card's chrome hairline runs unbroken out along the bulge, turning into
   // the bubble's iridescent film as it stretches, and the bubble leaves with it.
   float line = 1.0 - smoothstep(0.0, 1.1, abs(d + 0.6));
-  float glow = smoothstep(-7.0, 0.0, d) * (1.0 - smoothstep(-0.5, 0.5, d));
+  float glow = smoothstep(-6.0, -0.5, d) * (1.0 - smoothstep(-0.5, 0.5, d));
   vec3 chrome = mix(mix(vec3(1.0), vec3(0.55, 0.53, 0.5), smoothstep(-0.4, 0.6, n.y)),
                     mix(vec3(0.62), vec3(0.26), smoothstep(-0.4, 0.6, n.y)), uDark);
-  vec3 filmRim = mix(vec3(1.0), film, 0.42); // soap film, not neon: mostly white light, a little colour
-  vec3 rimCol = mix(chrome, filmRim, stretch);
+  // the settled bubble's edge: a white lip, bright on top and faint below,
+  // with the film as a narrow soft band just inside it
+  float lipA = mix(mix(0.85, 0.4, smoothstep(-0.6, 0.6, n.y)), mix(0.3, 0.08, smoothstep(-0.6, 0.6, n.y)), uDark);
+  vec3 rimCol = mix(chrome, vec3(1.0), stretch);
   // Only near the bud: elsewhere the card's own (DOM) rim is still there, and
   // the two hand over across the same 40px falloff the rim's hole uses.
   float own = uHole.z > 0.5 ? 1.0 - clamp((length(p - uHole.xy) - uHole.z) / 40.0, 0.0, 1.0) : 0.0;
-  float rimA = (line * mix(0.6, 0.7, stretch) + glow * stretch * 0.18) * uRim * max(own, smoothstep(0.5, 1.5, dc));
+  float reach = uRim * max(own, smoothstep(0.5, 1.5, dc));
+  float rimA = line * mix(0.6, lipA, stretch) * reach;
+  float filmA = glow * stretch * mix(0.3, 0.34, uDark) * reach;
+  outc = vec4(film, 1.0) * filmA + outc * (1.0 - filmA);
   outc = vec4(rimCol, 1.0) * rimA + outc * (1.0 - rimA);
   gl_FragColor = outc * uAlpha;
 }
