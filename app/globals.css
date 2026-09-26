@@ -28,10 +28,10 @@
   --deboss: 0 1px 0 rgba(255, 255, 255, 0.75);
   /* Chrome lettering: the pill's satin chrome, sized to one line of type so
      every line (and so every letter) gets the whole reflection, with a soft
-     horizon instead of a hard band. On the light sheet the chrome runs darker
-     (it reflects a darker room) so it reads without any outline. */
-  --chrome-type: linear-gradient(180deg, #c9c6c0 0%, #9d9993 26%, #6e6a64 44%, #3a3834 53%, #2c2a27 57%, #55524d 68%, #8f8b85 86%, #b9b5af 100%);
-  --chrome-edge: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.7));
+     horizon instead of a hard band. On the light sheet it is the same bright
+     chrome; the dark horizon and a soft cast shadow (no outline) carry it. */
+  --chrome-type: linear-gradient(180deg, #f4f2ee 0%, #d3d0ca 22%, #a6a29b 41%, #5f5c57 51%, #4d4b46 55%, #7e7a74 67%, #bfbbb5 85%, #e8e5e0 100%);
+  --chrome-edge: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.8)) drop-shadow(0 0.025em 0.035em rgba(40, 34, 28, 0.16));
   /* Steel wire for the line drawings */
   --wire-hi: #8d8a84;
   --wire-mid: #45433f;
