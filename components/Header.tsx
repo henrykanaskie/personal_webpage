@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { PhotographyFilmStripNav } from "./PhotographyFilmStripNav";
+import FeedbackToggle from "./photo/FeedbackToggle";
 import { glassStyle } from "../lib/glass";
 import { glassBubbleClassNames, cs, photo, themed } from "../lib/tokens";
 
@@ -448,13 +449,16 @@ export default function Header() {
           </Link>
         }
         bottomControls={
-          <ThemeToggleButton
-            isDark={isDark}
-            mounted={mounted}
-            maskId={maskId}
-            onToggle={toggleDarkMode}
-            photoMode
-          />
+          <>
+            <FeedbackToggle isDark={isDark} />
+            <ThemeToggleButton
+              isDark={isDark}
+              mounted={mounted}
+              maskId={maskId}
+              onToggle={toggleDarkMode}
+              photoMode
+            />
+          </>
         }
       />
     );

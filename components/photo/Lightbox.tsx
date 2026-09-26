@@ -6,6 +6,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import type { PhotoEntry } from "@/app/photography/data";
 import Histogram from "./Histogram";
+import { shutter } from "./feedback";
 import {
   EASE_OUT,
   aspect,
@@ -119,6 +120,11 @@ export default function Lightbox({
   useEffect(() => {
     if (window.innerWidth < 1024) setPanelOpen(false);
   }, []);
+
+  // Shutter click on open and on every frame change (silent unless the visitor opted in)
+  useEffect(() => {
+    shutter();
+  }, [index]);
 
   const go = useCallback(
     (delta: number) => {

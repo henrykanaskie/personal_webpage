@@ -7,6 +7,8 @@ import { HERO_PHOTOS, Section } from "@/app/photography/data";
 import IrisHero, { HeroItem } from "@/components/photo/IrisHero";
 import DepthArchive from "@/components/photo/DepthArchive";
 import ChapterIndex from "@/components/photo/ChapterIndex";
+import LightTable from "@/components/photo/LightTable";
+import PlayTeaser from "@/components/photo/PlayTeaser";
 import Lightbox, { LightboxItem } from "@/components/photo/Lightbox";
 import { EASE_OUT, photoTheme } from "@/components/photo/utils";
 
@@ -34,6 +36,20 @@ export default function PhotoGalleryClient({ sections }: { sections: Section[] }
     }
     // Fall back to each chapter's first frame if the curated list is stale
     return picks.length ? picks : live.map((s) => ({ photo: s.photos[0], sectionTitle: s.title }));
+  }, [live]);
+
+  // Loose prints for the light table, offset from the frames the archive already shows
+  const tableItems = useMemo<LightboxItem[]>(() => {
+    const per = Math.ceil(12 / Math.max(1, live.length));
+    return live
+      .flatMap((s) =>
+        Array.from({ length: Math.min(per, s.photos.length) }, (_, k) => ({
+          photo: s.photos[Math.floor((k * s.photos.length) / per + s.photos.length / (per * 2)) % s.photos.length],
+          sectionId: s.id,
+          sectionTitle: s.title,
+        })),
+      )
+      .slice(0, 12);
   }, [live]);
 
   const mono: React.CSSProperties = {
@@ -87,6 +103,10 @@ export default function PhotoGalleryClient({ sections }: { sections: Section[] }
         isDark={isDark}
         onOpen={(items, index, rect) => setOpen({ items, index, origin: rect })}
       />
+
+      <LightTable items={tableItems} isDark={isDark} onOpen={(index, rect) => setOpen({ items: tableItems, index, origin: rect })} />
+
+      <PlayTeaser photo={heroItems[heroItems.length - 1].photo} isDark={isDark} />
 
       <ChapterIndex sections={sections} isDark={isDark} />
 

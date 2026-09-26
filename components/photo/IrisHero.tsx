@@ -5,6 +5,7 @@ import Image from "next/image";
 import { animate, motion, useMotionValue, useReducedMotion, useScroll } from "framer-motion";
 import type { PhotoEntry } from "@/app/photography/data";
 import { EASE_OUT, exposureLine, frameClock, pad2, smoothing } from "./utils";
+import { shutter } from "./feedback";
 
 const BLADES = 9;
 const IRIS_OPEN = 160;
@@ -76,27 +77,48 @@ export default function IrisHero({
     return iris.on("change", apply);
   }, [iris]);
 
+  // One routine takes every shot, whether the timer fires or the visitor taps
+  const shootRef = useRef<(manual: boolean) => void>(() => {});
+  const [flash, setFlash] = useState(0);
+
   // Opening shutter on load, then cycle frames through the iris
   useEffect(() => {
     let cancelled = false;
+    let busy = false;
     let timer: ReturnType<typeof setTimeout>;
     const open = () => animate(iris, IRIS_OPEN, { duration: reduceMotion ? 0 : 1.3, ease: [0.16, 1, 0.3, 1] });
-    const cycle = () => {
-      timer = setTimeout(async () => {
+    const schedule = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
         // Don't cycle while the hero is scrolled away
-        if (scrollYProgress.get() > 0.5) return cycle();
-        await animate(iris, 0, { duration: reduceMotion ? 0 : 0.55, ease: [0.7, 0, 0.84, 0] });
-        if (cancelled) return;
-        setActive((a) => (a + 1) % items.length);
-        await new Promise((r) => setTimeout(r, 140));
-        if (cancelled) return;
-        await open();
-        if (!cancelled) cycle();
+        if (scrollYProgress.get() > 0.5) return schedule();
+        void shoot(false);
       }, ROTATE_MS);
     };
-    const intro = setTimeout(async () => {
+    const shoot = async (manual: boolean) => {
+      if (busy) return;
+      busy = true;
+      clearTimeout(timer);
+      if (manual) {
+        shutter();
+        setFlash((f) => f + 1);
+      }
+      // A tap fires a snappier shutter than the ambient cycle
+      await animate(iris, 0, { duration: reduceMotion ? 0 : manual ? 0.22 : 0.55, ease: [0.7, 0, 0.84, 0] });
+      if (cancelled) return;
+      setActive((a) => (a + 1) % items.length);
+      await new Promise((r) => setTimeout(r, manual ? 60 : 140));
+      if (cancelled) return;
       await open();
-      if (!cancelled) cycle();
+      busy = false;
+      if (!cancelled) schedule();
+    };
+    shootRef.current = (manual) => void shoot(manual);
+    const intro = setTimeout(async () => {
+      busy = true;
+      await open();
+      busy = false;
+      if (!cancelled) schedule();
     }, 250);
     return () => {
       cancelled = true;
@@ -205,7 +227,23 @@ export default function IrisHero({
         marginTop: "calc(-1 * (env(safe-area-inset-top) + 72px))",
       }}
     >
-      <div ref={stageRef} style={{ position: "sticky", top: 0, height: "100svh", overflow: "hidden", background: "#060508" }}>
+      <div
+        ref={stageRef}
+        data-af="Tap to shoot"
+        onClick={() => shootRef.current(true)}
+        style={{ position: "sticky", top: 0, height: "100svh", overflow: "hidden", background: "#060508", cursor: "pointer" }}
+      >
+        {/* Camera flash when the visitor takes the shot */}
+        {flash > 0 && (
+          <motion.div
+            key={flash}
+            aria-hidden
+            initial={{ opacity: 0.85 }}
+            animate={{ opacity: 0 }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
+            style={{ position: "absolute", inset: 0, background: "#fff", zIndex: 5, pointerEvents: "none" }}
+          />
+        )}
         {/* Out-of-focus plate */}
         <div style={{ position: "absolute", inset: 0, filter: "blur(22px) saturate(0.55) brightness(0.55)", transform: "scale(1.1)" }}>
           <Image
@@ -417,7 +455,7 @@ export default function IrisHero({
             ))}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ whiteSpace: "nowrap" }}>Scroll{isNarrow ? "" : " to pull focus"}</span>
+            <span style={{ whiteSpace: "nowrap" }}>{isNarrow ? "Tap to shoot · scroll" : "Click to shoot · scroll to pull focus"}</span>
             <motion.span
               animate={{ y: [0, 6, 0] }}
               transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
