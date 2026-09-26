@@ -131,10 +131,3 @@ body {
 .af-box > div {
   transition: opacity 0.2s ease;
 }
-
-/* Develop mode sliders: a taller hit area for fingers */
-.develop-range {
-  height: 24px;
-  margin: 0;
-  cursor: pointer;
-}

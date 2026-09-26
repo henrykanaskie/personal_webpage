@@ -2,9 +2,9 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
-import { motion, useInView } from "framer-motion";
+import { motion } from "framer-motion";
 import { useIsDark } from "@/lib/glass";
-import { EASE_OUT, formatShutter, photoTheme } from "@/components/photo/utils";
+import { EASE_OUT, photoTheme } from "@/components/photo/utils";
 
 // ─── Gear data: update with your actual kit ─────────────────────────────────
 
@@ -32,99 +32,13 @@ const GEAR: GearCategory[] = [
   },
 ];
 
-export interface Bucket {
-  label: string;
-  count: number;
-}
-
-export interface ShootingStats {
-  frames: number;
-  chapters: number;
-  fastest: number | null;
-  longest: number | null;
-  isoMin: number | null;
-  isoMax: number | null;
-  focal: Bucket[];
-  aperture: Bucket[];
-  shutter: Bucket[];
-  lenses: Bucket[];
-  bodies: Bucket[];
-  /** Every frame's dominant colour, sorted by hue */
-  strip: string[];
-}
-
 const mono: React.CSSProperties = {
   fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
   letterSpacing: "0.22em",
   textTransform: "uppercase",
 };
 
-/** Horizontal bar chart; every bar shares one scale (the largest bucket). */
-function Distribution({ title, note, buckets, isDark }: { title: string; note: string; buckets: Bucket[]; isDark: boolean }) {
-  const t = photoTheme(isDark);
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-10% 0px" });
-  const max = Math.max(1, ...buckets.map((b) => b.count));
-  const peak = buckets.reduce((best, b) => (b.count > best.count ? b : best), buckets[0]);
-
-  return (
-    <div ref={ref} style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
-        <h3 style={{ margin: 0, fontFamily: "var(--font-elevated)", fontWeight: 400, fontSize: "1.15rem", color: t.ink }}>{title}</h3>
-        <span style={{ ...mono, fontSize: 8, color: t.faint }}>Frames</span>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-        {buckets.map((b, i) => {
-          const isPeak = b === peak;
-          return (
-            <div
-              key={b.label}
-              style={{ display: "grid", gridTemplateColumns: "minmax(96px, 38%) 1fr 26px", alignItems: "center", gap: 10 }}
-            >
-              <span
-                style={{
-                  ...mono,
-                  letterSpacing: "0.08em",
-                  textTransform: "none",
-                  fontSize: 11,
-                  color: isPeak ? t.ink : t.sub,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-                title={b.label}
-              >
-                {b.label}
-              </span>
-              <div style={{ height: 8, borderRadius: 4, background: t.rule, overflow: "hidden" }}>
-                <motion.div
-                  initial={{ scaleX: 0 }}
-                  animate={inView ? { scaleX: b.count / max } : {}}
-                  transition={{ duration: 1.1, delay: 0.1 + i * 0.07, ease: EASE_OUT }}
-                  style={{
-                    height: "100%",
-                    transformOrigin: "left",
-                    borderRadius: 4,
-                    background: isPeak ? t.accent : t.faint,
-                  }}
-                />
-              </div>
-              <span style={{ fontSize: 12, color: isPeak ? t.ink : t.sub, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                {b.count}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55, color: t.sub }}>{note}</p>
-    </div>
-  );
-}
-
-const countOf = (buckets: Bucket[], label: string) => buckets.find((b) => b.label === label)?.count ?? 0;
-const peakOf = (buckets: Bucket[]) => buckets.reduce((best, b) => (b.count > best.count ? b : best), buckets[0])?.label ?? "-";
-
-export default function AboutClient({ stats }: { stats: ShootingStats }) {
+export default function AboutClient() {
   const isDark = useIsDark();
   const t = photoTheme(isDark);
 
@@ -199,13 +113,6 @@ export default function AboutClient({ stats }: { stats: ShootingStats }) {
     boxShadow: focused === field ? `0 0 0 4px ${t.accentSoft}` : "none",
     transition: "border-color 0.25s ease, box-shadow 0.25s ease",
   });
-
-  const figures: [string, string][] = [
-    ["Frames", String(stats.frames)],
-    ["Fastest", formatShutter(stats.fastest ?? undefined) ?? "-"],
-    ["Longest", formatShutter(stats.longest ?? undefined) ?? "-"],
-    ["ISO range", stats.isoMin && stats.isoMax ? `${stats.isoMin}-${stats.isoMax}` : "-"],
-  ];
 
   const section: React.CSSProperties = {
     maxWidth: 1180,
@@ -343,123 +250,12 @@ export default function AboutClient({ stats }: { stats: ShootingStats }) {
         </motion.div>
       </section>
 
-      {/* ── Shooting data ─────────────────────────────────────────────────── */}
-      <section
-        style={{
-          ...section,
-          marginTop: "clamp(96px, 16vh, 180px)",
-          display: "flex",
-          flexDirection: "column",
-          gap: "clamp(32px, 5vw, 56px)",
-        }}
-      >
-        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          {eyebrow("Shooting data")}
-          <h2
-            style={{
-              margin: 0,
-              fontFamily: "var(--font-elevated)",
-              fontWeight: 300,
-              fontSize: "clamp(1.8rem, 4.4vw, 3.4rem)",
-              lineHeight: 1.08,
-              letterSpacing: "-0.025em",
-              color: t.ink,
-              maxWidth: "20em",
-            }}
-          >
-            How these photos were made.{" "}
-            <span style={{ color: t.faint }}>Read straight from the camera data embedded in every frame on this site.</span>
-          </h2>
-        </div>
-
-        <dl
-          style={{
-            margin: 0,
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-            borderTop: `1px solid ${t.rule}`,
-          }}
-        >
-          {figures.map(([label, value]) => (
-            <div key={label} style={{ padding: "22px 0 4px", display: "flex", flexDirection: "column", gap: 8 }}>
-              <dt style={{ ...mono, fontSize: 8.5, color: t.faint }}>{label}</dt>
-              <dd
-                style={{
-                  margin: 0,
-                  fontFamily: "var(--font-elevated)",
-                  fontSize: "clamp(2rem, 4vw, 3rem)",
-                  fontWeight: 300,
-                  color: t.ink,
-                  fontVariantNumeric: "tabular-nums",
-                  lineHeight: 1,
-                }}
-              >
-                {value}
-              </dd>
-            </div>
-          ))}
-        </dl>
-
-        <div
-          style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))", gap: "clamp(36px, 5vw, 64px)" }}
-        >
-          <Distribution
-            title="Focal length"
-            buckets={stats.focal}
-            isDark={isDark}
-            note={`${countOf(stats.focal, "70mm")} of ${stats.frames} frames sit at exactly 70mm, the long end of the everyday zoom.`}
-          />
-          <Distribution
-            title="Aperture"
-            buckets={stats.aperture}
-            isDark={isDark}
-            note={`The most common range is ${peakOf(stats.aperture)}.`}
-          />
-          <Distribution
-            title="Shutter speed"
-            buckets={stats.shutter}
-            isDark={isDark}
-            note={`${countOf(stats.shutter, "1″ and longer")} frames needed an exposure of a second or longer.`}
-          />
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ ...mono, fontSize: 8.5, color: t.faint, display: "flex", justifyContent: "space-between", gap: 12 }}>
-            <span>Every frame, sorted by colour</span>
-            <span>{stats.strip.length} frames</span>
-          </div>
-          {/* Observe the full-height container: the bars start at zero height and would never register as visible */}
-          <motion.div
-            initial="hidden"
-            whileInView="shown"
-            viewport={{ once: true, margin: "-5% 0px" }}
-            style={{ display: "flex", height: "clamp(44px, 7vw, 72px)", borderRadius: 6, overflow: "hidden" }}
-            aria-hidden
-          >
-            {stats.strip.map((c, i) => (
-              <motion.span
-                key={i}
-                variants={{ hidden: { scaleY: 0 }, shown: { scaleY: 1 } }}
-                transition={{ duration: 0.8, delay: i * 0.008, ease: EASE_OUT }}
-                style={{ flex: 1, background: c, transformOrigin: "bottom" }}
-              />
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
       {/* ── In the bag ────────────────────────────────────────────────────── */}
-      <section
-        style={{
-          ...section,
-          marginTop: "clamp(96px, 16vh, 180px)",
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))",
-          gap: "clamp(40px, 6vw, 88px)",
-        }}
-      >
-        <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-          {eyebrow("In the bag")}
+      <section style={{ ...section, marginTop: "clamp(96px, 16vh, 180px)", display: "flex", flexDirection: "column", gap: 28 }}>
+        {eyebrow("In the bag")}
+        <div
+          style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))", gap: "clamp(28px, 4vw, 56px)" }}
+        >
           {GEAR.map((cat) => (
             <div key={cat.title}>
               <h3 style={{ ...mono, fontSize: 9, color: t.faint, margin: "0 0 6px", fontWeight: 400 }}>{cat.title}</h3>
@@ -468,15 +264,13 @@ export default function AboutClient({ stats }: { stats: ShootingStats }) {
                   key={item.name}
                   style={{
                     display: "flex",
-                    flexWrap: "wrap",
-                    justifyContent: "space-between",
-                    alignItems: "baseline",
-                    gap: "4px 16px",
-                    padding: "14px 0",
+                    flexDirection: "column",
+                    gap: 6,
+                    padding: "16px 0",
                     borderBottom: `1px solid ${t.rule}`,
                   }}
                 >
-                  <span style={{ fontFamily: "var(--font-elevated)", fontSize: "1.1rem", color: t.ink }}>{item.name}</span>
+                  <span style={{ fontFamily: "var(--font-elevated)", fontSize: "1.15rem", color: t.ink }}>{item.name}</span>
                   <span style={{ ...mono, letterSpacing: "0.14em", fontSize: 9, color: t.sub }}>
                     {item.spec} · {item.note}
                   </span>
@@ -484,21 +278,6 @@ export default function AboutClient({ stats }: { stats: ShootingStats }) {
               ))}
             </div>
           ))}
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
-          <Distribution
-            title="Lenses on this site"
-            buckets={stats.lenses}
-            isDark={isDark}
-            note="Counted from the lens each frame records."
-          />
-          <Distribution
-            title="Bodies on this site"
-            buckets={stats.bodies}
-            isDark={isDark}
-            note="Counted from the camera each frame records."
-          />
         </div>
       </section>
 

@@ -4,8 +4,8 @@
 import fs from "fs";
 import path from "path";
 import sharp from "sharp";
-import { SECTION_META, HIST_BINS } from "./data";
-import type { Section, PhotoEntry, PhotoHistogram } from "./data";
+import { SECTION_META } from "./data";
+import type { Section, PhotoEntry } from "./data";
 import { parseExif } from "./exif";
 
 const IMAGE_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp", ".JPG", ".JPEG", ".PNG", ".WEBP"]);
@@ -36,29 +36,16 @@ function deterministicAngle(filename: string): number {
 const hex = (r: number, g: number, b: number) => "#" + [r, g, b].map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
 
 /**
- * Histogram + palette from a small raw RGB sample.
- * Palette: bucket colours into a 4-bit-per-channel grid, then greedily take the
- * most populated buckets that are visibly distinct from those already chosen.
+ * Representative palette from a small raw RGB sample: bucket colours into a
+ * 4-bit-per-channel grid, then greedily take the most populated buckets that
+ * are visibly distinct from those already chosen.
  */
-function analysePixels(px: Buffer): { hist: PhotoHistogram; palette: string[] } {
-  const bins = {
-    r: new Array(HIST_BINS).fill(0),
-    g: new Array(HIST_BINS).fill(0),
-    b: new Array(HIST_BINS).fill(0),
-    l: new Array(HIST_BINS).fill(0),
-  };
+function palette(px: Buffer): string[] {
   const buckets = new Map<number, { n: number; r: number; g: number; b: number }>();
-  const toBin = (v: number) => Math.min(HIST_BINS - 1, Math.floor((v / 256) * HIST_BINS));
-
   for (let i = 0; i < px.length; i += 3) {
     const r = px[i],
       g = px[i + 1],
       b = px[i + 2];
-    bins.r[toBin(r)]++;
-    bins.g[toBin(g)]++;
-    bins.b[toBin(b)]++;
-    bins.l[toBin(0.2126 * r + 0.7152 * g + 0.0722 * b)]++;
-
     const key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
     const bucket = buckets.get(key) ?? { n: 0, r: 0, g: 0, b: 0 };
     bucket.n++;
@@ -68,12 +55,6 @@ function analysePixels(px: Buffer): { hist: PhotoHistogram; palette: string[] } 
     buckets.set(key, bucket);
   }
 
-  // Normalise each channel to 0..100 against its own peak; sqrt keeps shadows visible
-  const norm = (arr: number[]) => {
-    const peak = Math.max(...arr.map(Math.sqrt)) || 1;
-    return arr.map((v) => Math.round((Math.sqrt(v) / peak) * 100));
-  };
-
   const ranked = [...buckets.values()].map((b) => ({ n: b.n, c: [b.r / b.n, b.g / b.n, b.b / b.n] as const })).sort((a, b) => b.n - a.n);
   const chosen: (readonly [number, number, number])[] = [];
   for (const { c } of ranked) {
@@ -81,11 +62,7 @@ function analysePixels(px: Buffer): { hist: PhotoHistogram; palette: string[] } 
     if (distinct) chosen.push(c);
     if (chosen.length === 5) break;
   }
-
-  return {
-    hist: { r: norm(bins.r), g: norm(bins.g), b: norm(bins.b), l: norm(bins.l) },
-    palette: chosen.map((c) => hex(c[0], c[1], c[2])),
-  };
+  return chosen.map((c) => hex(c[0], c[1], c[2]));
 }
 
 async function analysePhoto(filePath: string, dirName: string, filename: string): Promise<PhotoEntry> {
@@ -99,7 +76,6 @@ async function analysePhoto(filePath: string, dirName: string, filename: string)
     color: "#1a1822",
     palette: [],
     blur: "",
-    hist: { r: [], g: [], b: [], l: [] },
     exif: {},
   };
 
@@ -116,7 +92,6 @@ async function analysePhoto(filePath: string, dirName: string, filename: string)
       image.clone().resize(16, 16, { fit: "inside" }).webp({ quality: 40 }).toBuffer(),
       image.clone().stats(),
     ]);
-    const { hist, palette } = analysePixels(sample);
     const d = stats.dominant;
 
     return {
@@ -125,9 +100,8 @@ async function analysePhoto(filePath: string, dirName: string, filename: string)
       width,
       height,
       color: hex(d.r, d.g, d.b),
-      palette,
+      palette: palette(sample),
       blur: `data:image/webp;base64,${tiny.toString("base64")}`,
-      hist,
       exif: parseExif(meta.exif),
     };
   } catch {

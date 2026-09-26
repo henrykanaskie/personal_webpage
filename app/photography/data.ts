@@ -17,14 +17,6 @@ export interface PhotoExif {
   date?: string;
 }
 
-/** Channel histograms, each HIST_BINS values normalised to 0..100. */
-export interface PhotoHistogram {
-  r: number[];
-  g: number[];
-  b: number[];
-  l: number[];
-}
-
 export interface PhotoEntry {
   src: string;
   ratio: string;
@@ -39,11 +31,8 @@ export interface PhotoEntry {
   palette: string[];
   /** Tiny base64 data URL used as a blur-up placeholder */
   blur: string;
-  hist: PhotoHistogram;
   exif: PhotoExif;
 }
-
-export const HIST_BINS = 48;
 
 export interface Section {
   id: string;

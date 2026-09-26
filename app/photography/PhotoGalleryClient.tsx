@@ -7,8 +7,6 @@ import { HERO_PHOTOS, Section } from "@/app/photography/data";
 import IrisHero, { HeroItem } from "@/components/photo/IrisHero";
 import DepthArchive from "@/components/photo/DepthArchive";
 import ChapterIndex from "@/components/photo/ChapterIndex";
-import ExposureSpace from "@/components/photo/ExposureSpace";
-import Colophon from "@/components/photo/Colophon";
 import Lightbox, { LightboxItem } from "@/components/photo/Lightbox";
 import { EASE_OUT, photoTheme } from "@/components/photo/utils";
 
@@ -90,11 +88,8 @@ export default function PhotoGalleryClient({ sections }: { sections: Section[] }
         onOpen={(items, index, rect) => setOpen({ items, index, origin: rect })}
       />
 
-      <ExposureSpace sections={live} isDark={isDark} onOpen={(items, index, rect) => setOpen({ items, index, origin: rect })} />
 
       <ChapterIndex sections={sections} isDark={isDark} />
-
-      <Colophon isDark={isDark} />
 
       <AnimatePresence>
         {open && (
