@@ -12,12 +12,10 @@ import { glassBoxClassNames, metalClassNames } from "@/lib/tokens";
 // portrait, a spec table, the prose and the contact controls. Every spec row is
 // something a stranger could check.
 
-// Edit these freely. A row whose value is empty is left out, so "Previous
-// study" disappears for anyone without one.
+// Edit these freely. A row whose value is empty is left out.
 const SPEC: [string, string][] = [
   ["Now", "Intern, Daimler Truck North America"],
-  ["Current study", "M.S. Computer Science, Oregon State"],
-  ["Previous study", "Honors B.S. Computer Science, Oregon State, 3.95 GPA"],
+  ["Education", "Oregon State: M.S. Computer Science (current), Honors B.S., 3.95 GPA"],
   ["Previous", "Software Engineering Intern, DZYNE Technologies"],
   ["Design", "Photography, and the design of this site"],
 ];
@@ -77,7 +75,7 @@ export default function AboutSheet({
 
             <div className="flex flex-col gap-5 min-w-0">
               {/* Spec table */}
-              <motion.dl {...rise(2)} className="grid grid-cols-[92px_1fr] md:grid-cols-[124px_1fr] gap-x-4" style={{ borderTop: "1px solid var(--hair)" }}>
+              <motion.dl {...rise(2)} className="grid grid-cols-[86px_1fr] md:grid-cols-[104px_1fr] gap-x-4" style={{ borderTop: "1px solid var(--hair)" }}>
                 {SPEC.filter(([, v]) => v).map(([k, v]) => (
                   <div key={k} className="contents">
                     <dt className="mono py-2.5" style={{ fontSize: 11, letterSpacing: "0.14em", color: "var(--ink-3)", borderBottom: "1px solid var(--hair)" }}>
