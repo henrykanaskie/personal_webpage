@@ -269,10 +269,17 @@ export default function DotField() {
       wake();
     };
 
+    // The canvas is sized to the large viewport (100lvh, .dot-field), so iOS
+    // Safari's toolbar collapsing on scroll doesn't resize (and reallocate) it
+    // mid-scroll; it only grows, or changes on a real width change.
+    let lost = false;
     const resize = () => {
       dpr = Math.min(dpr, Math.min(window.devicePixelRatio || 1, 2));
-      w = window.innerWidth;
-      h = window.innerHeight;
+      const nw = canvas.clientWidth || window.innerWidth;
+      const nh = Math.max(canvas.clientHeight || 0, window.innerHeight);
+      if (nw === w && nh <= h) return;
+      h = nw !== w ? nh : Math.max(h, nh);
+      w = nw;
       canvas.width = Math.max(1, Math.round(w * dpr));
       canvas.height = Math.max(1, Math.round(h * dpr));
       wave.x ||= w / 2;
@@ -282,14 +289,28 @@ export default function DotField() {
     resize();
     window.addEventListener("resize", resize);
 
+    // Touch has no hover, so a finger stands in for the cursor while it's down:
+    // the dots part under it and a card's edge reaches toward it.
+    let touching = false;
     const onMove = (e: PointerEvent) => {
-      if (e.pointerType !== "mouse") return;
+      if (e.pointerType !== "mouse" && !touching) return;
       mouse.x = e.clientX;
       mouse.y = e.clientY;
       wake();
     };
     const onLeave = () => { mouse.x = -9999; wake(); };
+    const onUp = (e: PointerEvent) => {
+      if (e.pointerType === "mouse") return;
+      touching = false;
+      mouse.x = -9999;
+      wake();
+    };
     const onDown = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse") {
+        touching = true;
+        mouse.x = e.clientX;
+        mouse.y = e.clientY;
+      }
       lastDown.current = { x: e.clientX, y: e.clientY, t: performance.now() };
       const t = e.target as Element | null;
       if (!(t && t.closest?.(CONTENT))) ripple = { x: e.clientX, y: e.clientY, t: 0 };
@@ -298,7 +319,19 @@ export default function DotField() {
     const onScroll = () => wake();
     window.addEventListener("pointermove", onMove, { passive: true });
     window.addEventListener("pointerdown", onDown, { passive: true });
+    window.addEventListener("pointerup", onUp, { passive: true });
+    window.addEventListener("pointercancel", onUp, { passive: true });
     window.addEventListener("scroll", onScroll, { passive: true });
+    // iOS drops WebGL contexts under memory pressure or in the background. The
+    // canvas hides and the CSS dot grid underneath is simply what's seen.
+    const onLost = (e: Event) => {
+      e.preventDefault();
+      lost = true;
+      cancelAnimationFrame(raf);
+      raf = 0;
+      canvas.style.opacity = "0";
+    };
+    canvas.addEventListener("webglcontextlost", onLost);
     document.documentElement.addEventListener("pointerleave", onLeave);
     const onVis = () => { if (!document.hidden) wake(); };
     document.addEventListener("visibilitychange", onVis);
@@ -313,7 +346,7 @@ export default function DotField() {
 
     function frame(now: number) {
       raf = 0;
-      if (document.hidden || !gl) return;
+      if (document.hidden || !gl || lost) return;
       const scrollY = window.scrollY;
       const scrolling = scrollY !== lastScrollY;
       lastScrollY = scrollY;
@@ -448,7 +481,10 @@ export default function DotField() {
       window.removeEventListener("resize", resize);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
       window.removeEventListener("scroll", onScroll);
+      canvas.removeEventListener("webglcontextlost", onLost);
       document.documentElement.removeEventListener("pointerleave", onLeave);
       document.removeEventListener("visibilitychange", onVis);
       gl.getExtension("WEBGL_lose_context")?.loseContext();
@@ -457,18 +493,6 @@ export default function DotField() {
 
   if (!enabled) return null;
   return (
-    <canvas
-      ref={canvasRef}
-      aria-hidden
-      style={{
-        position: "fixed",
-        inset: 0,
-        width: "100%",
-        height: "100%",
-        zIndex: -1,
-        pointerEvents: "none",
-        opacity: 0,
-      }}
-    />
+    <canvas ref={canvasRef} aria-hidden className="dot-field" style={{ opacity: 0 }} />
   );
 }

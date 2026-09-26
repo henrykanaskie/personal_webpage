@@ -78,6 +78,9 @@ export function useGlassLens(
   const [map, setMap] = useState<{ href: string; w: number; h: number } | null>(null);
 
   useEffect(() => {
+    // Tells the CSS whether the real lens is on; without it (Safari, Firefox)
+    // .glass-bubble draws a stand-in rim (html:not(.lens) in globals.css).
+    document.documentElement.classList.toggle("lens", supportsLens());
     const el = ref.current;
     if (!el || !supportsLens()) return;
     let last = "";
@@ -298,8 +301,11 @@ export function LiquidBud({
     const hr = host.getBoundingClientRect();
     const br = bubble.getBoundingClientRect();
     const M = 80;
-    const l = Math.min(0, br.left - hr.left) - M, t = Math.min(0, br.top - hr.top) - M;
-    const r = Math.max(hr.width, br.right - hr.left) + M, b = Math.max(hr.height, br.bottom - hr.top) + M;
+    // Never wider than the viewport: a canvas hanging past the screen's edge
+    // widens the page, and on a phone the whole page then slides sideways.
+    const vw = document.documentElement.clientWidth;
+    const l = Math.max(-hr.left, Math.min(0, br.left - hr.left) - M), t = Math.min(0, br.top - hr.top) - M;
+    const r = Math.min(vw - hr.left, Math.max(hr.width, br.right - hr.left) + M), b = Math.max(hr.height, br.bottom - hr.top) + M;
     setBox({ left: l, top: t, w: r - l, h: b - t });
   }, [bubbleRef]);
 

@@ -88,6 +88,13 @@
 html {
   scroll-behavior: auto;
 }
+/* Nothing decorative (a bud's canvas, a swell, a vapor puff) may widen the
+   page: on a phone that lets the whole page slide sideways. clip, unlike
+   hidden, makes no scroll container, so sticky positioning still works. */
+html,
+body {
+  overflow-x: clip;
+}
 body {
   background-color: var(--paper);
   background-image: radial-gradient(circle, var(--dot) 1.15px, transparent 1.65px);
@@ -98,6 +105,7 @@ body {
 
 .metal-text {
   background-image: var(--chrome-type) !important;
+  background-size: 100% 1.2em; /* before Safari 16.4, which has no lh */
   background-size: 100% 1lh;
   background-repeat: repeat-y;
   -webkit-background-clip: text;
@@ -133,11 +141,31 @@ body {
   opacity: 0;
   pointer-events: none;
 }
-.metal-surface:hover::after,
 .metal-surface:focus-visible::after {
   opacity: 1;
   transform: translateX(330%) skewX(-18deg);
   transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+}
+/* Only where there's a real hover: on touch a tap would leave the glint stuck. */
+@media (hover: hover) {
+  .metal-surface:hover::after {
+    opacity: 1;
+    transform: translateX(330%) skewX(-18deg);
+    transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+  }
+}
+
+/* The dot field canvas: sized to the large viewport so the iOS toolbar
+   collapsing doesn't resize it mid-scroll (DotField.tsx). */
+.dot-field {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  height: 100lvh;
+  z-index: -1;
+  pointer-events: none;
 }
 .metal-surface > * {
   position: relative;
@@ -416,6 +444,27 @@ body {
     inset 0 0 0 1px rgba(255, 255, 255, 0.09), inset 0 0 26px -10px rgba(255, 255, 255, 0.14),
     0 24px 48px -24px rgba(0, 0, 0, 0.85);
 }
+/* Where the SVG lens isn't available (Safari, Firefox), a stand-in for it:
+   real thick glass scatters and bends most at its rim, so a feathered band
+   along the edge frosts harder and lifts a little. It reads as the rim of a
+   lens without any displacement. */
+html:not(.lens) .glass-bubble::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  -webkit-backdrop-filter: blur(6px) saturate(1.5) brightness(1.05);
+  backdrop-filter: blur(6px) saturate(1.5) brightness(1.05);
+  -webkit-mask-image:
+    linear-gradient(to right, #000, transparent 16px, transparent calc(100% - 16px), #000),
+    linear-gradient(to bottom, #000, transparent 16px, transparent calc(100% - 16px), #000);
+  mask-image:
+    linear-gradient(to right, #000, transparent 16px, transparent calc(100% - 16px), #000),
+    linear-gradient(to bottom, #000, transparent 16px, transparent calc(100% - 16px), #000);
+  pointer-events: none;
+  z-index: -1;
+}
+
 /* Thin film: the colours a soap film or coated glass throws at its edge,
    a narrow band at the rim where the film is seen most obliquely, slowly
    drifting as the film thins and flows. */
