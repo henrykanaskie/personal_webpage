@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   motion,
   AnimatePresence,
@@ -65,6 +65,16 @@ export default function InfoBox({
   } = useInfoBubble();
 
   const { svgProgress, onViewportEnter, onViewportLeave } = useSvgDrawAnimation(svgDrawDuration);
+
+  // The bubble is part of the box's resting composition, but it only buds off
+  // once the box has been seen and has mostly settled, so the separation is
+  // something you actually watch rather than something that happened off screen.
+  const [budReady, setBudReady] = useState(false);
+  useEffect(() => {
+    if (!isInView || budReady) return;
+    const t = setTimeout(() => setBudReady(true), 450);
+    return () => clearTimeout(t);
+  }, [isInView, budReady]);
 
   return (
     <>
@@ -231,7 +241,7 @@ export default function InfoBox({
           }}
         >
           <AnimatePresence>
-            {isBubbleOpen && extraInfo && (
+            {isBubbleOpen && extraInfo && budReady && (
               <InfoBubble
                 extraInfo={extraInfo}
                 side={isLeft ? "right" : "left"}

@@ -15,10 +15,11 @@ The voice is confident but never loud: precision over promotion. Every interacti
 
 **Existing design language:**
 - CS side is built from three materials on one sheet (tokens in `app/globals.css`, mirrored in `lib/tokens.ts`):
-  - **Paper**: a dot grid. `components/DotField.tsx` (mounted once in the root layout, off on photography) redraws it as a fixed WebGL backdrop: dots part around the cursor, configure in a wave from the click on every navigation, and sit under glass bubbles that rise at different depths as you scroll. It must paint dots at exactly the CSS positions (`paper` token), and a dot may never move more than half a grid cell, which is what lets the shader evaluate one cell per pixel.
-  - **Satin metal**: brushed chrome for titles (`.metal-text`, the `metal` GlassTitle variant) and primary controls (`.metal-surface`, including the active nav item).
+  - **Paper**: a dot grid. `components/DotField.tsx` (mounted once in the root layout, off on photography) redraws it as a fixed WebGL backdrop: dots part around the cursor, ripple on a click, and configure in a wave from the click on every navigation. The loop sleeps when nothing moves. It must paint dots at exactly the CSS positions (`paper` token), and a dot may never move more than half a grid cell, which is what lets the shader evaluate one cell per pixel.
+  - **Metal**: polished chrome, not brushed: a studio reflection with a crisp horizon, for titles (`.metal-text`, the `metal` GlassTitle variant) and primary controls (`.metal-surface`, including the active nav item). No grain texture.
   - **Glass**: frosted panels with a hairline metal rim (`.glass-panel` + `GlassLayers`), glass pills for secondary controls.
     Panels use no `backdrop-filter`; it was the largest scroll cost. Only the small nav pills blur.
+- Glass bubbles are the "More Info" panels, nothing decorative: `.glass-bubble` plus `lib/liquid.tsx`. Opening, a bubble buds off its card with a liquid neck that stretches and snaps (`LiquidBud`); closing, it pops into vapor. In Chromium each bubble refracts what's behind it through an SVG displacement map on `backdrop-filter` (`useGlassLens`); other browsers get clear glass.
 - Motion: cards rise into place on the shared critically damped spring in `lib/motion.ts`; nothing slides in from off screen. Line drawings are CSS transitions (`.line-draw`), drawn once and left drawn.
 - Projects also appear as a bill of materials (`components/PartsList.tsx`, data in `lib/parts.ts`), mirroring the GitHub profile's `data/profile.toml`
 - Glass morphism with subtle blur, saturation, and specular highlights

@@ -4,8 +4,9 @@
 /* ─── Surface system ──────────────────────────────────────────────────────────
    Three materials, one sheet of paper:
      paper   a dot grid, the drafting sheet everything sits on
-     metal   satin chrome: a studio gradient with a dark horizon band and a
-             faint brushed grain, for titles and the primary controls
+     metal   polished chrome: a studio reflection (bright sky above, a crisp
+             dark horizon, a bright ground bounce below), for titles and the
+             primary controls
      glass   frosted panels with a metal rim, for anything that holds content
    Paper and dot values are mirrored in lib/tokens.ts (`paper`), which the
    WebGL dot field reads so its dots land exactly on the CSS ones. */
@@ -20,18 +21,21 @@
   --hair: rgba(23, 22, 26, 0.1);
   --accent: rgb(76, 96, 140);
 
-  --brush: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='b'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0025 0.55' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.55 -0.12'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23b)'/%3E%3C/svg%3E");
-
-  /* Satin chrome, as a fill for text on paper: dark enough to read. */
+  /* Polished chrome, as a fill for text on paper. What reads as mirror metal
+     is contrast in the reflection, not texture: a lit sky band, a hard horizon
+     where it meets the dark ground, then a bright bounce off the floor. Kept
+     dark enough overall to read on light paper. */
   --metal-text: linear-gradient(
     180deg,
-    #7d7a76 0%,
-    #4a4744 24%,
-    #242220 46%,
-    #0b0a0a 54%,
-    #34312e 62%,
-    #5f5b57 80%,
-    #8e8a85 100%
+    #3f3d3a 0%,
+    #6f6c68 16%,
+    #a9a6a1 36%,
+    #c6c3be 45%,
+    #2a2826 47.5%,
+    #0e0d0c 55%,
+    #2f2d2a 68%,
+    #6d6a65 86%,
+    #9c9892 100%
   );
   /* Satin chrome, as a surface (pills, knobs). */
   --metal-surface:
@@ -52,11 +56,6 @@
   --pill-blur: blur(8px) saturate(1.2);
 }
 
-.dark .metal-text,
-.metal-text.brushed {
-  background-image: var(--brush), var(--metal-text);
-}
-
 .dark {
   --paper: #0c0d10;
   --dot: rgba(196, 204, 222, 0.16);
@@ -69,13 +68,14 @@
   --metal-text: linear-gradient(
     180deg,
     #ffffff 0%,
-    #e4e7ec 24%,
-    #b8bdc6 45%,
-    #7a808a 53%,
-    #5c626c 57%,
-    #a7acb5 68%,
-    #dfe2e7 86%,
-    #f7f8fa 100%
+    #f1f3f6 22%,
+    #c9ced6 42%,
+    #e6e9ee 46%,
+    #50555d 48%,
+    #3d4148 56%,
+    #6d737c 68%,
+    #c3c8cf 86%,
+    #f5f6f8 100%
   );
   --metal-surface:
     radial-gradient(120% 70% at 30% 0%, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 55%),
@@ -104,8 +104,8 @@ body {
 /* ─── Metal ────────────────────────────────────────────────────────────────── */
 
 .metal-text {
-  background-image: linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 0)), var(--metal-text);
-  background-size: 400px 400px, 100% 100%;
+  background-image: var(--metal-text);
+  background-size: 100% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -116,8 +116,7 @@ body {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  background: var(--brush), var(--metal-surface);
-  background-size: 400px 400px, auto, auto;
+  background: var(--metal-surface);
   box-shadow: var(--metal-rim), 0 1px 2px rgba(20, 24, 32, 0.12), 0 6px 14px -6px rgba(20, 24, 32, 0.28);
   color: var(--metal-ink);
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.65);
@@ -308,4 +307,37 @@ body {
 .line-draw.drawn path {
   stroke-dashoffset: 0;
   transition: stroke-dashoffset var(--draw-dur, 3s) cubic-bezier(0.45, 0, 0.25, 1);
+}
+
+/* Info bubbles: clear glass droplets. Clear toward the rim, where the lens
+   (lib/liquid.tsx) bends the page behind them most, and denser in the middle so
+   their small text stays readable. The blur is only the fallback for browsers
+   that don't honour backdrop-filter: url(). */
+.glass-bubble {
+  --bud-fill: #fbfaf7;
+  background: radial-gradient(120% 110% at 50% 42%, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.62) 55%, rgba(255, 255, 255, 0.16) 100%);
+  box-shadow:
+    inset 0 1.5px 0 #fff, inset 0 0 0 1px rgba(255, 255, 255, 0.75), inset 0 -10px 22px -12px rgba(40, 36, 30, 0.18),
+    0 0 0 1px rgba(40, 36, 30, 0.08), 0 18px 32px -18px rgba(40, 36, 30, 0.38);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  color: var(--ink-2);
+}
+.dark .glass-bubble {
+  --bud-fill: #1d1f24;
+  background: radial-gradient(120% 110% at 50% 42%, rgba(26, 28, 33, 0.86) 0%, rgba(22, 24, 29, 0.66) 55%, rgba(18, 20, 24, 0.24) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.08), inset 0 -10px 22px -12px rgba(0, 0, 0, 0.5),
+    0 18px 32px -18px rgba(0, 0, 0, 0.8);
+}
+/* The neck drawn by LiquidBud sits outside the bubble, so it reads the fill from the page. */
+:root {
+  --bud-fill: #fbfaf7;
+  --bud-rim: rgba(40, 36, 30, 0.2);
+  --bud-shadow: rgba(40, 36, 30, 0.18);
+}
+.dark {
+  --bud-fill: #1d1f24;
+  --bud-rim: rgba(255, 255, 255, 0.16);
+  --bud-shadow: rgba(0, 0, 0, 0.55);
 }

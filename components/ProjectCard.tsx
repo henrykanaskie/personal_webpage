@@ -6,6 +6,7 @@ import { useInViewFromBelow } from "../hooks/useInViewFromBelow";
 import { useSvgDrawAnimation } from "../hooks/useSvgDrawAnimation";
 import AnimatedSvg from "./AnimatedSvg";
 import { VaporCloud, useInfoBubble } from "./InfoBubble";
+import { useGlassLens, LiquidBud } from "../lib/liquid";
 import {
   glassStyle,
   GlassLayers,
@@ -13,7 +14,6 @@ import {
   useIsDark,
 } from "../lib/glass";
 import {
-  glassBubbleClassNames,
   glassBoxClassNames,
   cs,
   themed,
@@ -148,6 +148,7 @@ const BubbleShell = memo(function BubbleShell({
   children: React.ReactNode;
 }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
+  const lens = useGlassLens(bubbleRef);
   const isInView = useInView(bubbleRef, { once: false, amount: 0.4 });
   const showBelow = isMobile;
 
@@ -185,6 +186,9 @@ const BubbleShell = memo(function BubbleShell({
   const mYOff = mobileYOffset ?? 0;
 
   return (
+    <>
+    {lens.filter}
+    <LiquidBud bubbleRef={bubbleRef} />
     <motion.div
       ref={bubbleRef}
       style={{
@@ -202,8 +206,9 @@ const BubbleShell = memo(function BubbleShell({
             : "right center",
         zIndex: 9999999,
         ...glassStyle,
+        ...lens.style,
       }}
-      className={glassBubbleClassNames}
+      className="glass-bubble"
       onClick={handleClick}
       onMouseDown={() => setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
@@ -236,9 +241,9 @@ const BubbleShell = memo(function BubbleShell({
           : {
               top: "50%",
               y: "-50%",
-              x: isRight ? "30%" : "-30%",
-              scaleX: 0.15,
-              scaleY: 0.3,
+              x: isRight ? "80%" : "-80%",
+              scaleX: 0.3,
+              scaleY: 0.4,
               opacity: 0,
             }
       }
@@ -273,11 +278,15 @@ const BubbleShell = memo(function BubbleShell({
               opacity: { duration: 0.08 },
             }
           : {
-              duration: 0.75,
-              ease: [0.34, 1.56, 0.64, 1],
-              top: { duration: 0.5, ease: [0.25, 1, 0.5, 1] },
-              x: { duration: 0.5, ease: [0.25, 1, 0.5, 1] },
-              opacity: { duration: 0.9, ease: "easeInOut" },
+                // Opening: the bubble buds off the card on a slightly
+                // underdamped spring, like a drop pulling free, while LiquidBud
+                // draws the neck between them until it snaps.
+                x: { type: "spring", stiffness: 85, damping: 12 },
+                y: { type: "spring", stiffness: 85, damping: 12 },
+                top: { type: "spring", stiffness: 85, damping: 12 },
+                scaleX: { type: "spring", stiffness: 170, damping: 14 },
+                scaleY: { type: "spring", stiffness: 170, damping: 14 },
+                opacity: { duration: 0.35, ease: "easeOut" },
             }
       }
       exit={{ opacity: 0, transition: { duration: 0.001 } }}
@@ -289,6 +298,7 @@ const BubbleShell = memo(function BubbleShell({
 
       {children}
     </motion.div>
+    </>
   );
 });
 

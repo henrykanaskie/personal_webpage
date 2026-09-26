@@ -517,7 +517,7 @@ function CSSide({
         <GlassTitle
           text="Computer Science"
           variant="metal"
-          fontSize={isMobile ? "clamp(1.6rem, 8vw, 3rem)" : "clamp(2.8rem, 5.5vw, 5rem)"}
+          fontSize={isMobile ? "clamp(1.6rem, 8vw, 3rem)" : "clamp(2.6rem, 4.7vw, 4.6rem)"}
           containerClassName="!pt-0 !pb-0"
           disableEntrance
           noWrap
@@ -680,7 +680,7 @@ export default function HomePage() {
           cursor: "pointer",
         }}
         onClick={() => go("left")}
-        data-no-lens
+       
       >
         <PhotoSide active={hovered === "left"} isDark={isDark} />
       </motion.div>

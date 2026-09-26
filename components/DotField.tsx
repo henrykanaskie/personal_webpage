@@ -11,9 +11,6 @@ import { paper } from "@/lib/tokens";
 //   - on every navigation the grid configures itself in a wave, starting from
 //     wherever you clicked to get there
 //   - a click on bare paper sends a ripple through the dots
-//   - glass bubbles drift over the sheet at different depths (they rise at
-//     different rates as you scroll) and refract the grid under them; one
-//     follows the cursor as a lens, but only while it's over bare paper
 //
 // Dots are drawn in page space at exactly the positions of the CSS dots
 // (lib/tokens `paper`), so there's no seam when the canvas appears, and if
@@ -21,14 +18,13 @@ import { paper } from "@/lib/tokens";
 //
 // Cost: every pixel evaluates one grid cell. Per-dot movement is capped so a
 // dot can never leave its own cell, which is what makes a single evaluation
-// exact. Resolution steps down on its own if frames run long.
+// exact. Resolution steps down on its own if frames run long, and the loop
+// stops entirely once nothing is moving.
 
 const VERT = `
 attribute vec2 a;
 void main() { gl_Position = vec4(a, 0.0, 1.0); }
 `;
-
-const NB = 5; // bubbles; the last one is the cursor lens
 
 const FRAG = `
 precision highp float;
@@ -37,13 +33,12 @@ uniform float uDpr;
 uniform vec2 uScroll;     // page position of the viewport's top-left
 uniform float uGap, uDotR;
 uniform vec3 uBg, uDot;
-uniform float uDotA, uDark, uTime;
+uniform float uDotA;
 uniform vec2 uMouse;      // css px, viewport
 uniform float uMouseOn;
 uniform vec3 uRipple;     // x, y (viewport), seconds since click
 uniform vec2 uOrigin;     // intro wave origin (viewport)
 uniform float uIntro;     // seconds since the last navigation
-uniform vec3 uBub[${NB}];
 
 float dots(vec2 p) {
   vec2 w = p + uScroll;
@@ -84,62 +79,9 @@ float dots(vec2 p) {
   return smoothstep(r + aa, r - aa, d);
 }
 
-vec3 sheet(vec2 p) { return mix(uBg, uDot, dots(p) * uDotA); }
-
-float bfield(vec2 p) {
-  float f = 0.0;
-  for (int i = 0; i < ${NB}; i++) {
-    vec3 b = uBub[i];
-    if (b.z < 0.5) continue;
-    vec2 d = p - b.xy;
-    float k = b.z * b.z / (dot(d, d) + 1.0);
-    f += k * k;
-  }
-  return f;
-}
-float bh(float f) { return sqrt(max(0.0, 1.0 - inversesqrt(max(f, 1e-4)))); }
-
 void main() {
   vec2 p = vec2(gl_FragCoord.x, uRes.y * uDpr - gl_FragCoord.y) / uDpr;
-  vec3 col = sheet(p);
-
-  // each bubble casts a soft shadow, with the caustic a lens focuses into it
-  for (int i = 0; i < ${NB}; i++) {
-    vec3 b = uBub[i];
-    if (b.z < 0.5) continue;
-    vec2 sp = p - (b.xy + vec2(b.z * 0.2, b.z * 0.6));
-    float s2 = dot(sp, sp) / (b.z * b.z);
-    if (s2 > 9.0) continue;
-    col *= 1.0 - (0.09 - 0.035 * uDark) * exp(-s2 * 2.0);
-    vec2 cp = p - (b.xy + vec2(b.z * 0.18, b.z * 0.5));
-    col += (0.07 - 0.045 * uDark) * exp(-dot(cp, cp) / (b.z * b.z * 0.045));
-  }
-
-  float f = bfield(p);
-  if (f > 0.3) {
-    float fx = bfield(p + vec2(1.0, 0.0)), fy = bfield(p + vec2(0.0, 1.0));
-    float h = bh(f);
-    vec3 n = normalize(vec3(-(bh(fx) - h) * 55.0, -(bh(fy) - h) * 55.0, 1.0));
-    float aa = clamp(length(vec2(fx - f, fy - f)) * 0.9 * uDpr, 1e-4, 0.3);
-    float a = smoothstep(1.0 - aa, 1.0 + aa, f);
-
-    // refraction: the grid under the bubble, bent by its surface, split slightly by colour
-    vec2 off = -n.xy * 30.0;
-    vec3 g = vec3(sheet(p + off).r, sheet(p + off * 1.03).g, sheet(p + off * 1.06).b);
-    float fr = pow(1.0 - n.z, 2.5);
-    vec3 film = 0.5 + 0.5 * cos(6.2831 * (vec3(0.0, 0.33, 0.67) + (1.0 - n.z) * 1.6 + uTime * 0.04));
-    film = mix(vec3(dot(film, vec3(0.333))), film, 0.5);
-    g = mix(g, film * 0.9 + 0.1, fr * mix(0.14, 0.22, uDark));
-    g *= 1.0 - (0.18 + 0.07 * uDark) * pow(1.0 - n.z, 5.0);
-    vec3 L1 = normalize(vec3(-0.5, -0.65, 0.6)), L2 = normalize(vec3(0.55, 0.6, 0.6));
-    g += pow(max(dot(reflect(-L1, n), vec3(0.0, 0.0, 1.0)), 0.0), 90.0) * 1.2;
-    g += pow(max(dot(reflect(-L2, n), vec3(0.0, 0.0, 1.0)), 0.0), 24.0) * 0.18;
-    // on the dark sheet a clear sphere needs its rim lit to read at all
-    g += vec3(0.85, 0.88, 0.95) * pow(1.0 - n.z, 3.0) * 0.32 * uDark;
-    col = mix(col, g, a);
-  }
-
-  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
+  gl_FragColor = vec4(mix(uBg, uDot, dots(p) * uDotA), 1.0);
 }
 `;
 
@@ -150,17 +92,8 @@ function springTo(pos: number, vel: number, target: number, omega: number, dt: n
   return [target + (x + (vel + omega * x) * dt) * e, (vel - omega * (vel + omega * x) * dt) * e];
 }
 
-// Bubbles in viewport fractions. `depth` is how fast each rises as you scroll:
-// bigger bubbles are nearer, so they move more. Kept to the margins by default.
-const BUBBLES = [
-  { x: 0.935, y: 0.22, r: 46, depth: 0.42, sx: 0.11, sy: 0.14, ph: 0.3 },
-  { x: 0.055, y: 0.7, r: 52, depth: 0.55, sx: 0.09, sy: 0.12, ph: 2.1 },
-  { x: 0.9, y: 0.88, r: 26, depth: 0.22, sx: 0.13, sy: 0.1, ph: 4.0 },
-  { x: 0.16, y: 0.12, r: 18, depth: 0.14, sx: 0.12, sy: 0.09, ph: 1.4 },
-];
-
-// Pointer over any of these means the cursor is reading, not playing: no lens.
-const CONTENT = ".glass-panel, .glass-pill, .metal-surface, a, button, img, input, textarea, p, h1, h2, h3, h4, li, [data-no-lens]";
+// A click on any of these is a click on content, not on the paper: no ripple.
+const CONTENT = ".glass-panel, .glass-pill, .metal-surface, a, button, img, input, textarea, p, h1, h2, h3, h4, li";
 
 export default function DotField() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -210,24 +143,23 @@ export default function DotField() {
     const U = (n: string) => gl.getUniformLocation(prog, n);
     const u = {
       res: U("uRes"), dpr: U("uDpr"), scroll: U("uScroll"), gap: U("uGap"), dotR: U("uDotR"),
-      bg: U("uBg"), dot: U("uDot"), dotA: U("uDotA"), dark: U("uDark"), time: U("uTime"),
-      mouse: U("uMouse"), mouseOn: U("uMouseOn"), ripple: U("uRipple"), origin: U("uOrigin"),
-      intro: U("uIntro"), bub: U("uBub"),
+      bg: U("uBg"), dot: U("uDot"), dotA: U("uDotA"), mouse: U("uMouse"), mouseOn: U("uMouseOn"),
+      ripple: U("uRipple"), origin: U("uOrigin"), intro: U("uIntro"),
     };
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const t0 = performance.now();
     let w = 0, h = 0;
     let dpr = Math.min(window.devicePixelRatio || 1, 2);
-    let raf = 0, last = t0, tick = 0;
+    let raf = 0, last = performance.now();
     let slowMs = 0;
-    let lastScrollY = window.scrollY, lastActive = t0;
-    const bub = new Float32Array(NB * 3);
+    let lastScrollY = window.scrollY, lastActive = last;
+    let wasDark = document.documentElement.classList.contains("dark");
 
-    const mouse = { x: -9999, y: -9999, on: 0, onV: 0, overPaper: false };
-    const lensS = { x: 0, y: 0, vx: 0, vy: 0, r: 0, rv: 0 };
+    // Plain fields and plain assignments throughout: the production minifier
+    // constant-folds `[obj.a, obj.b] = f()` on objects like these into `[0, 0] = f()`.
+    const mouse = { x: -9999, y: -9999, on: 0, onV: 0 };
     let ripple = { x: 0, y: 0, t: -1 };
-    let wave = { x: 0, y: 0, start: reduced ? -99 : t0 };
+    let wave = { x: 0, y: 0, start: reduced ? -99 : last };
     waveRef.current = (x, y) => {
       if (reduced) return;
       wave = { x: x ?? w / 2, y: y ?? h * 0.4, start: performance.now() };
@@ -248,13 +180,12 @@ export default function DotField() {
     window.addEventListener("resize", resize);
 
     const onMove = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse") return;
       mouse.x = e.clientX;
       mouse.y = e.clientY;
-      const t = e.target as Element | null;
-      mouse.overPaper = e.pointerType === "mouse" && !(t && t.closest?.(CONTENT));
       wake();
     };
-    const onLeave = () => { mouse.overPaper = false; mouse.x = -9999; };
+    const onLeave = () => { mouse.x = -9999; wake(); };
     const onDown = (e: PointerEvent) => {
       lastDown.current = { x: e.clientX, y: e.clientY, t: performance.now() };
       const t = e.target as Element | null;
@@ -268,6 +199,9 @@ export default function DotField() {
     document.documentElement.addEventListener("pointerleave", onLeave);
     const onVis = () => { if (!document.hidden) wake(); };
     document.addEventListener("visibilitychange", onVis);
+    // A theme switch repaints the paper even if nothing else is moving.
+    const themeObs = new MutationObserver(() => wake());
+    themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 
     function wake() {
       lastActive = performance.now();
@@ -280,19 +214,15 @@ export default function DotField() {
       const scrollY = window.scrollY;
       const scrolling = scrollY !== lastScrollY;
       lastScrollY = scrollY;
+      const dark = document.documentElement.classList.contains("dark");
+      const themeChanged = dark !== wasDark;
+      wasDark = dark;
       const introT = (now - wave.start) / 1000;
-      const busy = scrolling || mouse.onV * mouse.onV > 1e-4 || lensS.rv * lensS.rv > 1e-4 || ripple.t >= 0 || introT < 2.2 || now - lastActive < 400;
-
-      // Nothing but slow drift left to show: 30fps. Nothing at all (reduced motion): stop.
-      tick++;
-      if (!busy) {
-        if (reduced) return;
-        if (tick % 2) { raf = requestAnimationFrame(frame); return; }
-      }
+      const settling = Math.abs(mouse.onV) > 1e-3 || Math.abs(mouse.on - (mouse.x > -9000 ? 1 : 0)) > 1e-3;
+      const busy = scrolling || themeChanged || settling || ripple.t >= 0 || introT < 2.2 || now - lastActive < 250;
 
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      const t = (now - t0) / 1000;
 
       // Adaptive resolution: if busy frames keep running long, step the pixel ratio down.
       if (busy && dt > 0.024) slowMs += dt * 1000; else slowMs = Math.max(0, slowMs - dt * 500);
@@ -303,46 +233,11 @@ export default function DotField() {
         canvas.height = Math.round(h * dpr);
       }
 
-      const dark = document.documentElement.classList.contains("dark");
       const pal = dark ? paper.dark : paper.light;
-
-      const pointing = mouse.x > -9000;
-      // Plain assignments on purpose: the production minifier constant-folds
-      // `[obj.a, obj.b] = f()` on these objects into an invalid `[0, 0] = f()`.
-      let sp = springTo(mouse.on, mouse.onV, pointing ? 1 : 0, 9, dt);
+      const sp = springTo(mouse.on, mouse.onV, mouse.x > -9000 ? 1 : 0, 9, dt);
       mouse.on = sp[0];
       mouse.onV = sp[1];
-      const lensOn = mouse.overPaper ? 1 : 0;
-      if (mouse.overPaper) {
-        sp = springTo(lensS.x || mouse.x, lensS.vx, mouse.x + 40, 7, dt);
-        lensS.x = sp[0];
-        lensS.vx = sp[1];
-        sp = springTo(lensS.y || mouse.y, lensS.vy, mouse.y + 36, 7, dt);
-        lensS.y = sp[0];
-        lensS.vy = sp[1];
-      }
-      sp = springTo(lensS.r, lensS.rv, lensOn * 38, 8, dt);
-      lensS.r = sp[0];
-      lensS.rv = sp[1];
-
-      // drifting bubbles: they grow in after each navigation and rise with scroll at their own depth
-      const grow = reduced ? 1 : Math.min(1, Math.max(0, (introT - 0.35) / 1.0));
-      const eased = 1 - Math.pow(1 - grow, 3);
-      const scale = Math.min(1, Math.max(0.55, w / 1300));
-      const tt = reduced ? 0 : t;
-      BUBBLES.forEach((d, i) => {
-        const r = d.r * scale;
-        const span = h + 4 * r;
-        let y = d.y * h + Math.cos(tt * d.sy * 2 + d.ph * 1.3) * 18 - scrollY * d.depth;
-        y = ((((y + 2 * r) % span) + span) % span) - 2 * r;
-        const x = d.x * w + Math.sin(tt * d.sx * 2 + d.ph) * 14;
-        bub[i * 3] = Math.min(w - r - 8, Math.max(r + 8, x));
-        bub[i * 3 + 1] = y;
-        bub[i * 3 + 2] = r * eased;
-      });
-      bub[(NB - 1) * 3] = lensS.x;
-      bub[(NB - 1) * 3 + 1] = lensS.y;
-      bub[(NB - 1) * 3 + 2] = Math.max(0, lensS.r);
+      if (ripple.t >= 0) { ripple.t += dt; if (ripple.t > 1.6) ripple.t = -1; }
 
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.uniform2f(u.res, w, h);
@@ -353,24 +248,23 @@ export default function DotField() {
       gl.uniform3f(u.bg, pal.bg[0] / 255, pal.bg[1] / 255, pal.bg[2] / 255);
       gl.uniform3f(u.dot, pal.dot[0] / 255, pal.dot[1] / 255, pal.dot[2] / 255);
       gl.uniform1f(u.dotA, pal.dotAlpha);
-      gl.uniform1f(u.dark, dark ? 1 : 0);
-      gl.uniform1f(u.time, t);
       gl.uniform2f(u.mouse, mouse.x, mouse.y);
       gl.uniform1f(u.mouseOn, Math.max(0, mouse.on));
-      if (ripple.t >= 0) { ripple.t += dt; if (ripple.t > 1.6) ripple.t = -1; }
       gl.uniform3f(u.ripple, ripple.x, ripple.y, ripple.t);
       gl.uniform2f(u.origin, wave.x, wave.y);
       gl.uniform1f(u.intro, introT);
-      gl.uniform3fv(u.bub, bub);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       canvas.style.opacity = "1";
 
-      raf = requestAnimationFrame(frame);
+      // With nothing moving, the last frame stays on screen and the loop sleeps
+      // until the next scroll, pointer move, click, resize or theme change.
+      if (busy) raf = requestAnimationFrame(frame);
     }
     raf = requestAnimationFrame(frame);
 
     return () => {
       cancelAnimationFrame(raf);
+      themeObs.disconnect();
       window.removeEventListener("resize", resize);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerdown", onDown);
