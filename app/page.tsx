@@ -561,12 +561,10 @@ function CSSide({
                   e.stopPropagation();
                   onGo(link.sectionId);
                 }}
-                className="px-3 py-1.5 rounded-full font-semibold tracking-wide transition-colors duration-200 hover:bg-white/[0.05] dark:hover:bg-white/[0.06]"
+                className="metal-surface px-4 py-1.5 rounded-full font-semibold tracking-wide transition-transform duration-200 hover:-translate-y-px"
                 style={{ fontSize: "15px" }}
               >
-                <span style={{ color: "var(--ink-2)" }}>
-                  {link.name}
-                </span>
+                <span>{link.name}</span>
               </Link>
               {i < navLinks.length - 1 && (
                 <span

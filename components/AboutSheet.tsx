@@ -52,7 +52,7 @@ export default function AboutSheet({
       />
 
       <motion.div {...rise(0)} className="w-full max-w-[1180px] px-3 md:px-6">
-        <div className={`${glassBoxClassNames} relative rounded-[28px] overflow-hidden`}>
+        <div data-liquid className={`${glassBoxClassNames} relative rounded-[28px] overflow-hidden`}>
           <GlassLayers />
 
           {/* Title strip */}

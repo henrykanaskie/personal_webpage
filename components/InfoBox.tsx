@@ -140,6 +140,7 @@ export default function InfoBox({
             borderRadius: "24px",
             ...glassStyle,
           }}
+          data-liquid
           className={`${glassBoxClassNames} p-5 md:p-10 lg:p-12`}
         >
           <GlassLayers refractionSide={isLeft ? "left" : "right"} />
@@ -216,7 +217,7 @@ export default function InfoBox({
               <div className="mt-6 flex justify-center">
                 <button
                   onClick={isBubbleOpen ? requestPop : openBubble}
-                  className="glass-pill group relative px-4 py-2 rounded-full text-sm font-medium hover:-translate-y-px"
+                  className="metal-surface group relative px-4 py-2 rounded-full text-sm font-semibold hover:-translate-y-px"
                 >
                   <span className="relative z-10">
                     {isBubbleOpen ? "Close" : "More Info"}

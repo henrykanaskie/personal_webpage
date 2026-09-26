@@ -21,13 +21,11 @@
   --hair: rgba(23, 22, 26, 0.1);
   --accent: rgb(76, 96, 140);
 
-  /* Titles are cast in the same satin chrome as the pills (the reel's metal):
-     one studio gradient with a dark horizon band, a soft highlight from the
-     upper left, a hairline rim and a soft shadow (the shadow is on GlassTitle). */
-  --metal-text:
-    radial-gradient(120% 70% at 30% 0%, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 55%),
-    linear-gradient(180deg, #ffffff 0%, #e6e4e0 20%, #cbc8c2 44%, #9a968f 58%, #75716b 62%, #a9a59f 75%, #dfdcd6 91%, #f8f6f2 100%);
-  --metal-text-rim: rgba(46, 38, 28, 0.5);
+  /* Type is ink pressed into the page, never chrome: a gradient inside
+     letterforms puts the horizon band straight through them. The metal lives on
+     surfaces (.metal-surface); text gets a crisp highlight below, debossed. */
+  --title-ink: #1b1a17;
+  --deboss: 0 1px 0 rgba(255, 255, 255, 0.75);
   /* Satin chrome, as a surface (pills, knobs). */
   --metal-surface:
     radial-gradient(120% 70% at 30% 0%, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 55%),
@@ -40,7 +38,9 @@
 
   /* Glass reads as glass through its fill, rim and light, not blur: panels carry
      no backdrop-filter (it was the single biggest scroll cost). */
-  --glass-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.62));
+  /* Frosted: the dot field draws the dots under a card blurred and bent at its
+     rim, and this fill (mirrored in lib/tokens `paper.glass`) sits over them. */
+  --glass-fill: rgba(255, 255, 255, 0.58);
   --glass-shadow:
     inset 0 1px 0 #fff, inset 0 -1px 0 rgba(255, 255, 255, 0.5), 0 0 0 1px rgba(40, 36, 30, 0.06),
     0 1px 2px rgba(40, 36, 30, 0.05), 0 18px 36px -20px rgba(40, 36, 30, 0.3);
@@ -56,17 +56,13 @@
   --hair: rgba(238, 240, 244, 0.1);
   --accent: rgb(170, 190, 240);
 
-  --metal-text-rim: rgba(0, 0, 0, 0.45);
-  --metal-surface:
-    radial-gradient(120% 70% at 30% 0%, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 55%),
-    linear-gradient(180deg, #7b8089 0%, #555a62 22%, #3b3f46 46%, #1c1e22 58%, #16181b 62%, #2e3137 76%, #464a52 92%, #5e636c 100%);
-  --metal-rim:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -1px 0 rgba(255, 255, 255, 0.08),
-    inset 0 -10px 16px -10px rgba(0, 0, 0, 0.6);
-  --metal-ink: #f1f2f5;
+  /* The chrome is a material, not a theme colour: it stays the same satin
+     chrome on the dark sheet, with the same dark ink pressed into it. */
+  --title-ink: #efede9;
+  --deboss: 0 -1px 0 rgba(0, 0, 0, 0.7);
   --metal-edge: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.06) 45%, rgba(0, 0, 0, 0.2) 60%, rgba(255, 255, 255, 0.14));
 
-  --glass-fill: linear-gradient(180deg, rgba(32, 34, 40, 0.72), rgba(14, 15, 18, 0.78));
+  --glass-fill: rgba(26, 28, 33, 0.7);
   --glass-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.04),
     0 1px 2px rgba(0, 0, 0, 0.3), 0 24px 48px -24px rgba(0, 0, 0, 0.7);
@@ -84,13 +80,9 @@ body {
 /* ─── Metal ────────────────────────────────────────────────────────────────── */
 
 .metal-text {
-  background-image: var(--metal-text);
-  background-size: 100% 100%;
-  -webkit-text-stroke: 1px var(--metal-text-rim);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
+  color: var(--title-ink);
+  -webkit-text-fill-color: var(--title-ink);
+  text-shadow: var(--deboss);
 }
 
 .metal-surface {
@@ -98,13 +90,13 @@ body {
   isolation: isolate;
   overflow: hidden;
   background: var(--metal-surface);
-  box-shadow: var(--metal-rim), 0 1px 2px rgba(20, 24, 32, 0.12), 0 6px 14px -6px rgba(20, 24, 32, 0.28);
+  box-shadow: var(--metal-rim), 0 1px 2px rgba(40, 30, 20, 0.14), 0 14px 30px -12px rgba(40, 30, 20, 0.34);
   color: var(--metal-ink);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.65);
+  -webkit-text-fill-color: var(--metal-ink);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 .dark .metal-surface {
-  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.5);
-  box-shadow: var(--metal-rim), 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 18px -8px rgba(0, 0, 0, 0.7);
+  box-shadow: var(--metal-rim), 0 1px 2px rgba(0, 0, 0, 0.5), 0 14px 30px -12px rgba(0, 0, 0, 0.75);
 }
 /* A glint crosses the chrome on hover, like light moving over a knob. */
 .metal-surface::after {
@@ -118,9 +110,6 @@ body {
   opacity: 0;
   pointer-events: none;
 }
-.dark .metal-surface::after {
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.28) 50%, rgba(255, 255, 255, 0));
-}
 .metal-surface:hover::after,
 .metal-surface:focus-visible::after {
   opacity: 1;
@@ -130,6 +119,53 @@ body {
 .metal-surface > * {
   position: relative;
   z-index: 1;
+}
+.metal-surface * {
+  -webkit-text-fill-color: var(--metal-ink);
+}
+.metal-surface svg {
+  color: var(--metal-ink);
+}
+.metal-surface:active {
+  transform: translateY(1px);
+}
+
+/* Every control is chrome, so "you are here" can't be the material. The current
+   item is the same chrome pressed into its socket: the light flips to the lower
+   half, the rim shadow moves inside, and a small ink dot sits under the label. */
+.metal-surface.is-current {
+  background:
+    radial-gradient(120% 70% at 50% 100%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 60%),
+    linear-gradient(180deg, #8e8a83 0%, #b3afa8 22%, #d4d1cb 48%, #e9e7e2 70%, #f7f5f1 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(46, 38, 28, 0.3), inset 0 2px 5px rgba(40, 32, 24, 0.45), inset 0 -1px 0 rgba(255, 255, 255, 0.8),
+    0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.dark .metal-surface.is-current {
+  box-shadow:
+    inset 0 0 0 1px rgba(46, 38, 28, 0.3), inset 0 2px 5px rgba(40, 32, 24, 0.45), inset 0 -1px 0 rgba(255, 255, 255, 0.8),
+    0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.metal-surface.is-current::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 5px;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: var(--metal-ink);
+  z-index: 1;
+}
+
+/* A chrome bead: the section index on the CS page. */
+.metal-bead {
+  border-radius: 50%;
+  background:
+    radial-gradient(60% 60% at 35% 28%, #fff, rgba(255, 255, 255, 0) 70%),
+    linear-gradient(180deg, #f4f2ee 0%, #bdb9b2 45%, #6f6b65 58%, #b9b5ae 78%, #efece7 100%);
+  box-shadow: inset 0 0 0 0.5px rgba(46, 38, 28, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 /* Hairline metal border for any rounded element: a gradient ring cut out by a mask. */
@@ -290,27 +326,63 @@ body {
   transition: stroke-dashoffset var(--draw-dur, 3s) cubic-bezier(0.45, 0, 0.25, 1);
 }
 
-/* Info bubbles: clear glass droplets. Clear toward the rim, where the lens
-   (lib/liquid.tsx) bends the page behind them most, and denser in the middle so
-   their small text stays readable. The blur is only the fallback for browsers
-   that don't honour backdrop-filter: url(). */
+/* Info bubbles: frosted bubbles. A clear bubble forms out of the card
+   (LiquidBud) and frosts over into one of these. They're small, so they can
+   afford a real backdrop blur (the page-wide panels can't). A specular spot,
+   a hairline chrome rim and inner light give them their volume. */
 .glass-bubble {
-  --bud-fill: #fbfaf7;
-  background: radial-gradient(120% 110% at 50% 42%, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.62) 55%, rgba(255, 255, 255, 0.16) 100%);
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(70% 55% at 34% 22%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 70%),
+    rgba(255, 255, 255, 0.58);
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
+  backdrop-filter: blur(12px) saturate(1.3);
   box-shadow:
-    inset 0 1.5px 0 #fff, inset 0 0 0 1px rgba(255, 255, 255, 0.75), inset 0 -10px 22px -12px rgba(40, 36, 30, 0.18),
-    0 0 0 1px rgba(40, 36, 30, 0.08), 0 18px 32px -18px rgba(40, 36, 30, 0.38);
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.75), inset 0 12px 24px -14px rgba(255, 255, 255, 0.95),
+    inset 0 -16px 30px -16px rgba(40, 36, 30, 0.25), 0 22px 44px -20px rgba(40, 36, 30, 0.42);
   color: var(--ink-2);
 }
 .dark .glass-bubble {
-  --bud-fill: #1d1f24;
-  background: radial-gradient(120% 110% at 50% 42%, rgba(26, 28, 33, 0.86) 0%, rgba(22, 24, 29, 0.66) 55%, rgba(18, 20, 24, 0.24) 100%);
+  background:
+    radial-gradient(70% 55% at 34% 22%, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 70%),
+    rgba(26, 28, 33, 0.7);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.08), inset 0 -10px 22px -12px rgba(0, 0, 0, 0.5),
-    0 18px 32px -18px rgba(0, 0, 0, 0.8);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12), inset 0 12px 24px -14px rgba(255, 255, 255, 0.18),
+    inset 0 -16px 30px -16px rgba(0, 0, 0, 0.6), 0 22px 44px -20px rgba(0, 0, 0, 0.85);
 }
+/* the specular spot a light source leaves on a sphere */
+.glass-bubble::before {
+  content: "";
+  position: absolute;
+  left: 12%;
+  top: 6%;
+  width: 28%;
+  height: 13%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0));
+  transform: rotate(-28deg);
+  pointer-events: none;
+  z-index: 2;
+}
+.dark .glass-bubble::before {
+  opacity: 0.55;
+}
+/* hairline chrome rim, as on the panels */
+.glass-bubble::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--metal-edge);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  pointer-events: none;
+  z-index: 2;
+}
+
 /* The neck drawn by LiquidBud sits outside the bubble, so it reads the fill from the page. */
 :root {
   --bud-fill: #fbfaf7;

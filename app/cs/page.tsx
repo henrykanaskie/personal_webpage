@@ -494,24 +494,16 @@ export default function CSPage() {
                   }}
                 >
                   <motion.div
+                    className={isActive ? "metal-bead" : undefined}
                     animate={{
-                      width: isActive ? 7 : 3,
-                      height: isActive ? 7 : 3,
-                      opacity: isActive ? 1 : 0.22,
-                      boxShadow: isActive
-                        ? isDark
-                          ? "0 0 8px rgba(180,200,255,0.9), 0 0 18px rgba(210,185,230,0.5)"
-                          : "0 0 8px rgba(100,115,145,0.7), 0 0 14px rgba(125,110,135,0.35)"
-                        : "none",
+                      width: isActive ? 9 : 3,
+                      height: isActive ? 9 : 3,
+                      opacity: isActive ? 1 : 0.35,
                     }}
-                    transition={{ duration: 0.35, ease: "easeInOut" }}
+                    transition={{ type: "spring", stiffness: 420, damping: 26 }}
                     style={{
                       borderRadius: "50%",
-                      backgroundImage: themed(
-                        isDark,
-                        cs.iridescentShort.dark,
-                        cs.iridescentShort.light,
-                      ),
+                      background: isActive ? undefined : "var(--ink)",
                     }}
                   />
                 </button>
@@ -614,13 +606,7 @@ export default function CSPage() {
                 <a
                   href="/Kanaskie_Henry_Resume.pdf"
                   download
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-opacity hover:opacity-70 ${glassBoxClassNames}`}
-                  style={{
-                    ...glassStyle,
-                    backgroundColor: isDark
-                      ? "rgba(255,255,255,0.06)"
-                      : "rgba(0,0,0,0.04)",
-                  }}
+                  className="metal-surface flex items-center gap-2 px-4 py-2 rounded-full"
                 >
                   <span
                     className="flex items-center gap-2 bg-clip-text text-transparent"
@@ -640,7 +626,7 @@ export default function CSPage() {
                       height="16"
                       viewBox="0 0 24 24"
                       fill="none"
-                      stroke={themed(isDark, cs.color.dark, cs.color.light)}
+                      stroke="currentColor"
                       strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -654,16 +640,8 @@ export default function CSPage() {
                 </a>
                 <button
                   onClick={() => setResumeOpen(false)}
-                  className={`w-10 h-10 flex items-center justify-center rounded-full transition-opacity hover:opacity-70 cursor-pointer ${glassBoxClassNames}`}
-                  style={{
-                    ...glassStyle,
-                    backgroundColor: isDark
-                      ? "rgba(255,255,255,0.06)"
-                      : "rgba(0,0,0,0.04)",
-                    color: isDark
-                      ? "rgba(255,255,255,0.6)"
-                      : "rgba(20,28,48,0.5)",
-                  }}
+                  className="metal-surface w-10 h-10 flex items-center justify-center rounded-full cursor-pointer"
+                  aria-label="Close"
                 >
                   ✕
                 </button>
@@ -738,16 +716,8 @@ export default function CSPage() {
                 </FuzzyText>
                 <button
                   onClick={() => setEmailOpen(false)}
-                  className={`w-10 h-10 flex items-center justify-center rounded-full transition-opacity hover:opacity-70 cursor-pointer ${glassBoxClassNames}`}
-                  style={{
-                    ...glassStyle,
-                    backgroundColor: isDark
-                      ? "rgba(255,255,255,0.06)"
-                      : "rgba(0,0,0,0.04)",
-                    color: isDark
-                      ? "rgba(255,255,255,0.6)"
-                      : "rgba(20,28,48,0.5)",
-                  }}
+                  className="metal-surface w-10 h-10 flex items-center justify-center rounded-full cursor-pointer"
+                  aria-label="Close"
                 >
                   ✕
                 </button>
@@ -935,19 +905,10 @@ export default function CSPage() {
                   <button
                     type="submit"
                     disabled={emailStatus === "sending"}
-                    className={`mt-2 w-full py-3 rounded-xl transition-opacity cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${glassBoxClassNames}`}
-                    style={{
-                      ...glassStyle,
-                      backgroundColor: isDark
-                        ? "rgba(255,255,255,0.07)"
-                        : "rgba(0,0,0,0.05)",
-                    }}
+                    className="metal-surface mt-2 w-full py-3 rounded-full cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span
                       style={{
-                        color: isDark
-                          ? "rgba(255,255,255,0.88)"
-                          : "rgba(20,28,48,0.8)",
                         fontSize: "0.95rem",
                         fontWeight: 700,
                       }}

@@ -337,7 +337,7 @@ export default function Header() {
               width="7"
               height="14"
               rx="1.5"
-              fill={isDark ? "rgba(220,235,255,0.9)" : "rgba(100,115,145,0.85)"}
+              fill="currentColor"
               opacity={0.9}
             />
             <rect
@@ -346,8 +346,8 @@ export default function Header() {
               width="7"
               height="14"
               rx="1.5"
-              fill={isDark ? "rgba(245,220,250,0.8)" : "rgba(120,95,135,0.8)"}
-              opacity={0.9}
+              fill="currentColor"
+              opacity={0.55}
             />
           </svg>
         </Link>
@@ -435,23 +435,9 @@ export default function Header() {
   const homeSvg = (
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="2" y="3" width="7" height="14" rx="1.5"
-        fill={isDark ? "url(#cs-home-grad-dark-l)" : "url(#cs-home-grad-light-l)"} opacity={0.85} />
+        fill="currentColor" opacity={0.85} />
       <rect x="11" y="3" width="7" height="14" rx="1.5"
-        fill={isDark ? "url(#cs-home-grad-dark-r)" : "url(#cs-home-grad-light-r)"} opacity={0.85} />
-      <defs>
-        <linearGradient id="cs-home-grad-dark-l" x1="2" y1="3" x2="9" y2="17" gradientUnits="userSpaceOnUse">
-          <stop stopColor="rgb(180,200,255)" /><stop offset="1" stopColor="rgb(210,185,230)" />
-        </linearGradient>
-        <linearGradient id="cs-home-grad-dark-r" x1="11" y1="3" x2="18" y2="17" gradientUnits="userSpaceOnUse">
-          <stop stopColor="rgb(200,185,225)" /><stop offset="1" stopColor="rgb(180,200,255)" />
-        </linearGradient>
-        <linearGradient id="cs-home-grad-light-l" x1="2" y1="3" x2="9" y2="17" gradientUnits="userSpaceOnUse">
-          <stop stopColor="rgb(100,115,145)" /><stop offset="1" stopColor="rgb(125,110,135)" />
-        </linearGradient>
-        <linearGradient id="cs-home-grad-light-r" x1="11" y1="3" x2="18" y2="17" gradientUnits="userSpaceOnUse">
-          <stop stopColor="rgb(120,95,135)" /><stop offset="1" stopColor="rgb(100,115,145)" />
-        </linearGradient>
-      </defs>
+        fill="currentColor" opacity={0.55} />
     </svg>
   );
 
@@ -508,7 +494,8 @@ export default function Header() {
                     }
                   }
                 }}
-                className={`${active ? metalClassNames : glassBubbleClassNames} px-7 py-3 rounded-full font-semibold text-lg transition-all duration-200`}
+                className={`${metalClassNames}${active ? " is-current" : ""} px-7 py-3 rounded-full font-semibold text-lg transition-all duration-200`}
+                aria-current={active ? "page" : undefined}
                 style={glassStyle}
               >
                 <CrystallineText active={active} isDark={isDark}>

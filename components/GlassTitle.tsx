@@ -70,15 +70,9 @@ export default function GlassTitle({
 
   const titleStyles: React.CSSProperties = useMemo(() => {
     if (effectiveVariant === "metal") {
-      // Fill comes from .metal-text. The shadow sits on a filter, not text-shadow,
-      // because text-shadow paints over a background-clipped fill and dulls it.
-      return {
-        filter: themed(
-          isDark,
-          "drop-shadow(0 1px 1px rgba(0,0,0,0.6)) drop-shadow(0 16px 26px rgba(0,0,0,0.6))",
-          "drop-shadow(0 1px 1px rgba(40,32,24,0.28)) drop-shadow(0 12px 20px rgba(40,32,24,0.2))",
-        ),
-      };
+      // Ink pressed into the page (.metal-text): solid colour and a debossed
+      // highlight. No gradient in the letters, so no band through them.
+      return {};
     }
     if (effectiveVariant === "iridescent") {
       return {
@@ -372,8 +366,9 @@ export default function GlassTitle({
           </>
         )}
 
-        {/* Shine: driven by scroll direction/speed */}
+        {/* Shine: driven by scroll direction/speed (glass variants only; ink doesn't glint) */}
         <span
+          hidden={isMetal}
           ref={shineRef}
           aria-hidden
           className="absolute inset-0 -bottom-[0.15em] bg-clip-text text-transparent pointer-events-none"

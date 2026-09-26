@@ -2,7 +2,7 @@
 
 import { useRef, useCallback, useState, useEffect, memo } from "react";
 import { motion } from "framer-motion";
-import { FuzzyText, glassStyle, GlassLayers } from "../lib/glass";
+import { FuzzyText, glassStyle } from "../lib/glass";
 import { useGlassLens, LiquidBud } from "../lib/liquid";
 
 // ─── Border Vapor Particle ───
@@ -107,7 +107,8 @@ function generateBorderParticles(
 ): BorderParticle[] {
   const halfW = bubbleWidth / 2;
   const halfH = bubbleHeight / 2;
-  const borderRadius = 24; // matches the bubble's borderRadius
+  // a square bubble is a circle; everything else uses the soft bubble radius
+  const borderRadius = Math.abs(bubbleWidth - bubbleHeight) < 6 ? bubbleWidth / 2 : 40;
 
   return Array.from({ length: count }, (_, i) => {
     const { x: bx, y: by } = sampleRoundedRectBorder(
@@ -286,7 +287,7 @@ export function InfoBubble({
   desktopX?: number;
 }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
-  const lens = useGlassLens(bubbleRef);
+  const lens = useGlassLens(bubbleRef, { radius: 999, frost: "blur(12px) saturate(1.3)" });
   // Hidden at its resting spot until LiquidBud has grown the droplet onto it.
   const [budDone, setBudDone] = useState(false);
   const showBelow = isMobile;
@@ -326,16 +327,21 @@ export function InfoBubble({
   return (
     <>
       {lens.filter}
-      <LiquidBud bubbleRef={bubbleRef} onDone={() => setBudDone(true)} />
+      <LiquidBud bubbleRef={bubbleRef} bubbleRadius={999} onDone={() => setBudDone(true)} />
       <motion.div
         ref={bubbleRef}
         style={{
           position: "absolute",
           top: showBelow ? "100%" : "50%",
           ...sideAnchor,
-          width: showBelow ? "min(260px, 85vw)" : 260,
-          padding: "20px 24px",
-          borderRadius: "24px",
+          // a round bubble: the content sits in the middle of the sphere
+          width: showBelow ? "min(300px, 86vw)" : 300,
+          aspectRatio: "1 / 1",
+          padding: "30px 44px",
+          borderRadius: "50%",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
           cursor: "pointer",
           pointerEvents: "auto",
           transformOrigin: showBelow
@@ -431,7 +437,8 @@ export function InfoBubble({
                 top: { type: "spring", stiffness: 170, damping: 26 },
                 scaleX: { type: "spring", stiffness: 170, damping: 14 },
                 scaleY: { type: "spring", stiffness: 170, damping: 14 },
-                opacity: { duration: 0.16, ease: "easeOut" },
+                // the clear bubble frosts over: a slower crossfade with the droplet
+                opacity: { duration: 0.32, ease: "easeInOut" },
               }
         }
         exit={{ opacity: 0, transition: { duration: 0.001 } }}
@@ -439,8 +446,6 @@ export function InfoBubble({
           isPopping ? {} : { scale: 1.03, transition: { duration: 0.2 } }
         }
       >
-        <GlassLayers refractionSide={isRight ? "right" : "left"} specularInset="15%" />
-
         {/* Content */}
         <div
           style={{
@@ -478,7 +483,7 @@ export function InfoBubble({
 
           <div
             className="bg-black/[0.22] dark:bg-white/[0.15]"
-            style={{ height: 1, margin: "10px 0" }}
+            style={{ height: 1, margin: "7px 12px" }}
           />
 
           {/* Tech Stack */}
@@ -499,7 +504,7 @@ export function InfoBubble({
               display: "flex",
               flexWrap: "wrap",
               gap: 4,
-              marginTop: 11,
+              marginTop: 6,
               justifyContent: "center",
             }}
           >
@@ -522,7 +527,7 @@ export function InfoBubble({
 
           <div
             className="bg-black/[0.22] dark:bg-white/[0.15]"
-            style={{ height: 1, margin: "12px 0" }}
+            style={{ height: 1, margin: "8px 12px" }}
           />
 
           {/* Industry */}
@@ -551,7 +556,7 @@ export function InfoBubble({
 
           <div
             className="bg-black/[0.22] dark:bg-white/[0.15]"
-            style={{ height: 1, margin: "10px 0" }}
+            style={{ height: 1, margin: "7px 12px" }}
           />
 
           {/* Location */}
@@ -579,7 +584,7 @@ export function InfoBubble({
           </div>
 
           <p
-            style={{ margin: "10px 0 0", fontSize: 10, opacity: 0.4 }}
+            style={{ margin: "7px 0 0", fontSize: 9, opacity: 0.4 }}
             className="text-black dark:text-white"
           >
             {isMobile ? "tap to dismiss" : "click to dismiss"}

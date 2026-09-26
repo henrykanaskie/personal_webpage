@@ -11,6 +11,10 @@ import { paper } from "@/lib/tokens";
 //   - on every navigation the grid configures itself in a wave, starting from
 //     wherever you clicked to get there
 //   - a click on bare paper sends a ripple through the dots
+//   - under every card ([data-liquid]) the dots are frosted: blurred, and bent
+//     by the card's rim like the edge of a lens
+//   - a card is liquid: as the cursor comes near, its edge swells and reaches
+//     toward it on a wobbly spring, and settles back when the cursor leaves
 //
 // Dots are drawn in page space at exactly the positions of the CSS dots
 // (lib/tokens `paper`), so there's no seam when the canvas appears, and if
@@ -39,6 +43,47 @@ uniform float uMouseOn;
 uniform vec3 uRipple;     // x, y (viewport), seconds since click
 uniform vec2 uOrigin;     // intro wave origin (viewport)
 uniform float uIntro;     // seconds since the last navigation
+uniform vec4 uCards[8];   // x, y, w, h (viewport) of the visible cards
+uniform vec2 uCardP[8];   // corner radius, opacity
+uniform float uNCards;
+uniform vec3 uBlob;       // the swell a card grows toward the cursor: x, y, radius
+uniform vec3 uFill;
+uniform float uFillA;
+uniform float uDark;
+
+float sdBox(vec2 p, vec2 c, vec2 hs, float r) {
+  vec2 q = abs(p - c) - hs + r;
+  return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+}
+float smin(float a, float b, float k) {
+  float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+  return mix(b, a, h) - k * h * (1.0 - h);
+}
+// The cards alone (what the DOM draws) and the liquid (cards plus the swell).
+float cards(vec2 p, out float alpha) {
+  float d = 1e5;
+  alpha = 0.0;
+  for (int i = 0; i < 8; i++) {
+    if (float(i) >= uNCards) break;
+    vec4 c = uCards[i];
+    float di = sdBox(p, c.xy + c.zw * 0.5, c.zw * 0.5, uCardP[i].x);
+    if (di < d) { d = di; alpha = uCardP[i].y; }
+  }
+  return d;
+}
+float liquid(vec2 p, float dc) {
+  if (uBlob.z < 0.5) return dc;
+  return smin(dc, length(p - uBlob.xy) - uBlob.z, 38.0);
+}
+
+// Frosted dots: the same grid, each dot spread soft and wide.
+float frostDots(vec2 p) {
+  vec2 w = p + uScroll;
+  vec2 c = (floor(w / uGap) + 0.5) * uGap - uScroll;
+  float d = length(p - c);
+  float R = uDotR + 2.6;
+  return smoothstep(R, 0.0, d) * 0.6;
+}
 
 float dots(vec2 p) {
   vec2 w = p + uScroll;
@@ -81,7 +126,37 @@ float dots(vec2 p) {
 
 void main() {
   vec2 p = vec2(gl_FragCoord.x, uRes.y * uDpr - gl_FragCoord.y) / uDpr;
-  gl_FragColor = vec4(mix(uBg, uDot, dots(p) * uDotA), 1.0);
+  vec3 col = mix(uBg, uDot, dots(p) * uDotA);
+
+  if (uNCards > 0.5) {
+    float ca;
+    float dc = cards(p, ca);
+    float dl = liquid(p, dc);
+    if (dl < 1.5 && ca > 0.01) {
+      float aa = 0.7 / uDpr;
+      // rim normal of the liquid, and how close to the rim we are
+      float t1, t2;
+      float gx = liquid(p + vec2(1.0, 0.0), cards(p + vec2(1.0, 0.0), t1)) - dl;
+      float gy = liquid(p + vec2(0.0, 1.0), cards(p + vec2(0.0, 1.0), t2)) - dl;
+      vec2 n = normalize(vec2(gx, gy) + 1e-5);
+      float rim = 1.0 - clamp(-dl / 26.0, 0.0, 1.0);
+      rim *= rim;
+      // the dots under the glass, bent outward at the rim and frosted
+      vec2 q = p + n * rim * 11.0;
+      vec3 frost = mix(uBg, uDot, frostDots(q) * uDotA);
+      float inLiquid = 1.0 - smoothstep(-aa, aa, dl);
+      float outCard = smoothstep(-aa, aa, dc);
+      // where the liquid reaches past the DOM card, paint the card's fill too
+      vec3 swell = mix(frost, uFill, uFillA);
+      // a hairline chrome rim along the swell: bright above, darker below
+      float line = 1.0 - smoothstep(0.0, 1.2, abs(dl + 0.6));
+      vec3 rimCol = mix(vec3(1.0), vec3(0.38, 0.36, 0.33), smoothstep(-0.4, 0.6, n.y));
+      swell = mix(swell, rimCol, line * (0.55 - 0.25 * uDark));
+      vec3 inside = mix(frost, swell, outCard);
+      col = mix(col, inside, inLiquid * ca);
+    }
+  }
+  gl_FragColor = vec4(col, 1.0);
 }
 `;
 
@@ -145,6 +220,27 @@ export default function DotField() {
       res: U("uRes"), dpr: U("uDpr"), scroll: U("uScroll"), gap: U("uGap"), dotR: U("uDotR"),
       bg: U("uBg"), dot: U("uDot"), dotA: U("uDotA"), mouse: U("uMouse"), mouseOn: U("uMouseOn"),
       ripple: U("uRipple"), origin: U("uOrigin"), intro: U("uIntro"),
+      cards: U("uCards"), cardP: U("uCardP"), nCards: U("uNCards"), blob: U("uBlob"),
+      fill: U("uFill"), fillA: U("uFillA"), dark: U("uDark"),
+    };
+    const cardBuf = new Float32Array(32), cardPBuf = new Float32Array(16);
+    let panels: HTMLElement[] = [];
+    let panelsAt = -1e9;
+    const radiusOf = new WeakMap<HTMLElement, number>();
+    let lastSig = "";
+    // The swell: a blob that rises out of the nearest card's edge toward the cursor.
+    const blob = { x: 0, y: 0, vx: 0, vy: 0, r: 0, vr: 0 };
+
+    // Opacity from inline styles up the tree (Framer Motion writes it there), so
+    // the frost appears with its card rather than before it.
+    const opacityOf = (el: HTMLElement) => {
+      let a = 1;
+      let e: HTMLElement | null = el;
+      for (let i = 0; i < 6 && e; i++, e = e.parentElement) {
+        const o = e.style.opacity;
+        if (o !== "") a *= parseFloat(o);
+      }
+      return a;
     };
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -219,7 +315,7 @@ export default function DotField() {
       wasDark = dark;
       const introT = (now - wave.start) / 1000;
       const settling = Math.abs(mouse.onV) > 1e-3 || Math.abs(mouse.on - (mouse.x > -9000 ? 1 : 0)) > 1e-3;
-      const busy = scrolling || themeChanged || settling || ripple.t >= 0 || introT < 2.2 || now - lastActive < 250;
+      let busy = scrolling || themeChanged || settling || ripple.t >= 0 || introT < 2.2 || now - lastActive < 250;
 
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
@@ -234,6 +330,62 @@ export default function DotField() {
       }
 
       const pal = dark ? paper.dark : paper.light;
+      const glass = dark ? paper.glass.dark : paper.glass.light;
+
+      // Visible cards, nearest first.
+      if (now - panelsAt > 1000) {
+        panels = Array.from(document.querySelectorAll<HTMLElement>("[data-liquid]"));
+        panelsAt = now;
+      }
+      let n = 0;
+      let sig = "";
+      let near: { d: number; ex: number; ey: number; nx: number; ny: number } | null = null;
+      for (const el of panels) {
+        if (n >= 8) break;
+        const r = el.getBoundingClientRect();
+        if (r.bottom < -40 || r.top > h + 40 || r.width < 1) continue;
+        let rad = radiusOf.get(el);
+        if (rad === undefined) {
+          rad = parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0;
+          radiusOf.set(el, rad);
+        }
+        const a = opacityOf(el);
+        cardBuf[n * 4] = r.left; cardBuf[n * 4 + 1] = r.top; cardBuf[n * 4 + 2] = r.width; cardBuf[n * 4 + 3] = r.height;
+        cardPBuf[n * 2] = Math.min(rad, r.width / 2, r.height / 2); cardPBuf[n * 2 + 1] = a;
+        sig += `${r.left | 0},${r.top | 0},${r.width | 0},${r.height | 0},${a.toFixed(2)};`;
+        n++;
+        // distance from the cursor to this card's edge, and the edge point nearest it
+        if (mouse.x > -9000 && a > 0.9) {
+          const ex = Math.max(r.left, Math.min(r.right, mouse.x));
+          const ey = Math.max(r.top, Math.min(r.bottom, mouse.y));
+          const d = Math.hypot(mouse.x - ex, mouse.y - ey);
+          if (d > 0 && (!near || d < near.d)) near = { d, ex, ey, nx: (mouse.x - ex) / d, ny: (mouse.y - ey) / d };
+        }
+      }
+      const moved = sig !== lastSig;
+      lastSig = sig;
+
+      // The swell reaches about halfway to the cursor and grows as it closes in;
+      // underdamped, so it wobbles as it rises and when it lets go.
+      const REACH = 120;
+      let tx = blob.x, ty = blob.y, tr = 0;
+      if (near && near.d < REACH && !reduced) {
+        const k = 1 - near.d / REACH;
+        tr = 10 + 26 * k;
+        // never so far out that the smooth union lets go: it reaches, it doesn't drip
+        const out = Math.min(near.d * 0.6, tr * 0.6 + 8);
+        tx = near.ex + near.nx * out;
+        ty = near.ey + near.ny * out;
+        if (blob.r < 0.5) { blob.x = near.ex - near.nx * 20; blob.y = near.ey - near.ny * 20; }
+      }
+      const W = 16, Z = 0.42;
+      for (let i = 0, hs = dt / 4; i < 4; i++) {
+        blob.vx += (-2 * Z * W * blob.vx - W * W * (blob.x - tx)) * hs; blob.x += blob.vx * hs;
+        blob.vy += (-2 * Z * W * blob.vy - W * W * (blob.y - ty)) * hs; blob.y += blob.vy * hs;
+        blob.vr += (-2 * 0.35 * 18 * blob.vr - 18 * 18 * (blob.r - tr)) * hs; blob.r += blob.vr * hs;
+      }
+      const blobBusy = Math.abs(blob.vr) > 0.5 || Math.abs(blob.r - tr) > 0.3 || Math.hypot(blob.vx, blob.vy) > 2;
+      if (moved || blobBusy) { lastActive = now; busy = true; }
       const sp = springTo(mouse.on, mouse.onV, mouse.x > -9000 ? 1 : 0, 9, dt);
       mouse.on = sp[0];
       mouse.onV = sp[1];
@@ -253,6 +405,13 @@ export default function DotField() {
       gl.uniform3f(u.ripple, ripple.x, ripple.y, ripple.t);
       gl.uniform2f(u.origin, wave.x, wave.y);
       gl.uniform1f(u.intro, introT);
+      gl.uniform4fv(u.cards, cardBuf);
+      gl.uniform2fv(u.cardP, cardPBuf);
+      gl.uniform1f(u.nCards, n);
+      gl.uniform3f(u.blob, blob.x, blob.y, Math.max(0, blob.r));
+      gl.uniform3f(u.fill, glass.fill[0] / 255, glass.fill[1] / 255, glass.fill[2] / 255);
+      gl.uniform1f(u.fillA, glass.alpha);
+      gl.uniform1f(u.dark, dark ? 1 : 0);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       canvas.style.opacity = "1";
 

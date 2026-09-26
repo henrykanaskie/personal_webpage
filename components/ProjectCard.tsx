@@ -148,7 +148,7 @@ const BubbleShell = memo(function BubbleShell({
   children: React.ReactNode;
 }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
-  const lens = useGlassLens(bubbleRef);
+  const lens = useGlassLens(bubbleRef, { radius: 40, frost: "blur(12px) saturate(1.3)" });
   // Hidden at its resting spot until LiquidBud has grown the droplet onto it.
   const [budDone, setBudDone] = useState(false);
   const isInView = useInView(bubbleRef, { once: false, amount: 0.4 });
@@ -190,15 +190,15 @@ const BubbleShell = memo(function BubbleShell({
   return (
     <>
     {lens.filter}
-    <LiquidBud bubbleRef={bubbleRef} onDone={() => setBudDone(true)} />
+    <LiquidBud bubbleRef={bubbleRef} bubbleRadius={40} onDone={() => setBudDone(true)} />
     <motion.div
       ref={bubbleRef}
       style={{
         position: "absolute",
         ...(showBelow ? { left: "50%" } : isRight ? { right: 0 } : { left: 0 }),
-        width: showBelow ? "min(240px, 85vw)" : 240,
+        width: showBelow ? "min(250px, 85vw)" : 250,
         padding: "16px 20px",
-        borderRadius: "24px",
+        borderRadius: "40px",
         cursor: "pointer",
         pointerEvents: "auto",
         transformOrigin: showBelow
@@ -288,7 +288,8 @@ const BubbleShell = memo(function BubbleShell({
                 top: { type: "spring", stiffness: 170, damping: 26 },
                 scaleX: { type: "spring", stiffness: 170, damping: 14 },
                 scaleY: { type: "spring", stiffness: 170, damping: 14 },
-                opacity: { duration: 0.16, ease: "easeOut" },
+                // the clear bubble frosts over: a slower crossfade with the droplet
+                opacity: { duration: 0.32, ease: "easeInOut" },
             }
       }
       exit={{ opacity: 0, transition: { duration: 0.001 } }}
@@ -296,8 +297,6 @@ const BubbleShell = memo(function BubbleShell({
         isPopping ? {} : { scale: 1.03, transition: { duration: 0.2 } }
       }
     >
-      <GlassLayers refractionSide="left" specularInset="15%" />
-
       {children}
     </motion.div>
     </>
@@ -385,15 +384,14 @@ const DeploymentBubbleContent = memo(function DeploymentBubbleContent({
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
           style={{ pointerEvents: "auto" }}
-          className="text-black/80 dark:text-white/80 hover:text-black dark:hover:text-white transition-colors duration-200"
+          className="metal-surface rounded-full px-3 py-1 transition-transform duration-200 hover:-translate-y-px"
         >
           <span
             style={{
-              fontSize: 10,
+              fontSize: 10.5,
+              fontWeight: 600,
               fontFamily: "var(--font-elevated)",
               letterSpacing: "0.04em",
-              textDecoration: "underline",
-              textUnderlineOffset: 3,
             }}
           >
             {label}
@@ -655,6 +653,7 @@ export default function ProjectCard({
             flex: 1,
             ...glassStyle,
           }}
+          data-liquid
           className={`${glassBoxClassNames} p-5 md:p-8`}
         >
           <GlassLayers refractionSide="left" />
@@ -780,7 +779,7 @@ export default function ProjectCard({
                     ? thumbnailBubble.requestPop
                     : thumbnailBubble.openBubble
                 }
-                className="group relative px-3 py-1.5 rounded-full text-xs font-medium text-black dark:text-white bg-blue-500/3 hover:bg-blue-500/5 dark:bg-white/5 dark:hover:bg-white/10 border border-[rgba(100,130,200,0.2)] dark:border-[rgba(255,255,255,0.05)] transition-all duration-300"
+                className="metal-surface group relative px-4 py-1.5 rounded-full text-xs font-semibold transition-transform duration-200 hover:-translate-y-px"
               >
                 <span className="relative z-10">
                   {thumbnailBubble.isBubbleOpen ? "Close" : "About"}
@@ -792,7 +791,7 @@ export default function ProjectCard({
                     ? deploymentBubble.requestPop
                     : deploymentBubble.openBubble
                 }
-                className="group relative px-3 py-1.5 rounded-full text-xs font-medium text-black dark:text-white bg-blue-500/3 hover:bg-blue-500/5 dark:bg-white/5 dark:hover:bg-white/10 border border-[rgba(100,130,200,0.2)] dark:border-[rgba(255,255,255,0.05)] transition-all duration-300"
+                className="metal-surface group relative px-4 py-1.5 rounded-full text-xs font-semibold transition-transform duration-200 hover:-translate-y-px"
               >
                 <span className="relative z-10">
                   {deploymentBubble.isBubbleOpen ? "Close" : "Links"}

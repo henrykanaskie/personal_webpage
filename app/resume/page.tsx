@@ -21,6 +21,7 @@ function GlassCard({
   return (
     <div
       style={{ position: "relative", borderRadius: "24px", ...glassStyle }}
+      data-liquid
       className={`${glassBoxClassNames} ${className}`}
     >
       <GlassLayers />
@@ -260,7 +261,7 @@ function Thumbnail({ type, isDark }: { type: ThumbnailType; isDark: boolean }) {
           <defs>
             <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
               <stop offset="0%" stopColor={themed(isDark, cs.color.dark, cs.color.light)} />
-              <stop offset="100%" stopColor={isDark ? "rgb(210,185,230)" : "rgb(125,110,135)"} />
+              <stop offset="100%" stopColor={themed(isDark, "#8f8b85", "#6b6760")} />
             </linearGradient>
           </defs>
           {Array.from({ length: n }, (_, r) =>

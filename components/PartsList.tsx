@@ -93,7 +93,7 @@ export default function PartsList() {
       transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
       className="w-full max-w-[1280px] mx-auto px-3 md:px-0"
     >
-      <div className={`${glassBoxClassNames} relative rounded-[24px] overflow-hidden`}>
+      <div data-liquid className={`${glassBoxClassNames} relative rounded-[24px] overflow-hidden`}>
         <GlassLayers />
 
         {/* Title block, as on a drawing sheet */}

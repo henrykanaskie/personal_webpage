@@ -52,6 +52,7 @@ export default function EducationCard({
           borderRadius: "24px",
           ...glassStyle,
         }}
+        data-liquid
         className={`${glassBoxClassNames} p-5 md:p-10 lg:p-12`}
       >
         <GlassLayers refractionSide="left" />
