@@ -155,14 +155,15 @@ export function setRingHole(panel: HTMLElement, which: "s" | "b", x: number, y: 
 // unioned with the bubble (and, after the break, a shrinking stub on the card's
 // side). The smooth union's reach starts wide, so the first swell is a broad
 // bulge of the card itself, and narrows as the bubble pulls away, which is what
-// draws the neck in until it pinches. The material is the cards' frosted glass
-// (blurred dots bent at the rim, the card fill, a chrome hairline), so the
-// swell reads as the card. Only what lies outside the card is painted (the
-// card is DOM), plus a thin band inside the card's edge near the bud so the
-// frost bends continuously into the growth. While it grows the card has no
-// border at all (.is-budding), so nothing marks where the card ends. Once it
-// breaks free, the bud turns into the see-through bubble with a thin-film
-// sheen, and when it settles the real frosted bubble fades in.
+// draws the neck in until it pinches. The surface starts as the card's
+// frosted glass and thins, the further it's stretched out of the card, into
+// the bubble's clear iridescent film. The edge is never lost: around the bud
+// the card's own (DOM) rim is opened (setRingHole) and the canvas draws the
+// rim of card and bulge as one outline there, handing over across a 40px
+// falloff; chrome on the card, turning to thin film along the stretch, so the
+// bubble is visibly made of the card's edge and carries it away. Only what lies outside the card is filled (the card is DOM), plus a
+// thin band inside its edge near the bud so the frost bends continuously.
+// When it settles, the real frosted bubble fades in.
 
 const BUD_VERT = `attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }`;
 const BUD_FRAG = `
@@ -178,7 +179,7 @@ uniform vec3 uStub;   // the card side's recoil after the break: x, y, radius
 uniform vec3 uHole;   // the hole opened in the card's rim: x, y, radius
 uniform float uBubble; // 0 card material, 1 see-through bubble
 uniform float uBubA;
-uniform float uEdge;  // 0 in flight: the bubble's rim (film) only comes in as it settles
+uniform float uRim;   // the canvas's rim round the whole shape, in as the card's own rim hides
 uniform float uAlpha, uDark, uTime;
 uniform float uGap, uDotR, uDotA;
 uniform vec3 uBg, uDot, uFill;
@@ -233,27 +234,46 @@ void main() {
   float sh = smoothstep(34.0, -12.0, scene(p - vec2(0.0, 10.0))) * outside * (1.0 - inL);
   outc = vec4(0.0, 0.0, 0.0, 1.0) * sh * (0.05 + 0.16 * uDark);
 
+  vec2 g = vec2(scene(p + vec2(1.0, 0.0)) - d, scene(p + vec2(0.0, 1.0)) - d);
+  vec2 n = normalize(g + 1e-5);
+  // How far the surface has been stretched out of the card: 0 on the card,
+  // 1 some way out along the bulge, and 1 for the freed droplet. A stretched
+  // film thins, so it turns from the card's frosted surface into the bubble's
+  // clear, iridescent one.
+  float isDrop = uBubble * smoothstep(1.0, -1.0, drop(p) - cardStub(p));
+  float stretch = max(smoothstep(2.0, 38.0, dc), isDrop);
+  // thin film colour: the hue runs round the edge and drifts slowly
+  vec3 film = 0.5 + 0.5 * cos(6.2831 * (vec3(0.0, 0.33, 0.67) + atan(n.y, n.x) * 0.16 + uTime * 0.05));
+
   if (cover > 0.0) {
-    vec2 g = vec2(scene(p + vec2(1.0, 0.0)) - d, scene(p + vec2(0.0, 1.0)) - d);
-    vec2 n = normalize(g + 1e-5);
     float rim = 1.0 - clamp(-d / 26.0, 0.0, 1.0);
     rim *= rim;
-    // card material, exactly as the card is drawn (DotField's frost under the
-    // card fill), so the growth reads as the card itself: no rim, no line
+    // card material, exactly as the card is drawn (DotField's frost under the card fill)
     vec3 col = mix(uBg, uDot, frostDots(p + n * rim * 11.0) * uDotA);
     col = mix(col, uFill, uFillA);
     vec4 cardM = vec4(col, 1.0);
-    // bubble material: a light see-through fill and a faint thin-film sheen
-    // toward the rim (fresnel), its hue turning with angle around the edge
+    // bubble material: a light see-through fill, the film glowing toward the rim
     float f = pow(1.0 - clamp(-d / 14.0, 0.0, 1.0), 2.0);
-    vec3 film = 0.5 + 0.5 * cos(6.2831 * (vec3(0.0, 0.33, 0.67) + f * 0.8 + atan(n.y, n.x) * 0.16 + uTime * 0.05));
-    film = mix(vec3(1.0), film, 0.6);
-    float fa = f * (0.24 + 0.06 * uDark) * uEdge;
-    vec4 bubM = vec4(vec3(uBubA) + film * fa, uBubA + fa); // a white scatter fill, like the DOM bubble
-    // only the freed droplet is bubble; the card's side and its recoil stay card
-    float isDrop = uBubble * smoothstep(1.0, -1.0, drop(p) - cardStub(p));
-    outc = mix(outc, mix(cardM, bubM, isDrop), cover);
+    float fa = f * (0.26 + 0.06 * uDark);
+    vec4 bubM = vec4(vec3(uBubA) + mix(vec3(1.0), film, 0.6) * fa, uBubA + fa);
+    outc = mix(outc, mix(cardM, bubM, stretch), cover);
   }
+
+  // The edge. The card keeps its whole rim while the bubble grows: the canvas
+  // draws it round the entire liquid outline (card and bulge as one shape), so
+  // the card's chrome hairline runs unbroken out along the bulge, turning into
+  // the bubble's iridescent film as it stretches, and the bubble leaves with it.
+  float line = 1.0 - smoothstep(0.0, 1.1, abs(d + 0.6));
+  float glow = smoothstep(-7.0, 0.0, d) * (1.0 - smoothstep(-0.5, 0.5, d));
+  vec3 chrome = mix(mix(vec3(1.0), vec3(0.55, 0.53, 0.5), smoothstep(-0.4, 0.6, n.y)),
+                    mix(vec3(0.62), vec3(0.26), smoothstep(-0.4, 0.6, n.y)), uDark);
+  vec3 filmRim = mix(vec3(1.0), film, 0.42); // soap film, not neon: mostly white light, a little colour
+  vec3 rimCol = mix(chrome, filmRim, stretch);
+  // Only near the bud: elsewhere the card's own (DOM) rim is still there, and
+  // the two hand over across the same 40px falloff the rim's hole uses.
+  float own = uHole.z > 0.5 ? 1.0 - clamp((length(p - uHole.xy) - uHole.z) / 40.0, 0.0, 1.0) : 0.0;
+  float rimA = (line * mix(0.6, 0.7, stretch) + glow * stretch * 0.18) * uRim * max(own, smoothstep(0.5, 1.5, dc));
+  outc = vec4(rimCol, 1.0) * rimA + outc * (1.0 - rimA);
   gl_FragColor = outc * uAlpha;
 }
 `;
@@ -381,9 +401,9 @@ export function LiquidBud({
       if (e < best) { best = e; panel = el; }
     });
     const hole = { x: ex, y: ey, r: 0 };
-    // No border while it grows: the card's rim and hairlines fade out for the
-    // length of the bud (.is-budding) and come back once the bubble is free.
-    if (panel) (panel as HTMLElement).classList.add("is-budding");
+    // The card keeps its own (DOM) rim; around the bud it's opened
+    // (setRingHole) and the canvas draws the edge there instead, round card
+    // and bulge as one shape, handing over across the same falloff.
 
     // After the break: springs carry the bubble to its box, and the stub on the card's side recoils.
     const px: Spring = { x: 0, v: 0 }, py: Spring = { x: 0, v: 0 };
@@ -459,7 +479,6 @@ export function LiquidBud({
         if ((settled || tb > 1800) && !fading) {
           fading = true;
           fadeAt = now;
-          if (panel) (panel as HTMLElement).classList.remove("is-budding");
           doneRef.current(); // the frosted bubble fades in over this one...
         }
         // ...as this one fades out (on the clock, not per frame, so dropped frames can't stall it)
@@ -486,7 +505,9 @@ export function LiquidBud({
       gl.uniform3f(U("uHole"), hole.x, hole.y, hole.r);
       gl.uniform1f(U("uBubble"), broken ? clamp01((t - brokeAt) / 220) : 0);
       gl.uniform1f(U("uBubA"), bubA);
-      gl.uniform1f(U("uEdge"), fading ? Math.min(1, (now - fadeAt) / 300) : 0);
+      gl.uniform1f(U("uRim"), Math.min(1, t / 120));
+      // the card's rim opens round the bud, and closes again as the canvas fades
+      if (panel) setRingHole(panel as HTMLElement, "b", hole.x - card.x, hole.y - card.y, hole.r * fade);
       gl.uniform1f(U("uTime"), t / 1000);
       gl.uniform1f(U("uAlpha"), fade);
       gl.uniform1f(U("uDark"), dark ? 1 : 0);
@@ -505,7 +526,7 @@ export function LiquidBud({
     raf = requestAnimationFrame(frame);
     return () => {
       cancelAnimationFrame(raf);
-      if (panel) (panel as HTMLElement).classList.remove("is-budding");
+      if (panel) setRingHole(panel as HTMLElement, "b", 0, 0, 0);
       gl.getExtension("WEBGL_lose_context")?.loseContext();
     };
   }, [box, bubbleRef, cardRadius, bubbleRadius]);

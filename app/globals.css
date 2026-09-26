@@ -231,10 +231,10 @@ body {
   --hole: 14px;
   -webkit-mask-image:
     radial-gradient(circle at var(--sx, -9999px) var(--sy, -9999px), transparent var(--sr, 0px), #000 calc(var(--sr, 0px) + var(--hole))),
-    radial-gradient(circle at var(--bx, -9999px) var(--by, -9999px), transparent var(--br, 0px), #000 calc(var(--br, 0px) + var(--hole)));
+    radial-gradient(circle at var(--bx, -9999px) var(--by, -9999px), transparent var(--br, 0px), #000 calc(var(--br, 0px) + 40px));
   mask-image:
     radial-gradient(circle at var(--sx, -9999px) var(--sy, -9999px), transparent var(--sr, 0px), #000 calc(var(--sr, 0px) + var(--hole))),
-    radial-gradient(circle at var(--bx, -9999px) var(--by, -9999px), transparent var(--br, 0px), #000 calc(var(--br, 0px) + var(--hole)));
+    radial-gradient(circle at var(--bx, -9999px) var(--by, -9999px), transparent var(--br, 0px), #000 calc(var(--br, 0px) + 40px));
   -webkit-mask-composite: source-in;
   mask-composite: intersect;
 }
