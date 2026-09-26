@@ -149,6 +149,8 @@ const BubbleShell = memo(function BubbleShell({
 }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
   const lens = useGlassLens(bubbleRef);
+  // Hidden at its resting spot until LiquidBud has grown the droplet onto it.
+  const [budDone, setBudDone] = useState(false);
   const isInView = useInView(bubbleRef, { once: false, amount: 0.4 });
   const showBelow = isMobile;
 
@@ -188,7 +190,7 @@ const BubbleShell = memo(function BubbleShell({
   return (
     <>
     {lens.filter}
-    <LiquidBud bubbleRef={bubbleRef} />
+    <LiquidBud bubbleRef={bubbleRef} onDone={() => setBudDone(true)} />
     <motion.div
       ref={bubbleRef}
       style={{
@@ -232,18 +234,19 @@ const BubbleShell = memo(function BubbleShell({
         showBelow
           ? {
               top: "100%",
-              x: "-50%",
-              y: "0%",
-              scaleX: 0.5,
-              scaleY: 0.15,
+              x: mobileBubbleX ?? "-50%",
+              y: `${16 + mYOff}px`,
               opacity: 0,
             }
           : {
               top: "50%",
-              y: "-50%",
-              x: isRight ? "80%" : "-80%",
-              scaleX: 0.3,
-              scaleY: 0.4,
+              y: `calc(-50% + ${dYOff}px)`,
+              x:
+                desktopX !== undefined
+                  ? desktopX
+                  : isRight
+                    ? "calc(100% + 80px)"
+                    : "calc(-100% - 80px)",
               opacity: 0,
             }
       }
@@ -255,7 +258,7 @@ const BubbleShell = memo(function BubbleShell({
               y: `${16 + mYOff}px`,
               scaleX: isPopping || isPressed ? 1.08 : 1,
               scaleY: isPopping || isPressed ? 1.08 : 1,
-              opacity: isInView || parentInView ? 1 : 0,
+              opacity: budDone && (isInView || parentInView) ? 1 : 0,
             }
           : {
               top: "50%",
@@ -268,7 +271,7 @@ const BubbleShell = memo(function BubbleShell({
                     : "calc(-100% - 80px)",
               scaleX: isPopping || isPressed ? 1.08 : 1,
               scaleY: isPopping || isPressed ? 1.08 : 1,
-              opacity: isInView || parentInView ? 1 : 0,
+              opacity: budDone && (isInView || parentInView) ? 1 : 0,
             }
       }
       transition={
@@ -278,15 +281,14 @@ const BubbleShell = memo(function BubbleShell({
               opacity: { duration: 0.08 },
             }
           : {
-                // Opening: the bubble buds off the card on a slightly
-                // underdamped spring, like a drop pulling free, while LiquidBud
-                // draws the neck between them until it snaps.
-                x: { type: "spring", stiffness: 85, damping: 12 },
-                y: { type: "spring", stiffness: 85, damping: 12 },
-                top: { type: "spring", stiffness: 85, damping: 12 },
+                // The droplet itself is drawn by LiquidBud; this element only
+                // fades in once the droplet has settled onto its box.
+                x: { type: "spring", stiffness: 170, damping: 26 },
+                y: { type: "spring", stiffness: 170, damping: 26 },
+                top: { type: "spring", stiffness: 170, damping: 26 },
                 scaleX: { type: "spring", stiffness: 170, damping: 14 },
                 scaleY: { type: "spring", stiffness: 170, damping: 14 },
-                opacity: { duration: 0.35, ease: "easeOut" },
+                opacity: { duration: 0.16, ease: "easeOut" },
             }
       }
       exit={{ opacity: 0, transition: { duration: 0.001 } }}

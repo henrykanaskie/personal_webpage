@@ -113,161 +113,260 @@ export function useGlassLens(ref: React.RefObject<HTMLElement | null>, { radius 
 }
 
 // ─── LiquidBud ──────────────────────────────────────────────────────────────
-// The blur-and-threshold merge on its own only bridges a gap of a few pixels,
-// which a bubble crosses in a frame or two. A drop's neck stretches much further
-// before it breaks, so an explicit tether is drawn between the card's edge and
-// the bubble: it thins as the gap opens, snaps at SNAP px, and both stubs pull
-// back into their own side. The merge filter turns card, tether and bubble into
-// one continuous liquid outline; a mask then removes everything the card and
-// the bubble already cover, so only the neck is ever painted.
+// A bubble forming from its card, the way the cursor lens used to merge with
+// the drifting bubbles: one liquid surface, not two pieces of glass.
+//
+// The shape is a signed distance field: the card (a rounded box) smoothly
+// unioned with a droplet. The droplet starts as nothing on the card's edge,
+// swells into a bump, pulls away on a neck that thins as the smooth-union's
+// reach is exceeded, pinches off, then grows and wobbles into the bubble's own
+// box. Motion is two underdamped springs (position and size) plus squash and
+// stretch along the droplet's velocity. Only the part outside the card is
+// painted (the card itself is real DOM). When the droplet has settled onto the
+// bubble's exact box, the real bubble fades in over it and this canvas goes.
 
-const GOO_MS = 1500;
-const SNAP = 90; // px of gap at which the neck breaks
-const RETRACT_MS = 200;
-const INSET = 8; // goo shapes sit inside the real glass by the threshold's spread
+const BUD_VERT = `attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }`;
+const BUD_FRAG = `
+precision highp float;
+uniform vec2 uRes;
+uniform float uDpr;
+uniform vec4 uCard;   // x, y, w, h (css px, canvas space)
+uniform float uCardR;
+uniform vec4 uDrop;   // cx, cy, half-w, half-h
+uniform float uDropR, uK, uAlpha, uDark;
+uniform vec3 uFill, uRim;
+
+float sdBox(vec2 p, vec2 c, vec2 hs, float r) {
+  vec2 q = abs(p - c) - hs + r;
+  return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+}
+float smin(float a, float b, float k) {
+  float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+  return mix(b, a, h) - k * h * (1.0 - h);
+}
+float card(vec2 p) { return sdBox(p, uCard.xy + uCard.zw * 0.5, uCard.zw * 0.5, uCardR); }
+float scene(vec2 p) {
+  float c = card(p);
+  if (uDrop.z < 0.25) return c;
+  return smin(c, sdBox(p, uDrop.xy, uDrop.zw, uDropR), uK);
+}
+
+void main() {
+  vec2 p = vec2(gl_FragCoord.x, uRes.y * uDpr - gl_FragCoord.y) / uDpr;
+  float d = scene(p);
+  float dc = card(p);
+  float aa = 0.8 / uDpr;
+  // the card is real DOM: paint only what the liquid adds outside it
+  float outside = smoothstep(-aa, aa, dc);
+  float cover = (1.0 - smoothstep(-aa, aa, d)) * outside;
+
+  // surface normal from the field, and a dome over the first 16px inside the rim
+  vec2 g = vec2(scene(p + vec2(1.0, 0.0)) - scene(p - vec2(1.0, 0.0)), scene(p + vec2(0.0, 1.0)) - scene(p - vec2(0.0, 1.0)));
+  vec2 n2 = length(g) > 1e-4 ? normalize(g) : vec2(0.0);
+  float rim = 1.0 - clamp(-d / 16.0, 0.0, 1.0);
+  vec3 col = uFill;
+  // light from the upper left: bright where the surface faces it, soft shade opposite
+  float facing = dot(n2, normalize(vec2(-0.55, -0.8)));
+  col += (uDark > 0.5 ? 0.16 : 0.1) * rim * max(facing, 0.0);
+  col -= (uDark > 0.5 ? 0.05 : 0.07) * rim * max(-facing, 0.0);
+  // hairline rim, like the glass panels
+  float line = 1.0 - smoothstep(0.0, 1.2, abs(d + 0.6));
+  col = mix(col, uRim, line * 0.55);
+
+  // soft shadow on the paper beneath the neck and droplet
+  float ds = scene(p - vec2(0.0, 9.0));
+  float shadow = (1.0 - smoothstep(-6.0, 22.0, ds)) * (uDark > 0.5 ? 0.35 : 0.14) * outside * (1.0 - cover);
+
+  float a = max(cover, shadow) * uAlpha;
+  vec3 outc = cover > shadow ? col : vec3(uDark > 0.5 ? 0.0 : 0.16, uDark > 0.5 ? 0.0 : 0.13, uDark > 0.5 ? 0.0 : 0.1);
+  gl_FragColor = vec4(outc * a, a);
+}
+`;
+
+type Spring = { x: number; v: number };
+// Damped harmonic step. zeta < 1 overshoots: that overshoot is the wobble.
+function stepSpring(s: Spring, target: number, omega: number, zeta: number, dt: number) {
+  const n = 4; // substeps keep it stable at 30fps
+  for (let i = 0; i < n; i++) {
+    const h = dt / n;
+    const acc = -2 * zeta * omega * s.v - omega * omega * (s.x - target);
+    s.v += acc * h;
+    s.x += s.v * h;
+  }
+}
+
+// Accepts #rgb, #rrggbb and rgb()/rgba(); anything else falls back to white.
+const parseColor = (c: string): [number, number, number] => {
+  const hex = c.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (hex) {
+    const h = hex[1].length === 3 ? hex[1].replace(/./g, (x) => x + x) : hex[1];
+    return [parseInt(h.slice(0, 2), 16) / 255, parseInt(h.slice(2, 4), 16) / 255, parseInt(h.slice(4, 6), 16) / 255];
+  }
+  const m = c.match(/rgba?\(([^)]+)\)/i);
+  if (m) {
+    const [r, g, b] = m[1].split(",").map((x) => parseFloat(x));
+    if ([r, g, b].every((x) => Number.isFinite(x))) return [r / 255, g / 255, b / 255];
+  }
+  return [1, 1, 1];
+};
 
 export function LiquidBud({
   bubbleRef,
   radius = 24,
+  onDone,
 }: {
-  /** The bubble; its offsetParent must be the overlay that covers the card. */
+  /** The bubble, already at its resting position (invisible); its offsetParent is the overlay over the card. */
   bubbleRef: React.RefObject<HTMLElement | null>;
   radius?: number;
+  /** Called when the droplet has settled onto the bubble's box. */
+  onDone: () => void;
 }) {
-  const uid = useId().replace(/:/g, "");
-  const svgRef = useRef<SVGSVGElement>(null);
-  const cardRef = useRef<SVGRectElement>(null);
-  const budRef = useRef<SVGRectElement>(null);
-  const neckRef = useRef<SVGRectElement>(null);
-  const stubARef = useRef<SVGRectElement>(null);
-  const stubBRef = useRef<SVGRectElement>(null);
-  const cardMaskRef = useRef<SVGRectElement>(null);
-  const budMaskRef = useRef<SVGRectElement>(null);
-  const [done, setDone] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const doneRef = useRef(onDone);
+  doneRef.current = onDone;
+  const [box, setBox] = useState<{ left: number; top: number; w: number; h: number } | null>(null);
+  const [gone, setGone] = useState(false);
+
+  // Size the canvas to cover the card and the bubble's resting box, plus a margin for the wobble.
+  useEffect(() => {
+    const bubble = bubbleRef.current;
+    const host = bubble?.offsetParent as HTMLElement | null;
+    if (!bubble || !host) { doneRef.current(); setGone(true); return; }
+    const hr = host.getBoundingClientRect();
+    const br = bubble.getBoundingClientRect();
+    const M = 60;
+    const l = Math.min(0, br.left - hr.left) - M, t = Math.min(0, br.top - hr.top) - M;
+    const r = Math.max(hr.width, br.right - hr.left) + M, b = Math.max(hr.height, br.bottom - hr.top) + M;
+    setBox({ left: l, top: t, w: r - l, h: b - t });
+  }, [bubbleRef]);
 
   useEffect(() => {
+    const canvas = canvasRef.current;
+    const bubble = bubbleRef.current;
+    const host = bubble?.offsetParent as HTMLElement | null;
+    if (!box || !canvas || !bubble || !host) return;
+    const finish = () => { doneRef.current(); setGone(true); };
+    const gl = canvas.getContext("webgl", { premultipliedAlpha: true, alpha: true, antialias: false });
+    if (!gl) { finish(); return; }
+    const sh = (type: number, src: string) => {
+      const x = gl.createShader(type)!;
+      gl.shaderSource(x, src);
+      gl.compileShader(x);
+      return x;
+    };
+    const prog = gl.createProgram()!;
+    gl.attachShader(prog, sh(gl.VERTEX_SHADER, BUD_VERT));
+    gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, BUD_FRAG));
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) { finish(); return; }
+    gl.useProgram(prog);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    const U = (n: string) => gl.getUniformLocation(prog, n);
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(box.w * dpr);
+    canvas.height = Math.round(box.h * dpr);
+
+    // Geometry in canvas space. Everything is measured once: the bubble is already
+    // sitting, invisible, exactly where it will end up.
+    const hr = host.getBoundingClientRect();
+    const br = bubble.getBoundingClientRect();
+    const card = { x: -box.left, y: -box.top, w: hr.width, h: hr.height };
+    const goal = { cx: br.left - hr.left - box.left + br.width / 2, cy: br.top - hr.top - box.top + br.height / 2, hw: br.width / 2, hh: br.height / 2 };
+    // the droplet is born on the card's edge, at the point nearest the bubble
+    const sideways = goal.cx > card.x + card.w || goal.cx < card.x;
+    const start = sideways
+      ? { x: goal.cx > card.x ? card.x + card.w - 6 : card.x + 6, y: Math.min(card.y + card.h - radius * 1.5, Math.max(card.y + radius * 1.5, goal.cy)) }
+      : { x: Math.min(card.x + card.w - radius * 1.5, Math.max(card.x + radius * 1.5, goal.cx)), y: goal.cy > card.y ? card.y + card.h - 6 : card.y + 6 };
+
+    const style = getComputedStyle(document.documentElement);
+    const dark = document.documentElement.classList.contains("dark");
+    const fill = parseColor(style.getPropertyValue("--bud-fill").trim() || (dark ? "rgb(29,31,36)" : "rgb(251,250,247)"));
+    const rimC: [number, number, number] = dark ? [0.42, 0.44, 0.48] : [0.62, 0.6, 0.57];
+
+    const px: Spring = { x: start.x, v: 0 }, py: Spring = { x: start.y, v: 0 };
+    const sw: Spring = { x: 0, v: 0 }, shh: Spring = { x: 0, v: 0 };
     const t0 = performance.now();
-    let raf = 0;
-    let snappedAt = -1;
-    let snapThick = 0;
-    const PAD = 400; // the svg extends past the card so the neck can reach the bubble
-    const set = (el: SVGRectElement | null, x: number, y: number, w: number, h: number, rr: number) => {
-      if (!el) return;
-      el.setAttribute("x", String(x));
-      el.setAttribute("y", String(y));
-      el.setAttribute("width", String(Math.max(0, w)));
-      el.setAttribute("height", String(Math.max(0, h)));
-      el.setAttribute("rx", String(Math.max(0, Math.min(rr, w / 2, h / 2))));
-    };
-    // A bar between the card's edge and the bubble's, along whichever axis separates them.
-    const bar = (el: SVGRectElement | null, horizontal: boolean, from: number, to: number, center: number, thick: number) => {
-      const a = Math.min(from, to), len = Math.abs(to - from);
-      if (horizontal) set(el, a, center - thick / 2, len, thick, thick / 2);
-      else set(el, center - thick / 2, a, thick, len, thick / 2);
-    };
+    let last = t0, raf = 0, fade = 1, fading = false;
+    const BULGE_MS = 170; // the bump swells in place before it starts to travel
 
-    const tick = (now: number) => {
-      const bubble = bubbleRef.current;
-      const host = bubble?.offsetParent as HTMLElement | null;
-      const svg = svgRef.current;
-      if (bubble && host && svg) {
-        const hr = host.getBoundingClientRect();
-        const br = bubble.getBoundingClientRect();
-        // card and bubble in svg space
-        const c = { l: PAD, t: PAD, r: PAD + hr.width, b: PAD + hr.height };
-        const u = { l: br.left - hr.left + PAD, t: br.top - hr.top + PAD, r: br.right - hr.left + PAD, b: br.bottom - hr.top + PAD };
-        const gapX = Math.max(c.l - u.r, u.l - c.r, 0);
-        const gapY = Math.max(c.t - u.b, u.t - c.b, 0);
-        const horizontal = gapX >= gapY;
-        const gap = Math.max(gapX, gapY);
-        const elapsed = now - t0;
+    const frame = (now: number) => {
+      const dt = Math.min(0.034, (now - last) / 1000);
+      last = now;
+      const t = now - t0;
+      const travelling = t > BULGE_MS;
+      // size: a bump first, then the full bubble once it's on its way
+      const bump = Math.min(goal.hw, goal.hh, 30);
+      stepSpring(sw, travelling ? goal.hw : bump, 15, 0.5, dt);
+      stepSpring(shh, travelling ? goal.hh : bump, 15, 0.5, dt);
+      stepSpring(px, travelling ? goal.cx : start.x, 11, 0.55, dt);
+      stepSpring(py, travelling ? goal.cy : start.y, 11, 0.55, dt);
 
-        set(cardRef.current, c.l + INSET, c.t + INSET, hr.width - 2 * INSET, hr.height - 2 * INSET, radius);
-        set(budRef.current, u.l + INSET, u.t + INSET, br.width - 2 * INSET, br.height - 2 * INSET, radius * (br.width / (bubble.offsetWidth || br.width)));
-        set(cardMaskRef.current, c.l, c.t, hr.width, hr.height, radius);
-        set(budMaskRef.current, u.l, u.t, br.width, br.height, radius);
+      // squash and stretch along the direction of travel
+      const speed = Math.hypot(px.v, py.v);
+      const stretch = Math.min(0.28, speed / 2600);
+      const ux = speed > 1 ? Math.abs(px.v) / speed : 0, uy = speed > 1 ? Math.abs(py.v) / speed : 0;
+      const hw = Math.max(0, sw.x) * (1 + stretch * ux - stretch * 0.6 * uy);
+      const hh = Math.max(0, shh.x) * (1 + stretch * uy - stretch * 0.6 * ux);
+      // corners: a round droplet while small, the bubble's own radius once full size
+      const small = Math.min(hw, hh);
+      const k01 = Math.min(1, Math.max(0, (small - 40) / 70));
+      const dropR = small * (1 - k01) + Math.min(radius, small) * k01;
 
-        // where the neck attaches: the bubble's centre line, kept inside the card's straight edge
-        const center = horizontal
-          ? Math.min(c.b - radius, Math.max(c.t + radius, (u.t + u.b) / 2))
-          : Math.min(c.r - radius, Math.max(c.l + radius, (u.l + u.r) / 2));
-        const cardEdge = horizontal ? (u.l > c.r ? c.r - INSET : c.l + INSET) : u.t > c.b ? c.b - INSET : c.t + INSET;
-        const budEdge = horizontal ? (u.l > c.r ? u.l + INSET : u.r - INSET) : u.t > c.b ? u.t + INSET : u.b - INSET;
-        const thickMax = Math.min(90, (horizontal ? br.height : br.width) * 0.55);
-
-        if (snappedAt < 0 && (gap > SNAP || elapsed > GOO_MS * 0.75)) {
-          snappedAt = now;
-          snapThick = thickMax * Math.pow(Math.max(0, 1 - gap / SNAP), 0.6) + 10;
-        }
-        if (snappedAt < 0) {
-          // stretching: the neck thins as the gap opens
-          const thick = thickMax * Math.pow(Math.max(0, 1 - gap / SNAP), 0.6) + 10;
-          bar(neckRef.current, horizontal, cardEdge, budEdge, center, gap > 0 ? thick : 0);
-          set(stubARef.current, 0, 0, 0, 0, 0);
-          set(stubBRef.current, 0, 0, 0, 0, 0);
-        } else {
-          // snapped: two stubs pull back into the card and the bubble
-          set(neckRef.current, 0, 0, 0, 0, 0);
-          const k = Math.min(1, (now - snappedAt) / RETRACT_MS);
-          const ease = 1 - (1 - k) * (1 - k) * (1 - k);
-          const len = 30 * (1 - ease), th = snapThick * (1 - ease);
-          const dir = Math.sign(budEdge - cardEdge) || 1;
-          const budCenter = horizontal ? (u.t + u.b) / 2 : (u.l + u.r) / 2;
-          bar(stubARef.current, horizontal, cardEdge, cardEdge + dir * len, center, th);
-          bar(stubBRef.current, horizontal, budEdge, budEdge - dir * len, budCenter, th);
-        }
-        const fadeFrom = snappedAt < 0 ? Infinity : snappedAt + RETRACT_MS;
-        svg.style.opacity = String(Math.max(0, 1 - Math.max(0, now - fadeFrom) / 150));
+      // close enough that the swap to the real bubble can't be seen
+      const settled =
+        travelling && Math.abs(px.x - goal.cx) < 2 && Math.abs(py.x - goal.cy) < 2 &&
+        Math.abs(sw.x - goal.hw) < 2 && Math.abs(shh.x - goal.hh) < 2 && speed < 40;
+      if ((settled || t > 1600) && !fading) {
+        fading = true;
+        doneRef.current(); // the real bubble fades in over the droplet...
       }
-      if (now - t0 < GOO_MS + 400 && !(snappedAt >= 0 && now - snappedAt > RETRACT_MS + 160)) raf = requestAnimationFrame(tick);
-      else setDone(true);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [bubbleRef, radius]);
+      if (fading) fade = Math.max(0, fade - dt / 0.16); // ...as this fades out
 
-  if (done) return null;
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.uniform2f(U("uRes"), box.w, box.h);
+      gl.uniform1f(U("uDpr"), dpr);
+      gl.uniform4f(U("uCard"), card.x, card.y, card.w, card.h);
+      gl.uniform1f(U("uCardR"), radius);
+      gl.uniform4f(U("uDrop"), px.x, py.x, hw, hh);
+      gl.uniform1f(U("uDropR"), dropR);
+      // how far the liquid reaches to join card and droplet: generous while the
+      // bump forms, then fixed, so the neck thins and pinches as the gap opens
+      gl.uniform1f(U("uK"), 34);
+      gl.uniform1f(U("uAlpha"), fade);
+      gl.uniform1f(U("uDark"), dark ? 1 : 0);
+      gl.uniform3f(U("uFill"), fill[0], fill[1], fill[2]);
+      gl.uniform3f(U("uRim"), rimC[0], rimC[1], rimC[2]);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+      if (fade > 0) raf = requestAnimationFrame(frame);
+      else setGone(true);
+    };
+    raf = requestAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(raf);
+      gl.getExtension("WEBGL_lose_context")?.loseContext();
+    };
+  }, [box, bubbleRef, radius]);
+
+  if (gone) return null;
   return (
-    <svg
-      ref={svgRef}
+    <canvas
+      ref={canvasRef}
       aria-hidden
-      style={{ position: "absolute", left: -400, top: -400, width: "calc(100% + 800px)", height: "calc(100% + 800px)", pointerEvents: "none", overflow: "visible" }}
-    >
-      <defs>
-        <filter id={`goo-${uid}`} x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="b" />
-          <feColorMatrix in="b" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -6" result="goo" />
-          {/* glass reads through its edge and its shadow, not its fill: a hairline rim... */}
-          <feMorphology in="goo" operator="erode" radius="1.2" result="inner" />
-          <feComposite in="goo" in2="inner" operator="out" result="edge" />
-          <feFlood style={{ floodColor: "var(--bud-rim)" }} result="rimColor" />
-          <feComposite in="rimColor" in2="edge" operator="in" result="rim" />
-          {/* ...and the same soft shadow the bubble casts */}
-          <feGaussianBlur in="goo" stdDeviation="8" result="sb" />
-          <feOffset in="sb" dy="10" result="so" />
-          <feFlood style={{ floodColor: "var(--bud-shadow)" }} result="shadowColor" />
-          <feComposite in="shadowColor" in2="so" operator="in" result="shadow" />
-          <feMerge>
-            <feMergeNode in="shadow" />
-            <feMergeNode in="goo" />
-            <feMergeNode in="rim" />
-          </feMerge>
-        </filter>
-        <mask id={`neck-${uid}`} maskUnits="userSpaceOnUse" x="0" y="0" width="100%" height="100%">
-          <rect x="0" y="0" width="100%" height="100%" fill="#fff" />
-          <rect ref={cardMaskRef} fill="#000" />
-          <rect ref={budMaskRef} fill="#000" />
-        </mask>
-      </defs>
-      <g mask={`url(#neck-${uid})`}>
-        <g filter={`url(#goo-${uid})`} style={{ fill: "var(--bud-fill)" }}>
-          <rect ref={cardRef} />
-          <rect ref={budRef} />
-          <rect ref={neckRef} />
-          <rect ref={stubARef} />
-          <rect ref={stubBRef} />
-        </g>
-      </g>
-    </svg>
+      style={{
+        position: "absolute",
+        left: box?.left ?? 0,
+        top: box?.top ?? 0,
+        width: box?.w ?? 0,
+        height: box?.h ?? 0,
+        pointerEvents: "none",
+      }}
+    />
   );
 }

@@ -287,6 +287,8 @@ export function InfoBubble({
 }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
   const lens = useGlassLens(bubbleRef);
+  // Hidden at its resting spot until LiquidBud has grown the droplet onto it.
+  const [budDone, setBudDone] = useState(false);
   const showBelow = isMobile;
   const [isPopping, setIsPopping] = useState(false);
   const isRight = side === "right";
@@ -324,7 +326,7 @@ export function InfoBubble({
   return (
     <>
       {lens.filter}
-      <LiquidBud bubbleRef={bubbleRef} />
+      <LiquidBud bubbleRef={bubbleRef} onDone={() => setBudDone(true)} />
       <motion.div
         ref={bubbleRef}
         style={{
@@ -353,12 +355,15 @@ export function InfoBubble({
         }}
         initial={
           showBelow
-            ? { x: "-50%", y: "0%", scaleX: 0.5, scaleY: 0.15, opacity: 0 }
+            ? { x: "-50%", y: "16px", opacity: 0 }
             : {
                 y: "-50%",
-                x: isRight ? "80%" : "-80%",
-                scaleX: 0.3,
-                scaleY: 0.4,
+                x:
+                  desktopX !== undefined
+                    ? desktopX
+                    : isRight
+                      ? `calc(100% + ${BUBBLE_REST_OFFSET - 200}px)`
+                      : `calc(-100% - ${BUBBLE_REST_OFFSET - 200}px)`,
                 opacity: 0,
               }
         }
@@ -397,7 +402,7 @@ export function InfoBubble({
                 y: "16px",
                 scaleX: isPopping || isPressed ? 1.08 : 1,
                 scaleY: isPopping || isPressed ? 1.08 : 1,
-                opacity: parentInView ? 1 : 0,
+                opacity: budDone && parentInView ? 1 : 0,
               }
             : {
                 y: "-50%",
@@ -409,7 +414,7 @@ export function InfoBubble({
                       : `calc(-100% - ${BUBBLE_REST_OFFSET - 200}px)`,
                 scaleX: isPopping || isPressed ? 1.08 : 1,
                 scaleY: isPopping || isPressed ? 1.08 : 1,
-                opacity: parentInView ? 1 : 0,
+                opacity: budDone && parentInView ? 1 : 0,
               }
         }
         transition={
@@ -419,15 +424,14 @@ export function InfoBubble({
                 opacity: { duration: 0.08 },
               }
             : {
-                // Opening: the bubble buds off the card on a slightly
-                // underdamped spring, like a drop pulling free, while LiquidBud
-                // draws the neck between them until it snaps.
-                x: { type: "spring", stiffness: 85, damping: 12 },
-                y: { type: "spring", stiffness: 85, damping: 12 },
-                top: { type: "spring", stiffness: 85, damping: 12 },
+                // The droplet itself is drawn by LiquidBud; this element only
+                // fades in once the droplet has settled onto its box.
+                x: { type: "spring", stiffness: 170, damping: 26 },
+                y: { type: "spring", stiffness: 170, damping: 26 },
+                top: { type: "spring", stiffness: 170, damping: 26 },
                 scaleX: { type: "spring", stiffness: 170, damping: 14 },
                 scaleY: { type: "spring", stiffness: 170, damping: 14 },
-                opacity: { duration: 0.35, ease: "easeOut" },
+                opacity: { duration: 0.16, ease: "easeOut" },
               }
         }
         exit={{ opacity: 0, transition: { duration: 0.001 } }}

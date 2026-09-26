@@ -75,8 +75,8 @@ export default function GlassTitle({
       return {
         filter: themed(
           isDark,
-          "drop-shadow(0 1px 0 rgba(255,255,255,0.10)) drop-shadow(0 18px 30px rgba(0,0,0,0.55))",
-          "drop-shadow(0 1px 0 rgba(255,255,255,0.95)) drop-shadow(0 14px 22px rgba(20,24,32,0.16))",
+          "drop-shadow(0 1px 1px rgba(0,0,0,0.6)) drop-shadow(0 16px 26px rgba(0,0,0,0.6))",
+          "drop-shadow(0 1px 1px rgba(40,32,24,0.28)) drop-shadow(0 12px 20px rgba(40,32,24,0.2))",
         ),
       };
     }
