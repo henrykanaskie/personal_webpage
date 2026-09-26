@@ -178,6 +178,7 @@ uniform vec3 uStub;   // the card side's recoil after the break: x, y, radius
 uniform vec3 uHole;   // the hole opened in the card's rim: x, y, radius
 uniform float uBubble; // 0 card material, 1 see-through bubble
 uniform float uBubA;
+uniform float uEdge;  // 0 in flight: the bubble's rim (film) only comes in as it settles
 uniform float uAlpha, uDark, uTime;
 uniform float uGap, uDotR, uDotA;
 uniform vec3 uBg, uDot, uFill;
@@ -228,8 +229,9 @@ void main() {
   vec4 outc = vec4(0.0);
 
   // a soft contact shadow under the growth and the bubble, like the card's own
-  float sh = smoothstep(18.0, -4.0, scene(p - vec2(0.0, 6.0))) * outside * (1.0 - inL);
-  outc = vec4(0.0, 0.0, 0.0, 1.0) * sh * (0.08 + 0.2 * uDark);
+  // (wide and faint: a tight one reads as an outline around the droplet)
+  float sh = smoothstep(34.0, -12.0, scene(p - vec2(0.0, 10.0))) * outside * (1.0 - inL);
+  outc = vec4(0.0, 0.0, 0.0, 1.0) * sh * (0.05 + 0.16 * uDark);
 
   if (cover > 0.0) {
     vec2 g = vec2(scene(p + vec2(1.0, 0.0)) - d, scene(p + vec2(0.0, 1.0)) - d);
@@ -246,7 +248,7 @@ void main() {
     float f = pow(1.0 - clamp(-d / 14.0, 0.0, 1.0), 2.0);
     vec3 film = 0.5 + 0.5 * cos(6.2831 * (vec3(0.0, 0.33, 0.67) + f * 0.8 + atan(n.y, n.x) * 0.16 + uTime * 0.05));
     film = mix(vec3(1.0), film, 0.6);
-    float fa = f * (0.24 + 0.06 * uDark);
+    float fa = f * (0.24 + 0.06 * uDark) * uEdge;
     vec4 bubM = vec4(vec3(uBubA) + film * fa, uBubA + fa); // a white scatter fill, like the DOM bubble
     // only the freed droplet is bubble; the card's side and its recoil stay card
     float isDrop = uBubble * smoothstep(1.0, -1.0, drop(p) - cardStub(p));
@@ -436,10 +438,11 @@ export function LiquidBud({
           brokeAt = t;
         }
         // burst: it pops up to size with an overshoot, and wobbles in
-        stepSpring(px, goal.cx, 11, 0.52, dt);
-        stepSpring(py, goal.cy, 11, 0.52, dt);
-        stepSpring(sw, goal.hw, 14, 0.4, dt);
-        stepSpring(shh, goal.hh, 14, 0.4, dt);
+        // one soft overshoot as it swells to size, not a jelly wobble
+        stepSpring(px, goal.cx, 10, 0.72, dt);
+        stepSpring(py, goal.cy, 10, 0.72, dt);
+        stepSpring(sw, goal.hw, 12, 0.62, dt);
+        stepSpring(shh, goal.hh, 12, 0.62, dt);
         stepSpring(stub, 0, 20, 0.3, dt);
         const speed = Math.hypot(px.v, py.v);
         const stretch = Math.min(0.2, speed / 3000);
@@ -483,6 +486,7 @@ export function LiquidBud({
       gl.uniform3f(U("uHole"), hole.x, hole.y, hole.r);
       gl.uniform1f(U("uBubble"), broken ? clamp01((t - brokeAt) / 220) : 0);
       gl.uniform1f(U("uBubA"), bubA);
+      gl.uniform1f(U("uEdge"), fading ? Math.min(1, (now - fadeAt) / 300) : 0);
       gl.uniform1f(U("uTime"), t / 1000);
       gl.uniform1f(U("uAlpha"), fade);
       gl.uniform1f(U("uDark"), dark ? 1 : 0);

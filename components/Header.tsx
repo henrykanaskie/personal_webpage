@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { PhotographyFilmStripNav } from "./PhotographyFilmStripNav";
 import { glassStyle } from "../lib/glass";
+import { runThemeTransition } from "../lib/themeTransition";
 import { glassBubbleClassNames, metalClassNames, cs, photo } from "../lib/tokens";
 
 // ─── Navigation links ─────────────────────────────────────────────────────────
@@ -60,7 +61,7 @@ function ThemeToggleButton({
   isDark: boolean;
   mounted: boolean;
   maskId: string;
-  onToggle: () => void;
+  onToggle: (e: React.MouseEvent<HTMLElement>) => void;
   photoMode?: boolean;
 }) {
   if (!mounted) return null;
@@ -286,10 +287,21 @@ export default function Header() {
     return () => mediaQuery.removeEventListener("change", handleChange);
   }, []);
 
-  const toggleDarkMode = () => {
+  // The switch itself happens under the halftone curtain (lib/themeTransition),
+  // which starts from the toggle that was pressed.
+  const toggleDarkMode = (e?: React.MouseEvent<HTMLElement>) => {
     const newDark = !isDark;
-    setIsDark(newDark);
-    document.documentElement.classList.toggle("dark", newDark);
+    const r = e?.currentTarget.getBoundingClientRect();
+    runThemeTransition({
+      x: r ? r.left + r.width / 2 : window.innerWidth - 44,
+      y: r ? r.top + r.height / 2 : 44,
+      toDark: newDark,
+      photoSide: !!isPhotoSide,
+      apply: () => {
+        setIsDark(newDark);
+        document.documentElement.classList.toggle("dark", newDark);
+      },
+    });
   };
 
   // On the home split-screen page the header is invisible, but we keep a
