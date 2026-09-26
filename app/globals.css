@@ -390,22 +390,52 @@ body {
 .glass-bubble {
   isolation: isolate;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.16);
-  -webkit-backdrop-filter: blur(1.4px) saturate(1.2);
-  backdrop-filter: blur(1.4px) saturate(1.2);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.7), inset 0 10px 18px -14px rgba(255, 255, 255, 0.9),
-    inset 0 -14px 24px -16px rgba(40, 36, 30, 0.2), 0 22px 44px -22px rgba(40, 36, 30, 0.35);
+  /* Frosted glass scatters a little light: in both themes the fill is white
+     at low strength, so the glass reads slightly lighter than what's behind
+     it (never a grey slab painted over it). */
+  background: var(--bubble-fill);
+  -webkit-backdrop-filter: blur(2.6px) saturate(1.25) brightness(var(--bubble-lift));
+  backdrop-filter: blur(2.6px) saturate(1.25) brightness(var(--bubble-lift));
+  box-shadow: var(--bubble-edge);
   color: var(--ink-2);
+  --bubble-fill: rgba(255, 255, 255, 0.2);
+  --bubble-lift: 1.02;
+  /* the light a curved glass edge catches: a bright lip on top, a faint
+     one below, the rim slightly brighter than the middle (it's seen through
+     more glass), and the shadow it casts */
+  --bubble-edge:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.45), inset 0 0 22px -8px rgba(255, 255, 255, 0.55),
+    0 1px 2px rgba(40, 36, 30, 0.06), 0 22px 44px -24px rgba(40, 36, 30, 0.3);
 }
 .dark .glass-bubble {
-  background: rgba(26, 28, 33, 0.42);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.12), inset 0 12px 24px -14px rgba(255, 255, 255, 0.18),
-    inset 0 -16px 30px -16px rgba(0, 0, 0, 0.6), 0 22px 44px -20px rgba(0, 0, 0, 0.85);
+  --bubble-fill: rgba(255, 255, 255, 0.045);
+  --bubble-lift: 1.12;
+  --bubble-edge:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28), inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.09), inset 0 0 26px -10px rgba(255, 255, 255, 0.14),
+    0 24px 48px -24px rgba(0, 0, 0, 0.85);
+}
+/* Frost: the fine grain of the etched surface, which is what makes it read
+   as frosted rather than tinted. */
+.glass-bubble::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 1.6 -0.3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+  mix-blend-mode: overlay;
+  opacity: 0.22;
+  pointer-events: none;
+  z-index: -1; /* over the glass, under the text */
+}
+.dark .glass-bubble::before {
+  mix-blend-mode: screen;
+  opacity: 0.07;
 }
 /* Thin film: the colours a soap film or coated glass throws at its edge,
-   strongest at the rim where the film is seen most obliquely, and slowly
+   a narrow band at the rim where the film is seen most obliquely, slowly
    drifting as the film thins and flows. */
 .glass-bubble::after {
   content: "";
@@ -413,16 +443,14 @@ body {
   inset: 0;
   border-radius: inherit;
   box-shadow:
-    inset 4px 0 9px -5px rgba(255, 150, 205, 0.44), inset -4px 0 9px -5px rgba(120, 205, 255, 0.42),
-    inset 0 4px 9px -5px rgba(185, 160, 255, 0.42), inset 0 -4px 9px -5px rgba(255, 220, 140, 0.42),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+    inset 3px 0 6px -4px rgba(255, 150, 205, 0.5), inset -3px 0 6px -4px rgba(120, 205, 255, 0.48),
+    inset 0 3px 6px -4px rgba(185, 160, 255, 0.48), inset 0 -3px 6px -4px rgba(255, 220, 140, 0.48);
   animation: filmDrift 14s linear infinite;
   pointer-events: none;
   z-index: 2;
 }
 .dark .glass-bubble::after {
-  mix-blend-mode: screen;
-  opacity: 0.8;
+  opacity: 0.9;
 }
 @keyframes filmDrift {
   to {

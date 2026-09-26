@@ -287,7 +287,7 @@ export function InfoBubble({
   desktopX?: number;
 }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
-  const lens = useGlassLens(bubbleRef, { radius: 32, frost: "blur(1.4px) saturate(1.2)" });
+  const lens = useGlassLens(bubbleRef, { radius: 32, frost: "blur(2.6px) saturate(1.25) brightness(var(--bubble-lift))" });
   // Hidden at its resting spot until LiquidBud has grown the droplet onto it.
   const [budDone, setBudDone] = useState(false);
   const showBelow = isMobile;

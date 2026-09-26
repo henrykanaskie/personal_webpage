@@ -244,7 +244,7 @@ void main() {
     vec3 film = 0.5 + 0.5 * cos(6.2831 * (vec3(0.0, 0.33, 0.67) + f * 0.8 + atan(n.y, n.x) * 0.16 + uTime * 0.05));
     film = mix(vec3(1.0), film, 0.6);
     float fa = f * (0.24 + 0.06 * uDark);
-    vec4 bubM = vec4(uFill * uBubA + film * fa, uBubA + fa);
+    vec4 bubM = vec4(vec3(uBubA) + film * fa, uBubA + fa); // a white scatter fill, like the DOM bubble
     // only the freed droplet is bubble; the card's side and its recoil stay card
     float isDrop = uBubble * smoothstep(1.0, -1.0, drop(p) - cardStub(p));
     outc = mix(outc, mix(cardM, bubM, isDrop), cover);
@@ -362,7 +362,7 @@ export function LiquidBud({
     const dark = document.documentElement.classList.contains("dark");
     const pal = dark ? paper.dark : paper.light;
     const glass = dark ? paper.glass.dark : paper.glass.light;
-    const bubA = dark ? 0.42 : 0.16; // .glass-bubble's fill
+    const bubA = dark ? 0.045 : 0.2; // .glass-bubble's fill (white, low strength)
 
     // The card element whose rim we open: the liquid panel that fills the host.
     let panel: HTMLElement | null = null;
