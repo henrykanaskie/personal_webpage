@@ -100,10 +100,11 @@ export function useGlassLens(
     <svg width="0" height="0" aria-hidden style={{ position: "absolute", pointerEvents: "none" }}>
       <filter id={id} x="0" y="0" width={map.w} height={map.h} filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
         <feImage href={map.href} x="0" y="0" width={map.w} height={map.h} preserveAspectRatio="none" result="map" />
-        {/* three passes at very slightly different strengths: glass disperses colour a little at its edge */}
+        {/* three passes at different strengths: glass bends each colour by a
+            different amount, so edges seen through the rim split into a prism */}
         <feDisplacementMap in="SourceGraphic" in2="map" scale={strength} xChannelSelector="R" yChannelSelector="G" result="dR" />
-        <feDisplacementMap in="SourceGraphic" in2="map" scale={strength * 1.015} xChannelSelector="R" yChannelSelector="G" result="dG" />
-        <feDisplacementMap in="SourceGraphic" in2="map" scale={strength * 1.03} xChannelSelector="R" yChannelSelector="G" result="dB" />
+        <feDisplacementMap in="SourceGraphic" in2="map" scale={strength * 1.07} xChannelSelector="R" yChannelSelector="G" result="dG" />
+        <feDisplacementMap in="SourceGraphic" in2="map" scale={strength * 1.14} xChannelSelector="R" yChannelSelector="G" result="dB" />
         <feColorMatrix in="dR" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r" />
         <feColorMatrix in="dG" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="g" />
         <feColorMatrix in="dB" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="b" />
@@ -124,7 +125,7 @@ export function useGlassLens(
 
 // ─── setRingHole ────────────────────────────────────────────────────────────
 // Open (or close, r <= 0) a hole in a panel's rim at x, y (panel-local px).
-// "s" is the cursor swell's hole, "b" a budding bubble's.
+// "s" is the cursor swell's hole ("b" is reserved for a second source).
 
 const ringOf = new WeakMap<HTMLElement, HTMLElement | null>();
 export function setRingHole(panel: HTMLElement, which: "s" | "b", x: number, y: number, r: number) {
@@ -154,11 +155,11 @@ export function setRingHole(panel: HTMLElement, which: "s" | "b", x: number, y: 
 // draws the neck in until it pinches. The material is the cards' frosted glass
 // (blurred dots bent at the rim, the card fill, a chrome hairline), so the
 // swell reads as the card. Only what lies outside the card is painted (the
-// card is DOM), except the rim: the card's own rim is opened around the bud
-// (setRingHole) and the bud draws the rim of the whole liquid outline there,
-// so the border molds into the swell. Once it breaks free, the bud turns from
-// card material into the see-through bubble, and when it settles the real
-// frosted bubble fades in.
+// card is DOM), plus a thin band inside the card's edge near the bud so the
+// frost bends continuously into the growth. While it grows the card has no
+// border at all (.is-budding), so nothing marks where the card ends. Once it
+// breaks free, the bud turns into the see-through bubble with a thin-film
+// sheen, and when it settles the real frosted bubble fades in.
 
 const BUD_VERT = `attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }`;
 const BUD_FRAG = `
@@ -174,7 +175,7 @@ uniform vec3 uStub;   // the card side's recoil after the break: x, y, radius
 uniform vec3 uHole;   // the hole opened in the card's rim: x, y, radius
 uniform float uBubble; // 0 card material, 1 see-through bubble
 uniform float uBubA;
-uniform float uAlpha, uDark;
+uniform float uAlpha, uDark, uTime;
 uniform float uGap, uDotR, uDotA;
 uniform vec3 uBg, uDot, uFill;
 uniform float uFillA;
@@ -188,11 +189,16 @@ float smin(float a, float b, float k) {
   return mix(b, a, h) - k * h * (1.0 - h);
 }
 float card(vec2 p) { return sdBox(p, uCard.xy + uCard.zw * 0.5, uCard.zw * 0.5, uCardR); }
-float scene(vec2 p) {
+float cardStub(vec2 p) {
   float c = card(p);
   if (uStub.z > 0.3) c = smin(c, length(p - uStub.xy) - uStub.z, 22.0);
+  return c;
+}
+float drop(vec2 p) { return sdBox(p, uDrop.xy, uDrop.zw, uDropR); }
+float scene(vec2 p) {
+  float c = cardStub(p);
   if (uDrop.z < 0.3) return c;
-  return smin(c, sdBox(p, uDrop.xy, uDrop.zw, uDropR), uK);
+  return smin(c, drop(p), uK);
 }
 float frostDots(vec2 p) {
   vec2 w = p + uPage;
@@ -205,41 +211,44 @@ float frostDots(vec2 p) {
 void main() {
   vec2 p = vec2(gl_FragCoord.x, uRes.y * uDpr - gl_FragCoord.y) / uDpr;
   float d = scene(p);
+  float dc = card(p);
   float aa = 0.8 / uDpr;
-  float outside = smoothstep(-aa, aa, card(p));       // the card is DOM
-  float cover = (1.0 - smoothstep(-aa, aa, d)) * outside;
+  float outside = smoothstep(-aa, aa, dc);            // the card is DOM
+  // Near the bud the canvas also repaints a thin band just inside the card's
+  // edge, so the frosted dots there bend with the liquid's outline rather than
+  // the card's: no seam where the card ends and the growth begins. Away from
+  // the bud the two outlines are the same, so the band fades out unseen.
+  float w = uHole.z > 0.5 ? 1.0 - clamp((length(p - uHole.xy) - uHole.z) / 30.0, 0.0, 1.0) : 0.0;
+  float band = smoothstep(-18.0, -10.0, dc) * w;
+  float inL = 1.0 - smoothstep(-aa, aa, d);
+  float cover = inL * max(outside, band);
   vec4 outc = vec4(0.0);
 
-  // a soft contact shadow under the swell and the bubble
-  float sh = smoothstep(18.0, -4.0, scene(p - vec2(0.0, 6.0))) * outside * (1.0 - cover);
-  outc = vec4(0.0, 0.0, 0.0, 1.0) * sh * (0.1 + 0.2 * uDark);
-
-  // the rim: wherever the liquid leaves the card, and inside the opened hole
-  float ringVis = uHole.z > 0.5 ? clamp((length(p - uHole.xy) - uHole.z) / 14.0, 0.0, 1.0) : 1.0;
-  float lineW = max(smoothstep(0.5, 1.5, card(p)), 1.0 - ringVis);
-  vec2 g = vec2(scene(p + vec2(1.0, 0.0)) - d, scene(p + vec2(0.0, 1.0)) - d);
-  vec2 n = normalize(g + 1e-5);
-  float line = (1.0 - smoothstep(0.0, 1.0, abs(d + 0.5))) * lineW;
-  vec3 rimCol = mix(vec3(1.0), vec3(0.38, 0.36, 0.33), smoothstep(-0.4, 0.6, n.y));
-  float rimA = line * (0.6 - 0.25 * uDark);
+  // a soft contact shadow under the growth and the bubble, like the card's own
+  float sh = smoothstep(18.0, -4.0, scene(p - vec2(0.0, 6.0))) * outside * (1.0 - inL);
+  outc = vec4(0.0, 0.0, 0.0, 1.0) * sh * (0.08 + 0.2 * uDark);
 
   if (cover > 0.0) {
+    vec2 g = vec2(scene(p + vec2(1.0, 0.0)) - d, scene(p + vec2(0.0, 1.0)) - d);
+    vec2 n = normalize(g + 1e-5);
     float rim = 1.0 - clamp(-d / 26.0, 0.0, 1.0);
     rim *= rim;
-    float lit = dot(-n, normalize(vec2(-0.6, -0.8)));
-    // card material: frosted dots bent at the rim under the card fill
+    // card material, exactly as the card is drawn (DotField's frost under the
+    // card fill), so the growth reads as the card itself: no rim, no line
     vec3 col = mix(uBg, uDot, frostDots(p + n * rim * 11.0) * uDotA);
     col = mix(col, uFill, uFillA);
-    col += vec3(1.0) * rim * max(lit, 0.0) * (0.22 - 0.1 * uDark);
-    col *= 1.0 - rim * max(-lit, 0.0) * (0.1 + 0.1 * uDark);
     vec4 cardM = vec4(col, 1.0);
-    // bubble material: a light see-through fill, a bright rim on the lit side
-    float ba = uBubA + rim * 0.25;
-    vec3 bc = uFill * ba + vec3(1.0) * rim * max(lit, 0.0) * (0.35 - 0.1 * uDark);
-    vec4 bubM = vec4(bc, min(1.0, ba + rim * max(lit, 0.0) * 0.3));
-    outc = mix(outc, mix(cardM, bubM, uBubble), cover);
+    // bubble material: a light see-through fill and a faint thin-film sheen
+    // toward the rim (fresnel), its hue turning with angle around the edge
+    float f = pow(1.0 - clamp(-d / 14.0, 0.0, 1.0), 2.0);
+    vec3 film = 0.5 + 0.5 * cos(6.2831 * (vec3(0.0, 0.33, 0.67) + f * 0.8 + atan(n.y, n.x) * 0.16 + uTime * 0.05));
+    film = mix(vec3(1.0), film, 0.6);
+    float fa = f * (0.24 + 0.06 * uDark);
+    vec4 bubM = vec4(uFill * uBubA + film * fa, uBubA + fa);
+    // only the freed droplet is bubble; the card's side and its recoil stay card
+    float isDrop = uBubble * smoothstep(1.0, -1.0, drop(p) - cardStub(p));
+    outc = mix(outc, mix(cardM, bubM, isDrop), cover);
   }
-  outc = mix(outc, vec4(rimCol, 1.0), rimA);
   gl_FragColor = outc * uAlpha;
 }
 `;
@@ -364,6 +373,9 @@ export function LiquidBud({
       if (e < best) { best = e; panel = el; }
     });
     const hole = { x: ex, y: ey, r: 0 };
+    // No border while it grows: the card's rim and hairlines fade out for the
+    // length of the bud (.is-budding) and come back once the bubble is free.
+    if (panel) (panel as HTMLElement).classList.add("is-budding");
 
     // After the break: springs carry the bubble to its box, and the stub on the card's side recoils.
     const px: Spring = { x: 0, v: 0 }, py: Spring = { x: 0, v: 0 };
@@ -438,6 +450,7 @@ export function LiquidBud({
         if ((settled || tb > 1800) && !fading) {
           fading = true;
           fadeAt = now;
+          if (panel) (panel as HTMLElement).classList.remove("is-budding");
           doneRef.current(); // the frosted bubble fades in over this one...
         }
         // ...as this one fades out (on the clock, not per frame, so dropped frames can't stall it)
@@ -464,7 +477,7 @@ export function LiquidBud({
       gl.uniform3f(U("uHole"), hole.x, hole.y, hole.r);
       gl.uniform1f(U("uBubble"), broken ? clamp01((t - brokeAt) / 220) : 0);
       gl.uniform1f(U("uBubA"), bubA);
-      if (panel) setRingHole(panel, "b", hole.x - card.x, hole.y - card.y, fade > 0 ? hole.r : 0);
+      gl.uniform1f(U("uTime"), t / 1000);
       gl.uniform1f(U("uAlpha"), fade);
       gl.uniform1f(U("uDark"), dark ? 1 : 0);
       gl.uniform1f(U("uGap"), paper.gap);
@@ -482,7 +495,7 @@ export function LiquidBud({
     raf = requestAnimationFrame(frame);
     return () => {
       cancelAnimationFrame(raf);
-      if (panel) setRingHole(panel, "b", 0, 0, 0);
+      if (panel) (panel as HTMLElement).classList.remove("is-budding");
       gl.getExtension("WEBGL_lose_context")?.loseContext();
     };
   }, [box, bubbleRef, cardRadius, bubbleRadius]);

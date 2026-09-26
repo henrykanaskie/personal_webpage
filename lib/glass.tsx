@@ -72,6 +72,7 @@ export function GlassLayers({
         <div className="metal-ring" />
       </div>
       <div
+        className="glass-spec"
         style={{
           position: "absolute",
           top: 0,
