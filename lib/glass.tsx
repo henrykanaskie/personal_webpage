@@ -36,7 +36,6 @@ export function useIsDark() {
 export const glassStyle: React.CSSProperties = {};
 
 // ─── FuzzyText ──────────────────────────────────────────────────────────────
-// A soft halo that lifts text off the dot grid where it isn't sitting on glass.
 
 export const FuzzyText = ({
   children,
@@ -46,33 +45,13 @@ export const FuzzyText = ({
   children: React.ReactNode;
   style?: React.CSSProperties;
   className?: string;
-}) => {
-  return (
-    <span
-      style={{
-        position: "relative",
-        display: "inline-block",
-        zIndex: 1,
-        ...style,
-      }}
-    >
-      <span
-        style={{
-          position: "absolute",
-          inset: "-10px",
-          zIndex: -1,
-          filter: "blur(12px)",
-          borderRadius: "15px",
-          transform: "translateZ(0)",
-        }}
-        className="bg-[color-mix(in_srgb,var(--paper)_40%,transparent)]"
-      />
-      <span style={{ position: "relative", zIndex: 1 }} className={className}>
-        {children}
-      </span>
-    </span>
-  );
-};
+}) => (
+  // Used to sit a 12px-blurred halo behind every run of text; the panels are
+  // opaque enough now that it only cost paint time, so it's a plain span.
+  <span style={{ position: "relative", display: "inline-block", ...style }} className={className}>
+    {children}
+  </span>
+);
 
 // ─── GlassLayers ────────────────────────────────────────────────────────────
 // Decorates a .glass-panel: a hairline satin-metal rim, a specular line along

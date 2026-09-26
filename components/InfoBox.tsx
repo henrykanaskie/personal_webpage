@@ -16,6 +16,7 @@ import {
 import { glassStyle, GlassLayers, FuzzyText, useIsMobile, useIsDark } from "../lib/glass";
 import { glassBoxClassNames, cs, themed } from "../lib/tokens";
 import { useSvgDrawAnimation } from "../hooks/useSvgDrawAnimation";
+import { rise, settle, leave } from "../lib/motion";
 
 interface InfoBoxProps {
   side: "left" | "right";
@@ -79,24 +80,12 @@ export default function InfoBox({
 
       <motion.div
         ref={boxRef}
-        initial={{ x: isLeft ? "-70vw" : "70vw" }}
-        animate={
-          isInView
-            ? { x: 0, y: 0 }
-            : isMobile
-              ? { x: 0, y: 15 }
-              : { x: isLeft ? -20 : 20, y: 10 }
-        }
-        exit={{
-          x: isLeft ? "-70vw" : "70vw",
-          transition: { duration: 0.55, ease: [0.5, 0, 0.75, 0] },
-        }}
+        initial={rise.hidden}
+        animate={isInView ? rise.shown : rise.hidden}
+        exit={leave}
         onViewportEnter={onViewportEnter}
         onViewportLeave={onViewportLeave}
-        transition={{
-          duration: 1.2,
-          ease: "easeInOut",
-        }}
+        transition={settle}
         style={{
           position: "relative",
           maxWidth: "clamp(320px, 55vw, 780px)",
@@ -130,14 +119,12 @@ export default function InfoBox({
             strokeWidth={0.8}
             scrollProgress={svgProgress}
             rotate={svgRotate}
+            duration={svgDrawDuration}
           />
         </motion.div>
 
         {/* Glass box */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={isInView ? { opacity: 1 } : { opacity: 0 }}
-          transition={{ duration: 1.8, ease: "easeInOut" }}
           style={{
             position: "relative",
             borderRadius: "24px",

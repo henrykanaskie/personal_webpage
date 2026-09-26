@@ -23,11 +23,12 @@ export function useSvgDrawAnimation(svgDrawDuration: number) {
     }, 600);
   }, [svgProgress, svgDrawDuration]);
 
+  // A drawing, once drawn, stays drawn: un-drawing on the way out meant every
+  // scroll past a section restarted work on hundreds of paths.
   const onViewportLeave = useCallback(() => {
     if (drawTimer.current) clearTimeout(drawTimer.current);
     drawTimer.current = null;
-    animate(svgProgress, 0, { duration: 1.8, ease: "easeInOut" });
-  }, [svgProgress]);
+  }, []);
 
   return { svgProgress, onViewportEnter, onViewportLeave };
 }

@@ -48,8 +48,18 @@ function StatusTag({ status }: { status: PartStatus }) {
 
 function PartName({ part }: { part: Part }) {
   const inner = (
-    <span className="font-[family-name:var(--font-elevated)]" style={{ fontWeight: 600, fontSize: 16, color: "var(--ink)", letterSpacing: "-0.01em", overflowWrap: "anywhere" }}>
-      {part.name}
+    <span className="font-[family-name:var(--font-elevated)]" style={{ fontWeight: 600, fontSize: 16, color: "var(--ink)", letterSpacing: "-0.01em" }}>
+      {/* break only after underscores, never mid-word */}
+      {part.name.split("_").map((seg, i, all) => (
+        <span key={i}>
+          {seg}
+          {i < all.length - 1 && (
+            <>
+              _<wbr />
+            </>
+          )}
+        </span>
+      ))}
     </span>
   );
   if (!part.repo) return inner;

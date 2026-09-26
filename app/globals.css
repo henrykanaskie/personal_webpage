@@ -11,13 +11,13 @@
    WebGL dot field reads so its dots land exactly on the CSS ones. */
 
 :root {
-  --paper: #eff0f2;
-  --dot: rgba(38, 46, 62, 0.26);
+  --paper: #f1f0ed;
+  --dot: rgba(52, 48, 42, 0.27);
   --dot-gap: 24px;
-  --ink: #15171c;
-  --ink-2: rgba(21, 23, 28, 0.62);
-  --ink-3: rgba(21, 23, 28, 0.4);
-  --hair: rgba(21, 23, 28, 0.1);
+  --ink: #17161a;
+  --ink-2: rgba(23, 22, 26, 0.68);
+  --ink-3: rgba(23, 22, 26, 0.44);
+  --hair: rgba(23, 22, 26, 0.1);
   --accent: rgb(76, 96, 140);
 
   --brush: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='b'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0025 0.55' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.55 -0.12'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23b)'/%3E%3C/svg%3E");
@@ -25,29 +25,36 @@
   /* Satin chrome, as a fill for text on paper: dark enough to read. */
   --metal-text: linear-gradient(
     180deg,
-    #8a909a 0%,
-    #555b64 26%,
-    #2c3038 47%,
-    #0f1115 55%,
-    #3b4049 63%,
-    #6a707a 80%,
-    #979da6 100%
+    #7d7a76 0%,
+    #4a4744 24%,
+    #242220 46%,
+    #0b0a0a 54%,
+    #34312e 62%,
+    #5f5b57 80%,
+    #8e8a85 100%
   );
   /* Satin chrome, as a surface (pills, knobs). */
   --metal-surface:
     radial-gradient(120% 70% at 30% 0%, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 55%),
-    linear-gradient(180deg, #ffffff 0%, #e6e7ea 20%, #c9ccd2 44%, #989ca4 58%, #72767e 62%, #a6aab1 75%, #dcdee2 91%, #f7f8f9 100%);
+    linear-gradient(180deg, #ffffff 0%, #e6e4e0 20%, #cbc8c2 44%, #9a968f 58%, #75716b 62%, #a9a59f 75%, #dfdcd6 91%, #f8f6f2 100%);
   --metal-rim:
-    inset 0 0 0 1px rgba(28, 32, 42, 0.22), inset 0 1.5px 0 #fff, inset 0 -2px 2px rgba(255, 255, 255, 0.6),
-    inset 0 -10px 16px -10px rgba(40, 46, 60, 0.35);
-  --metal-ink: #16181d;
-  --metal-edge: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(170, 176, 186, 0.55) 45%, rgba(90, 96, 108, 0.5) 60%, rgba(220, 223, 228, 0.8));
+    inset 0 0 0 1px rgba(46, 38, 28, 0.22), inset 0 1.5px 0 #fff, inset 0 -2px 2px rgba(255, 255, 255, 0.6),
+    inset 0 -10px 16px -10px rgba(60, 48, 36, 0.35);
+  --metal-ink: #1b1a17;
+  --metal-edge: linear-gradient(180deg, #fff, rgba(180, 176, 170, 0.6) 42%, rgba(96, 92, 86, 0.55) 58%, rgba(214, 211, 206, 0.9));
 
-  --glass-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.5));
+  /* Glass reads as glass through its fill, rim and light, not blur: panels carry
+     no backdrop-filter (it was the single biggest scroll cost). */
+  --glass-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.62));
   --glass-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 -1px 0 rgba(255, 255, 255, 0.35),
-    0 1px 2px rgba(20, 24, 32, 0.05), 0 22px 44px -22px rgba(20, 24, 32, 0.28);
-  --glass-blur: blur(6px) saturate(1.25);
+    inset 0 1px 0 #fff, inset 0 -1px 0 rgba(255, 255, 255, 0.5), 0 0 0 1px rgba(40, 36, 30, 0.06),
+    0 1px 2px rgba(40, 36, 30, 0.05), 0 18px 36px -20px rgba(40, 36, 30, 0.3);
+  --pill-blur: blur(8px) saturate(1.2);
+}
+
+.dark .metal-text,
+.metal-text.brushed {
+  background-image: var(--brush), var(--metal-text);
 }
 
 .dark {
@@ -97,7 +104,7 @@ body {
 /* ─── Metal ────────────────────────────────────────────────────────────────── */
 
 .metal-text {
-  background-image: var(--brush), var(--metal-text);
+  background-image: linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 0)), var(--metal-text);
   background-size: 400px 400px, 100% 100%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -163,15 +170,13 @@ body {
 .glass-panel {
   background: var(--glass-fill);
   box-shadow: var(--glass-shadow);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
 }
 
 .glass-pill {
   background: var(--glass-fill);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 0 0 1px rgba(28, 32, 42, 0.1), 0 4px 12px -6px rgba(20, 24, 32, 0.25);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--pill-blur);
+  backdrop-filter: var(--pill-blur);
   color: var(--ink-2);
   transition: color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
@@ -291,4 +296,16 @@ body {
       40% 70%,
       -20% 50%;
   }
+}
+
+/* Line drawings: every path is normalised to length 1 (pathLength="1"), so one
+   dash the length of the path, offset by its whole length, hides it; the
+   transition to 0 draws it. Started once by adding .drawn. */
+.line-draw path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+.line-draw.drawn path {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset var(--draw-dur, 3s) cubic-bezier(0.45, 0, 0.25, 1);
 }

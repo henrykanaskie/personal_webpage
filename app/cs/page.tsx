@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import GlassTitle from "@/components/GlassTitle";
 import {
@@ -9,20 +8,16 @@ import {
   glassStyle,
   FuzzyText,
   useIsDark,
-  useIsMobile,
 } from "@/lib/glass";
 import {
   cs,
   themed,
   glassBoxClassNames,
-  metalClassNames,
 } from "@/lib/tokens";
-import { CrystallineText } from "@/components/Header";
 import InfoBox from "@/components/InfoBox";
-import AboutBlurb from "@/components/AboutBlurb";
+import AboutSheet from "@/components/AboutSheet";
 import ProjectCard from "@/components/ProjectCard";
 import EducationCard from "@/components/EducationCard";
-import DotField from "@/components/DotField";
 import { rocketPaths } from "@/svgs/rocketPaths";
 import { fpgaPaths } from "@/svgs/fpgaPaths";
 import { dronesPaths } from "@/svgs/dronesPaths";
@@ -203,7 +198,6 @@ const projects = [
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CSPage() {
   const isDark = useIsDark();
-  const isMobile = useIsMobile(850);
 
   // Active section for nav dots
   const [activeSection, setActiveSection] = useState("about");
@@ -536,265 +530,21 @@ export default function CSPage() {
         style={{ scrollMarginTop: "80px", position: "relative" }}
         className="flex flex-col items-center gap-12 md:gap-28 pb-[5vh]"
       >
-        {/* The sheet under the hero: dots that answer the cursor, glass drifting over them */}
-        <div
-          aria-hidden
-          style={{
-            position: "absolute",
-            left: "calc(50% - 50vw)",
-            width: "100vw",
-            top: -140,
-            bottom: 0,
-            zIndex: 0,
-            pointerEvents: "none",
+        <AboutSheet
+          about={ABOUT}
+          onEmail={() => {
+            setEmailOpen(true);
+            setEmailStatus("idle");
+            emailFormOpenedAt.current = Date.now();
           }}
-        >
-          <DotField origin={{ x: 0.5, y: 0.32 }} />
-        </div>
-
-        {/* Single row: Photo + Name/Links + Bio */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "row",
-            alignItems: "flex-start",
-            minHeight: isMobile ? undefined : "400px",
-            gap: "clamp(1rem, 3vw, 2.5rem)",
-          }}
-          className="relative z-[1] w-full px-2 md:px-[5%] pt-8 md:pt-14"
-        >
-          {isMobile ? (
-            /* ── Mobile layout ── */
-            <div className="flex flex-col gap-5 w-full">
-              {/* Name */}
-              <GlassTitle
-                text="Henry Kanaskie"
-                variant="metal"
-                containerClassName="justify-center items-center !pt-0 !pb-0"
-                fontSize="clamp(2rem, 11vw, 3.5rem)"
-                disableEntrance
-              />
-
-              {/* Photo: with side margins */}
-              <div
-                style={{
-                  position: "relative",
-                  width: "clamp(200px, 50vw, 300px)",
-                  alignSelf: "center",
-                  aspectRatio: "3 / 4",
-                  borderRadius: "16px",
-                  overflow: "hidden",
-                  border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.1)"}`,
-                  boxShadow: isDark
-                    ? "0 4px 32px rgba(0,0,0,0.55)"
-                    : "0 2px 16px rgba(0,0,0,0.12)",
-                }}
-              >
-                <Image
-                  src="/photography/cs_profile/IMG_4059.jpeg"
-                  alt="Henry Kanaskie"
-                  fill
-                  style={{ objectFit: "cover", objectPosition: "center top" }}
-                  sizes="100vw"
-                  priority={false}
-                />
-              </div>
-
-              {/* Links */}
-              <div className="flex flex-row justify-center items-center gap-2 flex-wrap">
-                {[
-                  {
-                    label: "Email",
-                    href: undefined,
-                    action: () => {
-                      setEmailOpen(true);
-                      setEmailStatus("idle");
-                      emailFormOpenedAt.current = Date.now();
-                    },
-                  },
-                  {
-                    label: "LinkedIn",
-                    href: "https://linkedin.com/in/henry-kanaskie",
-                    action: undefined,
-                  },
-                  {
-                    label: "Resume",
-                    href: undefined,
-                    action: () => setResumeOpen(true),
-                  },
-                ].map((item) => {
-                  const pillClassName = `${metalClassNames} rounded-full font-semibold transition-transform duration-200 hover:-translate-y-px active:translate-y-px`;
-                  const pillStyle: React.CSSProperties = {
-                    ...glassStyle,
-                    fontSize: "0.85rem",
-                    padding: "0.35rem 0.85rem",
-                    whiteSpace: "nowrap",
-                  };
-                  const label = (
-                    <CrystallineText isDark={isDark}>
-                      {item.label}
-                    </CrystallineText>
-                  );
-                  return item.href ? (
-                    <a
-                      key={item.label}
-                      href={item.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={pillStyle}
-                      className={pillClassName}
-                    >
-                      {label}
-                    </a>
-                  ) : (
-                    <button
-                      key={item.label}
-                      onClick={item.action}
-                      style={pillStyle}
-                      className={`${pillClassName} cursor-pointer`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Blurb */}
-              <AboutBlurb
-                about={
-                  ABOUT
-                }
-              />
-            </div>
-          ) : (
-            /* ── Desktop layout ── */
-            <>
-              {/* Left column: photo + links stacked */}
-              <div
-                className="flex flex-col gap-3 shrink-0 items-center"
-                style={{ width: "300px" }}
-              >
-                <div
-                  style={{
-                    position: "relative",
-                    width: "300px",
-                    height: "400px",
-                    borderRadius: "16px",
-                    overflow: "hidden",
-                    border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.1)"}`,
-                    boxShadow: isDark
-                      ? "0 4px 32px rgba(0,0,0,0.55)"
-                      : "0 2px 16px rgba(0,0,0,0.12)",
-                  }}
-                >
-                  <Image
-                    src="/photography/cs_profile/IMG_4059.jpeg"
-                    alt="Henry Kanaskie"
-                    fill
-                    style={{ objectFit: "cover" }}
-                    sizes="300px"
-                    priority={false}
-                  />
-                </div>
-
-                {/* Link bubbles under photo */}
-                <div className="flex flex-row items-center justify-center gap-2 flex-wrap w-full">
-                  {[
-                    {
-                      label: "Email",
-                      href: undefined,
-                      action: () => {
-                        setEmailOpen(true);
-                        setEmailStatus("idle");
-                        emailFormOpenedAt.current = Date.now();
-                      },
-                    },
-                    {
-                      label: "LinkedIn",
-                      href: "https://linkedin.com/in/henry-kanaskie",
-                      action: undefined,
-                    },
-                    {
-                      label: "Resume",
-                      href: undefined,
-                      action: () => setResumeOpen(true),
-                    },
-                  ].map((item) => {
-                    const pillClassName = `${metalClassNames} rounded-full font-semibold transition-transform duration-200 hover:-translate-y-px active:translate-y-px`;
-                    const pillStyle: React.CSSProperties = {
-                      ...glassStyle,
-                      fontSize: "0.8rem",
-                      padding: "0.3rem 0.9rem",
-                      whiteSpace: "nowrap",
-                    };
-                    const label = (
-                      <CrystallineText isDark={isDark}>
-                        {item.label}
-                      </CrystallineText>
-                    );
-                    return item.href ? (
-                      <a
-                        key={item.label}
-                        href={item.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={pillStyle}
-                        className={pillClassName}
-                      >
-                        {label}
-                      </a>
-                    ) : (
-                      <button
-                        key={item.label}
-                        onClick={item.action}
-                        style={pillStyle}
-                        className={`${pillClassName} cursor-pointer`}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Right column: name top, blurb bottom */}
-              <div
-                className="flex flex-col gap-4 flex-1 min-w-0"
-                style={{ minHeight: "400px" }}
-              >
-                {/* Name */}
-                <div className="shrink-0">
-                  <GlassTitle
-                    text="Henry Kanaskie"
-                    variant="metal"
-                    containerClassName="justify-start items-start !pt-0 md:!pt-0 !pb-0 md:!pb-0"
-                    fontSize="clamp(2.4rem, 7.5vw, 10rem)"
-                    noWrap
-                    disableEntrance
-                  />
-                </div>
-
-                {/* Spacer */}
-                <div className="flex-1" />
-
-                {/* Blurb */}
-                <div>
-                  <AboutBlurb
-                    about={
-                      ABOUT
-                    }
-                  />
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+          onResume={() => setResumeOpen(true)}
+        />
 
         {/* Scroll hint */}
         <motion.div
           animate={{ opacity: hasScrolled ? 0 : 1 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="relative z-[1] flex flex-col items-center gap-1 pointer-events-none select-none -mt-6 md:-mt-14"
+          className="relative z-[1] flex flex-col items-center gap-1 pointer-events-none select-none -mt-4 md:-mt-12"
           style={{ opacity: 1 }}
         >
           <span
@@ -1239,9 +989,9 @@ export default function CSPage() {
           role="Commercial Vehicles"
           description="I'm joining Daimler Truck North America, the company behind Freightliner, as an intern. It's early, so this entry is short on purpose: I'll write it up properly once there's work here I can talk about."
           svgPaths={daimlerPaths}
-          svgSize={78}
+          svgSize={70}
           svgDrawDuration={5}
-          svgOffset={{ x: -10, y: 40 }}
+          svgOffset={{ x: 50, y: -30 }}
         />
         <InfoBox
           side="right"
@@ -1350,11 +1100,7 @@ export default function CSPage() {
           school="Oregon State University"
           degree="M.S. Computer Science"
           timeline="2026 - Present"
-        />
-        <EducationCard
-          school="Oregon State University"
-          degree="Honors B.S. Computer Science"
-          timeline="Sep 2022 - Jun 2026"
+          earlier={{ degree: "Honors B.S. Computer Science", timeline: "Sep 2022 - Jun 2026" }}
           gpa="3.95 / 4.0"
           coursework={[
             "Data Structures & Algorithms",

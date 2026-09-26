@@ -125,7 +125,7 @@ export const cs = {
 export const paper = {
   gap: 24,
   dotRadius: 1.15,
-  light: { bg: [0xef, 0xf0, 0xf2], dot: [38, 46, 62], dotAlpha: 0.26 },
+  light: { bg: [0xf1, 0xf0, 0xed], dot: [52, 48, 42], dotAlpha: 0.27 },
   dark: { bg: [0x0c, 0x0d, 0x10], dot: [196, 204, 222], dotAlpha: 0.16 },
 } as const;
 

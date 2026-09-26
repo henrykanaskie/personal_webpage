@@ -18,6 +18,7 @@ import {
   cs,
   themed,
 } from "../lib/tokens";
+import { rise, settle, leave } from "../lib/motion";
 
 // ─── Types ───
 
@@ -588,22 +589,13 @@ export default function ProjectCard({
 
       <motion.div
         ref={boxRef}
-        initial={{ x: bubbleSide === "left" ? "-100vw" : "100vw" }}
-        animate={
-          isInView
-            ? { x: 0, y: 0 }
-            : {
-                x: isMobile ? 0 : bubbleSide === "left" ? -20 : 20,
-                y: isMobile ? 15 : 10,
-              }
-        }
-        exit={{
-          x: bubbleSide === "left" ? "-100vw" : "100vw",
-          transition: { duration: 0.7, ease: [0.5, 0, 0.75, 0] },
-        }}
+        initial={rise.hidden}
+        animate={isInView ? rise.shown : rise.hidden}
+        exit={leave}
         onViewportEnter={onViewportEnter}
         onViewportLeave={onViewportLeave}
-        transition={{ duration: 0.7, ease: [0.25, 1, 0.5, 1] }}
+        // the right-hand card of a pair arrives a beat after the left
+        transition={{ ...settle, delay: !isMobile && bubbleSide === "right" ? 0.08 : 0 }}
         style={{
           position: "relative",
           zIndex: anyBubbleOpen ? 10 : "auto",
@@ -637,6 +629,7 @@ export default function ProjectCard({
                 strokeWidth={0.8}
                 scrollProgress={svgProgress}
                 rotate={svg.rotate ?? 0}
+                duration={svg.drawDuration ?? 3}
               />
             </motion.div>
           );
@@ -644,9 +637,6 @@ export default function ProjectCard({
 
         {/* Glass box */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={isInView ? { opacity: 1 } : { opacity: 0 }}
-          transition={{ duration: 0.9, ease: "easeInOut" }}
           style={{
             position: "relative",
             borderRadius: "24px",

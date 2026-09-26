@@ -7,6 +7,7 @@ import GlassTitle from "@/components/GlassTitle";
 import EducationCard from "@/components/EducationCard";
 import { cs, themed, glassBoxClassNames } from "@/lib/tokens";
 import { GlassLayers, glassStyle, FuzzyText, useIsDark } from "@/lib/glass";
+import { rise, settle, leave } from "@/lib/motion";
 
 // ─── Glass card shell ─────────────────────────────────────────────────────────
 
@@ -102,10 +103,10 @@ function ExperienceCard({
   return (
     <motion.div
       ref={ref}
-      initial={{ x: "-70vw", opacity: 0 }}
-      animate={isInView ? { x: 0, opacity: 1 } : { x: -20, opacity: 0 }}
-      exit={{ x: "-70vw", opacity: 0, transition: { duration: 0.55, ease: [0.5, 0, 0.75, 0] } }}
-      transition={{ duration: 1.0, ease: "easeOut" }}
+      initial={rise.hidden}
+      animate={isInView ? rise.shown : rise.hidden}
+      exit={leave}
+      transition={settle}
     >
       <GlassCard className="p-5 md:p-8">
         {/* Header: title + dates */}
@@ -524,10 +525,10 @@ export default function ResumePage() {
     <div className="flex flex-col gap-10 md:gap-16 pb-[10vh]">
       <GlassTitle text="Resume" />
       <motion.div
-        initial={{ opacity: 0, x: "70vw" }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ x: "70vw", transition: { duration: 0.55, ease: [0.5, 0, 0.75, 0] } }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
+        initial={rise.hidden}
+        animate={rise.shown}
+        exit={leave}
+        transition={{ ...settle, delay: 0.1 }}
         className="-mt-4 md:-mt-20 flex flex-col items-center gap-4"
       >
         {/* Tagline */}
@@ -550,7 +551,7 @@ export default function ResumePage() {
           {[
             { label: "LinkedIn", href: "https://linkedin.com/in/henry-kanaskie", external: true },
             { label: "GitHub", href: "https://github.com/henrykanaskie", external: true },
-            { label: "Email", href: "/about", external: false },
+            { label: "Email", href: "mailto:kanaskiehenry@gmail.com", external: true },
           ].map((item, i, arr) => (
             <span key={item.label} className="flex items-center">
               {item.external ? (
@@ -633,11 +634,7 @@ export default function ResumePage() {
           school="Oregon State University"
           degree="M.S. Computer Science"
           timeline="2026 - Present"
-        />
-        <EducationCard
-          school="Oregon State University"
-          degree="Honors B.S. Computer Science"
-          timeline="Sep 2022 - Jun 2026"
+          earlier={{ degree: "Honors B.S. Computer Science", timeline: "Sep 2022 - Jun 2026" }}
           gpa="3.95 / 4.0"
           coursework={[
             "Data Structures & Algorithms",
