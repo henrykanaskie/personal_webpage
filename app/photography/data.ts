@@ -2,12 +2,48 @@
 
 export type RGB = [number, number, number];
 
+/** Camera settings read from the JPEG's EXIF block at build time. */
+export interface PhotoExif {
+  camera?: string;
+  lens?: string;
+  /** Focal length in mm */
+  focal?: number;
+  /** f-number, e.g. 2.8 */
+  aperture?: number;
+  /** Exposure time in seconds, e.g. 0.004 */
+  shutter?: number;
+  iso?: number;
+  /** ISO-ish date string "YYYY-MM-DD" */
+  date?: string;
+}
+
+/** Channel histograms, each HIST_BINS values normalised to 0..100. */
+export interface PhotoHistogram {
+  r: number[];
+  g: number[];
+  b: number[];
+  l: number[];
+}
+
 export interface PhotoEntry {
   src: string;
   ratio: string;
   angle: number;
   alt?: string;
+  /** Intrinsic pixel size */
+  width: number;
+  height: number;
+  /** Dominant colour as "#rrggbb" */
+  color: string;
+  /** Up to five representative colours, most prominent first */
+  palette: string[];
+  /** Tiny base64 data URL used as a blur-up placeholder */
+  blur: string;
+  hist: PhotoHistogram;
+  exif: PhotoExif;
 }
+
+export const HIST_BINS = 48;
 
 export interface Section {
   id: string;
@@ -86,4 +122,16 @@ export const SECTION_META: Omit<Section, "photos">[] = [
     cols: 3,
     dir: "natl-parks",
   },
+];
+
+/**
+ * Hero rotation on the gallery landing page, as "<dir>/<filename>".
+ * Chosen for strong colour and clear subjects, so the focus-pull reads well.
+ */
+export const HERO_PHOTOS = [
+  "nature/DSC08791-2.jpg",
+  "astro/DSC08958-(1)-2.jpg",
+  "street/DSC02703-2.jpg",
+  "automotive/DSC01520-2.jpg",
+  "nature/HK0_0048-2.jpg",
 ];

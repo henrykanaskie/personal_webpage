@@ -1,616 +1,405 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { motion, useInView } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useIsDark } from "@/lib/glass";
-import { Section, RGB, PhotoEntry } from "../data";
+import type { Section, PhotoEntry } from "../data";
+import DevelopTile from "@/components/photo/DevelopTile";
+import Lightbox, { LightboxItem } from "@/components/photo/Lightbox";
+import { EASE_OUT, aspect, formatAperture, pad2, photoTheme } from "@/components/photo/utils";
 
-// ─── Photo frame ──────────────────────────────────────────────────────────────
-
-function PhotoFrame({
-  photo,
-  isDark,
-  accent,
-  index,
-  sectionId,
-  onClick,
-}: {
-  photo: PhotoEntry;
-  isDark: boolean;
-  accent: RGB;
-  index: number;
-  sectionId: string;
-  onClick?: () => void;
-}) {
-  const [r, g, b] = accent;
-  const filterId = `grain-cat-${sectionId}-${index}`;
-
-  return (
-    <motion.div
-      whileHover={{ scale: 1.015, filter: "brightness(1.14)" }}
-      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      onClick={onClick}
-      style={{
-        position: "relative",
-        borderRadius: 2,
-        border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)"}`,
-        boxShadow: isDark
-          ? "inset 0 0 40px rgba(0,0,0,0.35), 0 4px 16px rgba(0,0,0,0.45)"
-          : "inset 0 0 20px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.09)",
-        cursor: "pointer",
-        overflow: "hidden",
-        lineHeight: 0,
-      }}
-    >
-      <Image
-        src={photo.src}
-        alt={photo.alt ?? `${sectionId} photo ${index + 1}`}
-        width={1000}
-        height={Math.round(
-          1000 /
-            (() => {
-              const [w, h] = photo.ratio.split("/").map(Number);
-              return w / h;
-            })(),
-        )}
-        sizes="(min-width: 768px) 50vw, 90vw"
-        style={{
-          width: "100%",
-          height: "auto",
-          opacity: isDark ? 0.92 : 0.96,
-          display: "block",
-        }}
-        priority={index < 2}
-      />
-
-      <svg
-        className="absolute inset-0 w-full h-full pointer-events-none"
-        style={{ opacity: isDark ? 0.07 : 0.05, mixBlendMode: "overlay" }}
-      >
-        <defs>
-          <filter id={filterId}>
-            <feTurbulence
-              type="fractalNoise"
-              baseFrequency="0.72"
-              numOctaves="4"
-              stitchTiles="stitch"
-            />
-          </filter>
-        </defs>
-        <rect width="100%" height="100%" filter={`url(#${filterId})`} />
-      </svg>
-
-      <span
-        style={{
-          position: "absolute",
-          bottom: 10,
-          right: 12,
-          fontSize: "7.5px",
-          letterSpacing: "0.22em",
-          fontFamily: "monospace",
-          color: `rgba(${r},${g},${b},${isDark ? 0.45 : 0.55})`,
-          userSelect: "none",
-        }}
-      >
-        {String(index + 1).padStart(2, "0")}
-      </span>
-    </motion.div>
-  );
+export interface ChapterLink {
+  id: string;
+  num: string;
+  title: string;
+  cover: PhotoEntry;
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+/**
+ * Distribute photos into masonry columns, alternating portrait and landscape
+ * frames so no column ends up all tall prints, then read them back row by row
+ * so keyboard and lightbox order follow what the eye sees.
+ */
+function layoutColumns(photos: PhotoEntry[], numCols: number) {
+  const portraits = photos.filter((p) => aspect(p) < 1);
+  const landscapes = photos.filter((p) => aspect(p) >= 1);
+  const interleaved: PhotoEntry[] = [];
+  let pi = 0,
+    li = 0,
+    pickPortrait = true;
+  while (pi < portraits.length || li < landscapes.length) {
+    if (pickPortrait && pi < portraits.length) interleaved.push(portraits[pi++]);
+    else if (li < landscapes.length) interleaved.push(landscapes[li++]);
+    else if (pi < portraits.length) interleaved.push(portraits[pi++]);
+    pickPortrait = !pickPortrait;
+  }
 
-const ENTER_DELAY = 0;
+  const cols: PhotoEntry[][] = Array.from({ length: numCols }, () => []);
+  const heights = new Array(numCols).fill(0);
+  for (const photo of interleaved) {
+    const shortest = heights.indexOf(Math.min(...heights));
+    cols[shortest].push(photo);
+    heights[shortest] += 1 / aspect(photo);
+  }
 
-export default function CategoryPageClient({ section }: { section: Section }) {
+  const order: PhotoEntry[] = [];
+  const maxRows = Math.max(0, ...cols.map((c) => c.length));
+  for (let row = 0; row < maxRows; row++) {
+    for (const col of cols) if (row < col.length) order.push(col[row]);
+  }
+
+  // Wider columns for columns that hold wider photos, so rows stay balanced
+  const flex = cols.map((col) => {
+    if (col.length === 0) return 1;
+    const mean = col.reduce((acc, p) => acc + aspect(p), 0) / col.length;
+    return 0.5 + 0.5 * mean;
+  });
+  return { cols, order, flex };
+}
+
+function range(values: number[], fmt: (v: number) => string): string | null {
+  if (values.length === 0) return null;
+  const lo = Math.min(...values);
+  const hi = Math.max(...values);
+  return fmt(lo) === fmt(hi) ? fmt(lo) : `${fmt(lo)}-${fmt(hi).replace(/^ƒ\//, "")}`;
+}
+
+export default function CategoryPageClient({
+  section,
+  chapterIndex,
+  chapterCount,
+  next,
+}: {
+  section: Section;
+  chapterIndex: number;
+  chapterCount: number;
+  next: ChapterLink | null;
+}) {
   const isDark = useIsDark();
-  const gridRef = useRef<HTMLDivElement>(null);
-  const gridInView = useInView(gridRef, { once: true, margin: "-10% 0px" });
-  const [selected, setSelected] = useState<{
-    photo: PhotoEntry;
-    gi: number;
-  } | null>(null);
-  const [numCols, setNumCols] = useState(2);
-  const sortedPhotos = section.photos;
+  const t = photoTheme(isDark);
+  const [numCols, setNumCols] = useState(3);
+  const [open, setOpen] = useState<{ index: number; origin: DOMRect | null } | null>(null);
+  const [barHover, setBarHover] = useState<number | null>(null);
+  const [nextHover, setNextHover] = useState(false);
+  const photos = section.photos;
+  const cover = photos[0];
 
   useEffect(() => {
-    // Find the most portrait-oriented photo (tallest h/w ratio)
-    const maxHWRatio = section.photos.reduce((max, photo) => {
-      const [w, h] = photo.ratio.split("/").map(Number);
-      return Math.max(max, h / w);
-    }, 1);
-
+    // Enough columns that the tallest print still fits on screen
+    const maxHW = photos.reduce((m, p) => Math.max(m, 1 / aspect(p)), 1);
     const check = () => {
-      const viewW = window.innerWidth;
-      const viewH = window.innerHeight;
-      const padding = Math.min(Math.max(20, viewW * 0.05), 72) * 2;
-      const contentW = viewW - padding;
-
-      // Minimum 2 columns on phones, 3 everywhere else
-      const minCols = viewW < 540 ? 2 : 3;
-      let cols = minCols;
-      while (cols < 6) {
-        const colW = (contentW - 10 * (cols - 1)) / cols;
-        if (colW * maxHWRatio < viewH) break;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const content = vw - Math.min(Math.max(18, vw * 0.05), 72) * 2;
+      let cols = vw < 540 ? 2 : 3;
+      while (cols < 5) {
+        const colW = (content - 14 * (cols - 1)) / cols;
+        if (colW * maxHW < vh * 0.9) break;
         cols++;
       }
       setNumCols(cols);
     };
-
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
-  }, [section.photos]);
+  }, [photos]);
 
-  // Disable background scroll and signal the nav to hide while a photo is enlarged
-  useEffect(() => {
-    if (!selected) return;
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    window.dispatchEvent(new CustomEvent("photoLightbox", { detail: { open: true } }));
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      window.dispatchEvent(new CustomEvent("photoLightbox", { detail: { open: false } }));
-    };
-  }, [selected]);
+  const { cols, order, flex } = useMemo(() => layoutColumns(photos, numCols), [photos, numCols]);
+  const items = useMemo<LightboxItem[]>(
+    () => order.map((photo) => ({ photo, sectionId: section.id, sectionTitle: section.title })),
+    [order, section.id, section.title],
+  );
 
-  const selectedRef = useRef(selected);
-  useEffect(() => { selectedRef.current = selected; }, [selected]);
+  const stats = useMemo(() => {
+    const focal = range(
+      photos.map((p) => p.exif.focal).filter((v): v is number => !!v),
+      (v) => `${Math.round(v)}mm`,
+    );
+    const aperture = range(
+      photos.map((p) => p.exif.aperture).filter((v): v is number => !!v),
+      (v) => formatAperture(v)!,
+    );
+    const years = photos
+      .map((p) => p.exif.date?.slice(0, 4))
+      .filter((v): v is string => !!v)
+      .sort();
+    const yearText = years.length ? (years[0] === years[years.length - 1] ? years[0] : `${years[0]}-${years[years.length - 1]}`) : null;
+    return [
+      ["Frames", pad2(photos.length)],
+      ["Focal", focal],
+      ["Aperture", aperture],
+      ["Years", yearText],
+    ].filter(([, v]) => v) as [string, string][];
+  }, [photos]);
 
-  const touchStartX = useRef<number | null>(null);
+  const mono: React.CSSProperties = {
+    fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+    letterSpacing: "0.22em",
+    textTransform: "uppercase",
+  };
 
-  const displayOrderRef = useRef<PhotoEntry[]>([]);
-
-  // Arrow key navigation
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const cur = selectedRef.current;
-      if (!cur) return;
-      if (e.key === "ArrowRight") {
-        const next = cur.gi + 1;
-        if (next < displayOrderRef.current.length)
-          setSelected({ photo: displayOrderRef.current[next], gi: next });
-      } else if (e.key === "ArrowLeft") {
-        const prev = cur.gi - 1;
-        if (prev >= 0)
-          setSelected({ photo: displayOrderRef.current[prev], gi: prev });
-      } else if (e.key === "Escape") {
-        setSelected(null);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [section]);
-
-  const accent = isDark ? section.darkAccent : section.lightAccent;
-
-  const titleColor = isDark ? "rgb(218, 198, 228)" : "rgb(100, 80, 115)";
-  const subColor = isDark ? "rgb(198, 178, 218)" : "rgb(110, 88, 128)";
-  const ruleColor = isDark ? "rgba(195,175,225,0.12)" : "rgba(128,72,138,0.15)";
-  const backBorder = isDark ? "rgba(195,175,225,0.1)" : "rgba(128,72,138,0.12)";
+  // Long titles get a smaller viewport-relative size so they fit on one line
+  const titleSize = `clamp(2.8rem, ${Math.min(17, 150 / section.title.length).toFixed(1)}vw, 15rem)`;
 
   return (
     <>
-      {/* Content */}
-      <div
-        style={{
-          position: "relative",
-          padding: "clamp(48px, 8vw, 88px) clamp(20px, 5vw, 72px)",
-        }}
-      >
-        {/* Back link */}
+      <style>{`
+        @keyframes chapterDrift {
+          0% { background-position: 30% 40%; }
+          50% { background-position: 70% 60%; }
+          100% { background-position: 30% 40%; }
+        }
+      `}</style>
+
+      <div style={{ position: "relative", padding: "clamp(28px, 6vw, 64px) clamp(18px, 5vw, 72px) 0" }}>
+        {/* Top rail */}
         <motion.div
-          initial={{ opacity: 0, x: -12 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{
-            duration: 0.5,
-            delay: ENTER_DELAY,
-            ease: [0.22, 1, 0.36, 1],
-          }}
-          style={{ marginBottom: "clamp(32px, 5vw, 56px)" }}
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: EASE_OUT }}
+          style={{ ...mono, fontSize: 9, color: t.sub, display: "flex", justifyContent: "space-between", alignItems: "center" }}
         >
-          <Link
-            href="/photography"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              fontSize: "8.5px",
-              letterSpacing: "0.38em",
-              textTransform: "uppercase",
-              color: subColor,
-              textDecoration: "none",
-              padding: "8px 16px",
-              border: `0.5px solid ${backBorder}`,
-              borderRadius: 1,
-              transition: "all 0.3s ease",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLAnchorElement).style.borderColor = isDark
-                ? "rgba(200,170,255,0.32)"
-                : "rgba(130,65,145,0.35)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLAnchorElement).style.borderColor =
-                backBorder;
-            }}
-          >
-            <span style={{ fontSize: "10px", letterSpacing: 0 }}>←</span>
-            All Photography
+          <Link href="/photography" style={{ color: t.sub, textDecoration: "none", display: "inline-flex", gap: 10, alignItems: "center" }}>
+            <span style={{ letterSpacing: 0, fontSize: 12 }}>←</span> All chapters
           </Link>
+          <span>
+            Chapter {section.num}
+            {chapterIndex >= 0 ? ` · ${pad2(chapterIndex + 1)} of ${pad2(chapterCount)}` : ""}
+          </span>
         </motion.div>
 
-        {/* Section header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{
-            duration: 0.65,
-            delay: ENTER_DELAY + 0.08,
-            ease: [0.22, 1, 0.36, 1],
-          }}
-          style={{ marginBottom: "clamp(40px, 6vw, 72px)" }}
-        >
-          <div style={{ textAlign: "center" }}>
-            <div
+        {/* Title filled with the chapter's own photograph */}
+        <header style={{ marginTop: "clamp(40px, 9vh, 110px)", marginBottom: "clamp(28px, 5vh, 56px)" }}>
+          <div style={{ overflow: "hidden", paddingBottom: "0.08em" }}>
+            <motion.h1
+              initial={{ y: "100%", opacity: 0 }}
+              animate={{ y: "0%", opacity: 1 }}
+              transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
               style={{
-                width: 36,
-                height: "0.5px",
-                background: ruleColor,
-                margin: "0 auto 16px",
-              }}
-            />
-            <h1
-              style={{
-                color: titleColor,
-                fontSize: "clamp(1.6rem, 5.5vw, 5rem)",
-                fontWeight: 300,
-                letterSpacing: "0.15em",
-                textTransform: "uppercase",
-                margin: "0 0 10px",
-                lineHeight: 1.05,
+                margin: 0,
+                fontFamily: "var(--font-elevated)",
+                fontWeight: 500,
+                fontSize: titleSize,
+                lineHeight: 0.86,
+                letterSpacing: "-0.045em",
+                color: "transparent",
+                backgroundImage: cover ? `url("${cover.src}")` : undefined,
+                backgroundColor: cover ? undefined : t.ink,
+                backgroundSize: "140% auto",
+                WebkitBackgroundClip: "text",
+                backgroundClip: "text",
+                animation: "chapterDrift 22s ease-in-out infinite",
+                filter: isDark ? "saturate(1.2) brightness(1.15)" : "saturate(1.1)",
               }}
             >
               {section.title}
-            </h1>
+            </motion.h1>
           </div>
-          <p
-            style={{
-              color: subColor,
-              fontSize: "9.5px",
-              letterSpacing: "0.42em",
-              textTransform: "uppercase",
-              margin: 0,
-              textAlign: "center",
-            }}
+
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.9, delay: 0.35, ease: EASE_OUT }}
+            style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-end", gap: 24, marginTop: 22 }}
           >
-            {section.sub}
-          </p>
-        </motion.div>
-
-        {/* Photo grid: flex-column masonry */}
-        {(() => {
-
-          const cols: { photo: PhotoEntry }[][] = Array.from(
-            { length: numCols },
-            () => [],
-          );
-
-          const portraits = sortedPhotos.filter((photo) => {
-            const [w, h] = photo.ratio.split("/").map(Number);
-            return h > w;
-          });
-          const landscapes = sortedPhotos.filter((photo) => {
-            const [w, h] = photo.ratio.split("/").map(Number);
-            return w >= h;
-          });
-          const interleaved: PhotoEntry[] = [];
-          let pi = 0, li = 0, pickPortrait = true;
-          while (pi < portraits.length || li < landscapes.length) {
-            if (pickPortrait && pi < portraits.length) interleaved.push(portraits[pi++]);
-            else if (li < landscapes.length) interleaved.push(landscapes[li++]);
-            else if (pi < portraits.length) interleaved.push(portraits[pi++]);
-            pickPortrait = !pickPortrait;
-          }
-          const heights = new Array(numCols).fill(0);
-          interleaved.forEach((photo) => {
-            const shortest = heights.indexOf(Math.min(...heights));
-            cols[shortest].push({ photo });
-            const [w, h] = photo.ratio.split("/").map(Number);
-            heights[shortest] += h / w;
-          });
-
-          // Build display order row-by-row: top-left, top-middle, top-right, second-left, ...
-          const maxRows = Math.max(...cols.map((col) => col.length));
-          const displayOrder: PhotoEntry[] = [];
-          for (let row = 0; row < maxRows; row++) {
-            for (let col = 0; col < cols.length; col++) {
-              if (row < cols[col].length) displayOrder.push(cols[col][row].photo);
-            }
-          }
-          displayOrderRef.current = displayOrder;
-
-          const colAvgAspect = cols.map((col) => {
-            if (col.length === 0) return 1;
-            const sum = col.reduce((acc, { photo }) => {
-              const [w, h] = photo.ratio.split("/").map(Number);
-              return acc + w / h;
-            }, 0);
-            const raw = sum / col.length;
-            return 0.5 + 0.5 * raw;
-          });
-
-          return (
-            <div
-              ref={gridRef}
+            <p
               style={{
-                display: "flex",
-                gap: 10,
-                alignItems: "flex-start",
-                width: "100%",
+                margin: 0,
+                fontFamily: "var(--font-elevated)",
+                fontSize: "clamp(1rem, 1.6vw, 1.35rem)",
+                color: t.sub,
+                fontWeight: 300,
               }}
             >
-              {cols.map((col, c) => (
-                <div
-                  key={c}
-                  style={{
-                    flex: colAvgAspect[c],
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 10,
-                  }}
-                >
-                  {col.map(({ photo }) => {
-                    const di = displayOrder.indexOf(photo);
-                    return (
-                      <motion.div
-                        key={di}
-                        initial={{ opacity: 0, y: 28 }}
-                        animate={gridInView ? { opacity: 1, y: 0 } : {}}
-                        transition={{
-                          duration: 0.55,
-                          delay: ENTER_DELAY + 0.12 + di * 0.045,
-                          ease: [0.22, 1, 0.36, 1],
-                        }}
-                      >
-                        <PhotoFrame
-                          photo={photo}
-                          isDark={isDark}
-                          accent={accent}
-                          index={di}
-                          sectionId={section.id}
-                          onClick={() => setSelected({ photo, gi: di })}
-                        />
-                      </motion.div>
-                    );
-                  })}
+              {section.sub}
+            </p>
+            <dl style={{ display: "flex", gap: "clamp(18px, 3vw, 44px)", margin: 0 }}>
+              {stats.map(([label, value]) => (
+                <div key={label}>
+                  <dt style={{ ...mono, fontSize: 7.5, color: t.faint, marginBottom: 6 }}>{label}</dt>
+                  <dd
+                    style={{
+                      margin: 0,
+                      fontFamily: "var(--font-elevated)",
+                      fontSize: "clamp(0.95rem, 1.4vw, 1.2rem)",
+                      color: t.ink,
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    {value}
+                  </dd>
                 </div>
               ))}
-            </div>
-          );
-        })()}
-      </div>
+            </dl>
+          </motion.div>
+        </header>
 
-      {/* Preload adjacent lightbox images */}
-      {selected && ([-1, 1].map((offset) => {
-        const idx = selected.gi + offset;
-        if (idx < 0 || idx >= displayOrderRef.current.length) return null;
-        const p = displayOrderRef.current[idx];
-        const [w, h] = p.ratio.split("/").map(Number);
-        return (
-          <div
-            key={idx}
-            aria-hidden="true"
-            style={{ position: "fixed", top: "-200vh", left: "-200vw", pointerEvents: "none" }}
-          >
-            <Image
-              src={p.src}
-              alt=""
-              width={1600}
-              height={Math.round(1600 / (w / h))}
-              sizes="(min-width: 1024px) 70vw, 100vw"
-              priority
-            />
-          </div>
-        );
-      }))}
-
-      {/* Lightbox overlay */}
-      {selected && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 60,
-            background: isDark ? "rgba(5,5,8,0.92)" : "rgba(248,245,240,0.94)",
-            backdropFilter: "blur(10px)",
-            WebkitBackdropFilter: "blur(10px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-          onClick={() => setSelected(null)}
-          onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
-          onTouchEnd={(e) => {
-            if (touchStartX.current === null) return;
-            const dx = e.changedTouches[0].clientX - touchStartX.current;
-            if (Math.abs(dx) > 50) {
-              if (dx < 0) {
-                const next = selected.gi + 1;
-                if (next < displayOrderRef.current.length)
-                  setSelected({ photo: displayOrderRef.current[next], gi: next });
-              } else {
-                const prev = selected.gi - 1;
-                if (prev >= 0)
-                  setSelected({ photo: displayOrderRef.current[prev], gi: prev });
-              }
-            }
-            touchStartX.current = null;
-          }}
-        >
+        {/* Colour barcode: one bar per frame, in reading order */}
+        {photos.length > 0 && (
           <motion.div
-            key={selected.gi}
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            style={{ position: "relative", lineHeight: 0 }}
-            onClick={(e) => e.stopPropagation()}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.5 }}
+            style={{ marginBottom: "clamp(36px, 6vh, 64px)" }}
           >
-            {/* Close button */}
-            <button
-              type="button"
-              onClick={() => setSelected(null)}
-              aria-label="Close enlarged photo"
-              style={{
-                position: "absolute",
-                top: 12,
-                right: 12,
-                zIndex: 2,
-                width: 32,
-                height: 32,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: 999,
-                border: "none",
-                background: isDark ? "rgba(10,10,14,0.75)" : "rgba(248,245,240,0.85)",
-                boxShadow: isDark
-                  ? "0 0 0 1px rgba(255,255,255,0.18)"
-                  : "0 0 0 1px rgba(0,0,0,0.12)",
-                cursor: "pointer",
-              }}
-            >
-              <span style={{ fontSize: "15px", lineHeight: 1, color: isDark ? "#f7f1ff" : "#503c60" }}>×</span>
-            </button>
+            <div style={{ display: "flex", height: 30, gap: 2 }} onPointerLeave={() => setBarHover(null)}>
+              {order.map((p, i) => (
+                <motion.button
+                  type="button"
+                  key={p.src}
+                  aria-label={`Open frame ${i + 1}`}
+                  data-af={`Frame ${pad2(i + 1)}`}
+                  onPointerEnter={() => setBarHover(i)}
+                  onClick={(e) => setOpen({ index: i, origin: e.currentTarget.getBoundingClientRect() })}
+                  initial={{ scaleY: 0 }}
+                  animate={{ scaleY: 1 }}
+                  transition={{ duration: 0.7, delay: 0.55 + i * 0.025, ease: EASE_OUT }}
+                  style={{
+                    flex: barHover === i ? 4 : 1,
+                    padding: 0,
+                    border: "none",
+                    borderRadius: 2,
+                    cursor: "pointer",
+                    transformOrigin: "bottom",
+                    background: `linear-gradient(to bottom, ${p.palette[0] ?? p.color}, ${p.palette[1] ?? p.color} 60%, ${p.palette[2] ?? p.color})`,
+                    transition: "flex 0.5s cubic-bezier(0.22,1,0.36,1)",
+                  }}
+                />
+              ))}
+            </div>
+            <div style={{ ...mono, fontSize: 7.5, color: t.faint, marginTop: 10, display: "flex", justifyContent: "space-between" }}>
+              <span>Colour signature</span>
+              <span>{barHover !== null ? `Frame ${pad2(barHover + 1)}` : `${photos.length} frames`}</span>
+            </div>
+          </motion.div>
+        )}
 
-            {/* Caption */}
+        {/* Masonry */}
+        {photos.length > 0 ? (
+          <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+            {cols.map((col, c) => (
+              <div key={c} style={{ flex: flex[c], display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
+                {col.map((photo) => {
+                  const i = order.indexOf(photo);
+                  return (
+                    <DevelopTile
+                      key={photo.src}
+                      photo={photo}
+                      index={i}
+                      alt={photo.alt ?? `${section.title} photograph ${i + 1}`}
+                      isDark={isDark}
+                      priority={i < 3}
+                      onOpen={(rect) => setOpen({ index: i, origin: rect })}
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ textAlign: "center", padding: "12vh 0", color: t.sub }}>
+            <div style={{ ...mono, fontSize: 9.5 }}>This roll is still in the developer</div>
             <div
               style={{
-                position: "absolute",
-                bottom: 0,
-                left: 0,
-                right: 0,
-                zIndex: 2,
-                background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 100%)",
-                padding: "32px 16px 12px",
-                pointerEvents: "none",
+                fontFamily: "var(--font-elevated)",
+                fontSize: "clamp(1.2rem, 2.4vw, 2rem)",
+                color: t.ink,
+                marginTop: 14,
+                fontWeight: 300,
               }}
             >
-              <p style={{
-                color: "rgba(255,255,255,0.82)",
-                fontSize: "9px",
-                letterSpacing: "0.35em",
-                textTransform: "uppercase",
-                fontFamily: "monospace",
-                margin: 0,
-                textAlign: "center",
-              }}>
-                {section.title} · {String(selected.gi + 1).padStart(2, "0")}
-              </p>
+              Check back soon.
             </div>
+          </div>
+        )}
+      </div>
 
-            {/* Image */}
-            {(() => {
-              const { photo, gi } = selected;
-              const [w, h] = photo.ratio.split("/").map(Number);
-              return (
-                <Image
-                  src={photo.src}
-                  alt={photo.alt ?? `${section.id} photo ${String(gi + 1).padStart(2, "0")}`}
-                  width={1600}
-                  height={Math.round(1600 / (w / h))}
-                  sizes="100vw"
-                  style={{
-                    display: "block",
-                    maxWidth: "calc(100vw - 32px)",
-                    maxHeight: "calc(100dvh - 32px)",
-                    width: "auto",
-                    height: "auto",
-                    objectFit: "contain",
-                  }}
-                  priority
-                />
-              );
-            })()}
-          </motion.div>
-
-          {/* Prev arrow: outside the photo, fixed to viewport left */}
-          {selected.gi > 0 && (
-            <button
-              type="button"
-              aria-label="Previous photo"
-              onClick={(e) => {
-                e.stopPropagation();
-                const prev = selected.gi - 1;
-                setSelected({ photo: displayOrderRef.current[prev], gi: prev });
-              }}
+      {/* Next chapter */}
+      {next && (
+        <Link
+          href={`/photography/${next.id}`}
+          data-af={`Chapter ${next.num}`}
+          onPointerEnter={() => setNextHover(true)}
+          onPointerLeave={() => setNextHover(false)}
+          style={{
+            display: "block",
+            position: "relative",
+            marginTop: "clamp(80px, 14vh, 160px)",
+            height: "clamp(260px, 52vh, 520px)",
+            overflow: "hidden",
+            textDecoration: "none",
+            borderTop: `1px solid ${t.rule}`,
+          }}
+        >
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              clipPath: nextHover ? "inset(0% 0% 0% 0%)" : "inset(38% 30% 38% 30%)",
+              transition: "clip-path 1s cubic-bezier(0.22,1,0.36,1)",
+              background: next.cover.color,
+            }}
+          >
+            <Image
+              src={next.cover.src}
+              alt=""
+              fill
+              sizes="100vw"
               style={{
-                position: "fixed",
-                left: 16,
-                top: "50%",
-                transform: "translateY(-50%)",
-                zIndex: 2,
-                width: 44,
-                height: 44,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: 999,
-                border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
-                background: isDark ? "rgba(10,10,14,0.75)" : "rgba(248,245,240,0.85)",
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
-                cursor: "pointer",
-                color: isDark ? "#f7f1ff" : "#503c60",
-                fontSize: 22,
+                objectFit: "cover",
+                transform: nextHover ? "scale(1)" : "scale(1.25)",
+                transition: "transform 1.4s cubic-bezier(0.22,1,0.36,1)",
+                filter: nextHover ? "none" : "grayscale(1) contrast(1.1)",
+              }}
+            />
+          </div>
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 14,
+              color: "#fff",
+              mixBlendMode: "difference",
+              pointerEvents: "none",
+            }}
+          >
+            <span style={{ ...mono, fontSize: 9.5 }}>Next chapter · {next.num}</span>
+            <span
+              style={{
+                fontFamily: "var(--font-elevated)",
+                fontWeight: 300,
+                fontSize: `clamp(2.4rem, ${Math.min(12, 110 / next.title.length).toFixed(1)}vw, 10rem)`,
+                letterSpacing: nextHover ? "0.02em" : "-0.03em",
+                transition: "letter-spacing 0.9s cubic-bezier(0.22,1,0.36,1)",
                 lineHeight: 1,
               }}
             >
-              ‹
-            </button>
-          )}
-
-          {/* Next arrow: outside the photo, fixed to viewport right */}
-          {selected.gi < displayOrderRef.current.length - 1 && (
-            <button
-              type="button"
-              aria-label="Next photo"
-              onClick={(e) => {
-                e.stopPropagation();
-                const next = selected.gi + 1;
-                setSelected({ photo: displayOrderRef.current[next], gi: next });
-              }}
-              style={{
-                position: "fixed",
-                right: 16,
-                top: "50%",
-                transform: "translateY(-50%)",
-                zIndex: 2,
-                width: 44,
-                height: 44,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: 999,
-                border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
-                background: isDark ? "rgba(10,10,14,0.75)" : "rgba(248,245,240,0.85)",
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
-                cursor: "pointer",
-                color: isDark ? "#f7f1ff" : "#503c60",
-                fontSize: 22,
-                lineHeight: 1,
-              }}
-            >
-              ›
-            </button>
-          )}
-        </motion.div>
+              {next.title} →
+            </span>
+          </div>
+        </Link>
       )}
+
+      <AnimatePresence>
+        {open && items.length > 0 && (
+          <Lightbox
+            key="lightbox"
+            items={items}
+            index={open.index}
+            origin={open.origin}
+            isDark={isDark}
+            onIndex={(index) => setOpen((o) => (o ? { ...o, index } : o))}
+            onClose={() => setOpen(null)}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }

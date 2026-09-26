@@ -117,3 +117,17 @@ body {
       -20% 50%;
   }
 }
+
+/* Photography autofocus cursor: replaces the native pointer on fine pointers */
+@media (pointer: fine) {
+  html.af-cursor,
+  html.af-cursor * {
+    cursor: none !important;
+  }
+}
+.af-box[data-locked="0"] > div {
+  opacity: 0;
+}
+.af-box > div {
+  transition: opacity 0.2s ease;
+}
