@@ -362,7 +362,7 @@ export function LiquidBud({
     const dark = document.documentElement.classList.contains("dark");
     const pal = dark ? paper.dark : paper.light;
     const glass = dark ? paper.glass.dark : paper.glass.light;
-    const bubA = dark ? 0.045 : 0.2; // .glass-bubble's fill (white, low strength)
+    const bubA = dark ? 0.035 : 0.14; // .glass-bubble's fill (white, low strength)
 
     // The card element whose rim we open: the liquid panel that fills the host.
     let panel: HTMLElement | null = null;

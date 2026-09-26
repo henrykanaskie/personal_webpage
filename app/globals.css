@@ -394,11 +394,11 @@ body {
      at low strength, so the glass reads slightly lighter than what's behind
      it (never a grey slab painted over it). */
   background: var(--bubble-fill);
-  -webkit-backdrop-filter: blur(3px) saturate(1.25) brightness(var(--bubble-lift));
-  backdrop-filter: blur(3px) saturate(1.25) brightness(var(--bubble-lift));
+  -webkit-backdrop-filter: blur(1.6px) saturate(1.25) brightness(var(--bubble-lift));
+  backdrop-filter: blur(1.6px) saturate(1.25) brightness(var(--bubble-lift));
   box-shadow: var(--bubble-edge);
   color: var(--ink-2);
-  --bubble-fill: rgba(255, 255, 255, 0.2);
+  --bubble-fill: rgba(255, 255, 255, 0.14);
   --bubble-lift: 1.02;
   /* the light a curved glass edge catches: a bright lip on top, a faint
      one below, the rim slightly brighter than the middle (it's seen through
@@ -409,7 +409,7 @@ body {
     0 1px 2px rgba(40, 36, 30, 0.06), 0 22px 44px -24px rgba(40, 36, 30, 0.3);
 }
 .dark .glass-bubble {
-  --bubble-fill: rgba(255, 255, 255, 0.045);
+  --bubble-fill: rgba(255, 255, 255, 0.035);
   --bubble-lift: 1.12;
   --bubble-edge:
     inset 0 1px 0 rgba(255, 255, 255, 0.28), inset 0 -1px 0 rgba(255, 255, 255, 0.06),

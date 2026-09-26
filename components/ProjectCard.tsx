@@ -148,7 +148,7 @@ const BubbleShell = memo(function BubbleShell({
   children: React.ReactNode;
 }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
-  const lens = useGlassLens(bubbleRef, { radius: 40, frost: "blur(3px) saturate(1.25) brightness(var(--bubble-lift))" });
+  const lens = useGlassLens(bubbleRef, { radius: 40, frost: "blur(1.6px) saturate(1.25) brightness(var(--bubble-lift))" });
   // Hidden at its resting spot until LiquidBud has grown the droplet onto it.
   const [budDone, setBudDone] = useState(false);
   const isInView = useInView(bubbleRef, { once: false, amount: 0.4 });
