@@ -148,8 +148,8 @@ export function setRingHole(panel: HTMLElement, which: "s" | "b", x: number, y: 
 // The info bubble is born out of the side of its card, the way a soap film
 // buds: the card's own edge swells, and keeps swelling, into a dome; the dome
 // stretches outward and its base draws in to a neck; the neck gives, and the
-// bubble bursts free, overshooting in size and wobbling onto its box while the
-// card's side snaps back flat with a shiver.
+// bubble comes free and eases onto its box, with no bounce, while the
+// card's side settles back flat.
 //
 // All of it is one signed distance field: the card (a rounded box), smoothly
 // unioned with the bubble (and, after the break, a shrinking stub on the card's
@@ -283,7 +283,7 @@ void main() {
 `;
 
 type Spring = { x: number; v: number };
-// Damped harmonic step. zeta < 1 overshoots: that overshoot is the wobble.
+// Damped harmonic step. zeta < 1 overshoots; zeta = 1 settles without one.
 function stepSpring(s: Spring, target: number, omega: number, zeta: number, dt: number) {
   const n = 4; // substeps keep it stable at 30fps
   for (let i = 0; i < n; i++) {
@@ -469,11 +469,13 @@ export function LiquidBud({
         }
         // One motion: a single spring carries the bubble from where it broke
         // off to its box, moving and growing together (size, position and
-        // corners all follow the same progress), with one soft overshoot. Two
-        // springs (one to move, one to grow) made it arrive and then inflate,
-        // like filling a shape.
-        stepSpring(flight, 1, 8.5, 0.78, dt);
-        stepSpring(stub, 0, 20, 0.3, dt);
+        // corners all follow the same progress). Critically damped, so it eases
+        // in with no bounce at all (the starting speed is below omega, so it
+        // can't overshoot either). Two springs (one to move, one to grow) made
+        // it arrive and then inflate, like filling a shape.
+        stepSpring(flight, 1, 8.5, 1, dt);
+        // the card's side settles back flat, no wobble
+        stepSpring(stub, 0, 20, 1, dt);
         const q = flight.x;
         cx = from.cx + (goal.cx - from.cx) * q;
         cy = from.cy + (goal.cy - from.cy) * q;
