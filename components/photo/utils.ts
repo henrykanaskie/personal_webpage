@@ -101,3 +101,4 @@ export function photoTheme(isDark: boolean) {
 export function signalLightbox(open: boolean) {
   window.dispatchEvent(new CustomEvent("photoLightbox", { detail: { open } }));
 }
+export type PhotoTheme = ReturnType<typeof photoTheme>;

@@ -8,7 +8,6 @@ import { SECTION_META as SECTIONS } from "@/app/photography/data";
 const photoNavLinks: { name: string; href: string }[] = [
   { name: "About", href: "/photography/about" },
   { name: "Gallery", href: "/photography" },
-  { name: "Play", href: "/photography/play" },
   { name: "Portraits", href: "/photography/portraits" },
   { name: "Nature", href: "/photography/nature" },
   { name: "Astro", href: "/photography/astrophotography" },

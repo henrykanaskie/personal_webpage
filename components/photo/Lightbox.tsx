@@ -1,12 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import Image from "next/image";
+import Image, { getImageProps } from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import type { PhotoEntry } from "@/app/photography/data";
 import Histogram from "./Histogram";
 import { shutter } from "./feedback";
+import DevelopCanvas from "./develop/DevelopCanvas";
+import DevelopPanel, { presetParams } from "./develop/DevelopPanel";
+import { NEUTRAL, type DevelopParams } from "./develop/engine";
+import type { PhotoHistogram } from "@/app/photography/data";
 import {
   EASE_OUT,
   aspect,
@@ -100,6 +104,40 @@ export default function Lightbox({
   const [copied, setCopied] = useState<string | null>(null);
   const [direction, setDirection] = useState(0);
   const [isDesktop, setIsDesktop] = useState(true);
+  const [isNarrow, setIsNarrow] = useState(false);
+  // Develop mode: a live GPU edit of the current photo
+  const [mode, setMode] = useState<"info" | "develop">("info");
+  const [develop, setDevelop] = useState<DevelopParams>(NEUTRAL);
+  const [preset, setPreset] = useState<string | null>("Original");
+  const [splitX, setSplitX] = useState<number | null>(null);
+  const [liveHist, setLiveHist] = useState<PhotoHistogram | null>(null);
+  const [developError, setDevelopError] = useState<string | null>(null);
+  const developing = panelOpen && mode === "develop" && !developError;
+  const openDevelop = useCallback(() => {
+    setMode("develop");
+    setPanelOpen(true);
+    setLoupe(false);
+  }, []);
+  const onDevelopError = useCallback((message: string) => setDevelopError(message), []);
+
+  // First visit only: pulse the Develop button so the feature gets found
+  const [nudge, setNudge] = useState(false);
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem("develop-seen")) setNudge(true);
+    } catch {
+      // Storage blocked: skip the nudge rather than show it every time
+    }
+  }, []);
+  useEffect(() => {
+    if (mode !== "develop" || !nudge) return;
+    setNudge(false);
+    try {
+      localStorage.setItem("develop-seen", "1");
+    } catch {
+      // Storage blocked: nothing to remember
+    }
+  }, [mode, nudge]);
   const stripRef = useRef<HTMLDivElement>(null);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
 
@@ -109,6 +147,7 @@ export default function Lightbox({
   useLayoutEffect(() => {
     const update = () => {
       setIsDesktop(window.innerWidth >= 1024);
+      setIsNarrow(window.innerWidth < 480);
       setBox(fitBox(ratio, panelOpen));
     };
     update();
@@ -154,10 +193,11 @@ export default function Lightbox({
       else if (e.key === "ArrowLeft") go(-1);
       else if (e.key === "i" || e.key === "I") setPanelOpen((p) => !p);
       else if (e.key === "z" || e.key === "Z") setLoupe((l) => !l);
+      else if (e.key === "d" || e.key === "D") mode === "develop" && panelOpen ? setMode("info") : openDevelop();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [go, onClose]);
+  }, [go, onClose, mode, panelOpen, openDevelop]);
 
   // Keep the active thumbnail centred in the strip
   useEffect(() => {
@@ -273,7 +313,7 @@ export default function Lightbox({
           transition={{ type: "spring", stiffness: 170, damping: 26, mass: 0.9 }}
           onClick={(e) => {
             e.stopPropagation();
-            if (isDesktop) setLoupe((l) => !l);
+            if (isDesktop && !developing) setLoupe((l) => !l);
           }}
           onMouseMove={(e) => {
             const r = e.currentTarget.getBoundingClientRect();
@@ -286,7 +326,7 @@ export default function Lightbox({
           }}
           style={{
             position: "absolute",
-            cursor: isDesktop ? (loupe ? "none" : "zoom-in") : "default",
+            cursor: developing ? (splitX !== null ? "ew-resize" : "default") : isDesktop ? (loupe ? "none" : "zoom-in") : "default",
             boxShadow: isDark
               ? `0 40px 120px -20px rgba(${glow2},0.35), 0 0 0 1px rgba(255,255,255,0.06)`
               : `0 40px 100px -30px rgba(${glow2},0.45), 0 0 0 1px rgba(0,0,0,0.06)`,
@@ -317,9 +357,21 @@ export default function Lightbox({
             </motion.div>
           </AnimatePresence>
 
+          {developing && (
+            <DevelopCanvas
+              key={photo.src}
+              src={getImageProps({ src: photo.src, alt: "", width: 1600, height: Math.round(1600 / ratio), quality: 90 }).props.src}
+              params={develop}
+              split={splitX}
+              onSplit={setSplitX}
+              onHistogram={setLiveHist}
+              onError={onDevelopError}
+            />
+          )}
+
           {/* Magnifying loupe: samples the full-resolution original */}
           <AnimatePresence>
-            {loupe && pointer && box && (
+            {loupe && !developing && pointer && box && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.6 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -405,16 +457,76 @@ export default function Lightbox({
           pointerEvents: "none",
         }}
       >
-        <div style={{ ...mono, fontSize: 9, color: t.sub, display: "flex", gap: 12, alignItems: "center", pointerEvents: "auto" }}>
-          <Link href={`/photography/${item.sectionId}`} style={{ color: t.ink, textDecoration: "none" }}>
+        <div
+          style={{
+            ...mono,
+            fontSize: 9,
+            color: t.sub,
+            display: "flex",
+            gap: 12,
+            alignItems: "center",
+            pointerEvents: "auto",
+            minWidth: 0,
+            flex: "0 1 auto",
+          }}
+        >
+          <Link
+            href={`/photography/${item.sectionId}`}
+            style={{
+              color: t.ink,
+              textDecoration: "none",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              minWidth: 0,
+            }}
+          >
             {item.sectionTitle}
           </Link>
-          <span style={{ width: 18, height: 1, background: t.rule }} />
-          <span>
+          <span style={{ width: 18, height: 1, background: t.rule, flexShrink: 0 }} />
+          <span style={{ whiteSpace: "nowrap" }}>
             {pad2(index + 1)} / {pad2(items.length)}
           </span>
         </div>
-        <div style={{ display: "flex", gap: 8, pointerEvents: "auto" }}>
+        <div style={{ display: "flex", gap: 8, pointerEvents: "auto", flexShrink: 0, marginLeft: 8 }}>
+          <span style={{ position: "relative", display: "inline-flex" }}>
+            {nudge && (
+              <motion.span
+                aria-hidden
+                initial={{ scale: 1, opacity: 0.7 }}
+                animate={{ scale: 1.35, opacity: 0 }}
+                transition={{ duration: 1.4, repeat: 4, ease: "easeOut", delay: 1.2 }}
+                style={{ position: "absolute", inset: 0, borderRadius: 999, border: `2px solid ${t.accent}`, pointerEvents: "none" }}
+              />
+            )}
+            <button
+              type="button"
+              onClick={() => (developing ? setMode("info") : openDevelop())}
+              aria-pressed={developing}
+              aria-label="Develop this photo"
+              style={{
+                ...roundBtn,
+                width: isNarrow ? 38 : "auto",
+                height: 38,
+                padding: isNarrow ? 0 : "0 14px",
+                gap: 8,
+                fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                fontSize: 9,
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                background: developing ? t.ink : t.glass,
+                color: developing ? t.bg : t.ink,
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
+                <path d="M2 4h7M12 4h2M2 12h2M7 12h7" />
+                <circle cx="10.5" cy="4" r="1.6" />
+                <circle cx="5.5" cy="12" r="1.6" />
+              </svg>
+              {/* Icon-only on small phones; the Develop tab in the sheet names it */}
+              {isNarrow ? null : "Develop"}
+            </button>
+          </span>
           <button
             type="button"
             aria-label="Toggle photo details"
@@ -504,89 +616,153 @@ export default function Lightbox({
               gap: 20,
             }}
           >
-            <div>
-              <div style={{ ...mono, fontSize: 8.5, color: t.faint, marginBottom: 8 }}>Capture</div>
-              <div style={{ fontFamily: "var(--font-elevated)", fontSize: 19, fontWeight: 400, letterSpacing: "0.01em" }}>
-                {cameraName(exif) ?? "Unknown body"}
-              </div>
-              <div style={{ fontSize: 12, color: t.sub, marginTop: 4, lineHeight: 1.4 }}>{exif.lens ?? "Lens not recorded"}</div>
-            </div>
-
+            {/* Info / Develop tabs */}
             <div
-              style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: t.rule, borderRadius: 12, overflow: "hidden" }}
+              role="tablist"
+              style={{ display: "grid", gridTemplateColumns: "1fr 1fr", padding: 3, borderRadius: 999, background: t.rule }}
             >
-              {stats.map(([label, value]) => (
-                <div key={label} style={{ background: isDark ? "rgba(10,9,15,0.82)" : "rgba(252,250,246,0.9)", padding: "12px 14px" }}>
-                  <div style={{ ...mono, fontSize: 7.5, color: t.faint }}>{label}</div>
-                  <AnimatePresence mode="wait" initial={false}>
-                    <motion.div
-                      key={value ?? "none"}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.25 }}
-                      style={{ fontFamily: "var(--font-elevated)", fontSize: 20, marginTop: 4, fontVariantNumeric: "tabular-nums" }}
-                    >
-                      {value ?? "-"}
-                    </motion.div>
-                  </AnimatePresence>
-                </div>
+              {(["info", "develop"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === m}
+                  onClick={() => (m === "develop" ? openDevelop() : setMode("info"))}
+                  style={{
+                    ...mono,
+                    fontSize: 8.5,
+                    padding: "9px 0",
+                    borderRadius: 999,
+                    border: "none",
+                    cursor: "pointer",
+                    background: mode === m ? (isDark ? "rgba(20,18,28,0.95)" : "#fff") : "transparent",
+                    color: mode === m ? t.ink : t.sub,
+                    transition: "background 0.25s ease",
+                  }}
+                >
+                  {m === "info" ? "Info" : "Develop"}
+                </button>
               ))}
             </div>
 
-            <div>
-              <div style={{ ...mono, fontSize: 8.5, color: t.faint, marginBottom: 10, display: "flex", justifyContent: "space-between" }}>
-                <span>Histogram</span>
-                <span>RGB · L</span>
-              </div>
-              <Histogram hist={photo.hist} isDark={isDark} />
-              <div style={{ ...mono, fontSize: 7, color: t.faint, display: "flex", justifyContent: "space-between", marginTop: 6 }}>
-                <span>Shadows</span>
-                <span>Highlights</span>
-              </div>
-            </div>
+            {mode === "develop" ? (
+              developError ? (
+                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: t.sub }}>{developError}</p>
+              ) : (
+                <DevelopPanel
+                  params={develop}
+                  onChange={(p) => {
+                    setDevelop(p);
+                    setPreset(null);
+                  }}
+                  preset={preset}
+                  onPreset={(name) => {
+                    setDevelop(presetParams(name));
+                    setPreset(name);
+                  }}
+                  split={splitX !== null}
+                  onToggleSplit={() => setSplitX((x) => (x === null ? 0.5 : null))}
+                  hist={liveHist ?? photo.hist}
+                  isDark={isDark}
+                  t={t}
+                />
+              )
+            ) : (
+              <>
+                <div>
+                  <div style={{ ...mono, fontSize: 8.5, color: t.faint, marginBottom: 8 }}>Capture</div>
+                  <div style={{ fontFamily: "var(--font-elevated)", fontSize: 19, fontWeight: 400, letterSpacing: "0.01em" }}>
+                    {cameraName(exif) ?? "Unknown body"}
+                  </div>
+                  <div style={{ fontSize: 12, color: t.sub, marginTop: 4, lineHeight: 1.4 }}>{exif.lens ?? "Lens not recorded"}</div>
+                </div>
 
-            {photo.palette.length > 0 && (
-              <div>
-                <div style={{ ...mono, fontSize: 8.5, color: t.faint, marginBottom: 10 }}>Palette</div>
-                <div style={{ display: "flex", gap: 6 }}>
-                  {photo.palette.map((c, i) => (
-                    <motion.button
-                      type="button"
-                      key={`${photo.src}-${c}`}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.05 * i, duration: 0.4, ease: EASE_OUT }}
-                      whileHover={{ y: -3 }}
-                      onClick={() => copy(c)}
-                      title={`Copy ${c}`}
-                      aria-label={`Copy colour ${c}`}
-                      style={{
-                        flex: 1,
-                        height: 44,
-                        borderRadius: 8,
-                        background: c,
-                        border: `1px solid ${t.rule}`,
-                        cursor: "pointer",
-                        position: "relative",
-                      }}
-                    />
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 1,
+                    background: t.rule,
+                    borderRadius: 12,
+                    overflow: "hidden",
+                  }}
+                >
+                  {stats.map(([label, value]) => (
+                    <div key={label} style={{ background: isDark ? "rgba(10,9,15,0.82)" : "rgba(252,250,246,0.9)", padding: "12px 14px" }}>
+                      <div style={{ ...mono, fontSize: 7.5, color: t.faint }}>{label}</div>
+                      <AnimatePresence mode="wait" initial={false}>
+                        <motion.div
+                          key={value ?? "none"}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          transition={{ duration: 0.25 }}
+                          style={{ fontFamily: "var(--font-elevated)", fontSize: 20, marginTop: 4, fontVariantNumeric: "tabular-nums" }}
+                        >
+                          {value ?? "-"}
+                        </motion.div>
+                      </AnimatePresence>
+                    </div>
                   ))}
                 </div>
-                <div style={{ ...mono, fontSize: 8, color: t.sub, marginTop: 8, height: 12 }}>
-                  {copied ? `Copied ${copied}` : "Click a swatch to copy"}
-                </div>
-              </div>
-            )}
 
-            <div style={{ ...mono, fontSize: 8, color: t.faint, display: "flex", justifyContent: "space-between", marginTop: "auto" }}>
-              <span>{exif.date ?? ""}</span>
-              <span>
-                {photo.width} × {photo.height}
-              </span>
-            </div>
+                <div>
+                  <div
+                    style={{ ...mono, fontSize: 8.5, color: t.faint, marginBottom: 10, display: "flex", justifyContent: "space-between" }}
+                  >
+                    <span>Histogram</span>
+                    <span>RGB · L</span>
+                  </div>
+                  <Histogram hist={photo.hist} isDark={isDark} />
+                  <div style={{ ...mono, fontSize: 7, color: t.faint, display: "flex", justifyContent: "space-between", marginTop: 6 }}>
+                    <span>Shadows</span>
+                    <span>Highlights</span>
+                  </div>
+                </div>
+
+                {photo.palette.length > 0 && (
+                  <div>
+                    <div style={{ ...mono, fontSize: 8.5, color: t.faint, marginBottom: 10 }}>Palette</div>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      {photo.palette.map((c, i) => (
+                        <motion.button
+                          type="button"
+                          key={`${photo.src}-${c}`}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.05 * i, duration: 0.4, ease: EASE_OUT }}
+                          whileHover={{ y: -3 }}
+                          onClick={() => copy(c)}
+                          title={`Copy ${c}`}
+                          aria-label={`Copy colour ${c}`}
+                          style={{
+                            flex: 1,
+                            height: 44,
+                            borderRadius: 8,
+                            background: c,
+                            border: `1px solid ${t.rule}`,
+                            cursor: "pointer",
+                            position: "relative",
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <div style={{ ...mono, fontSize: 8, color: t.sub, marginTop: 8, height: 12 }}>
+                      {copied ? `Copied ${copied}` : "Click a swatch to copy"}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ ...mono, fontSize: 8, color: t.faint, display: "flex", justifyContent: "space-between", marginTop: "auto" }}>
+                  <span>{exif.date ?? ""}</span>
+                  <span>
+                    {photo.width} × {photo.height}
+                  </span>
+                </div>
+              </>
+            )}
             {isDesktop && (
-              <div style={{ ...mono, fontSize: 7.5, color: t.faint, lineHeight: 1.9 }}>← → browse · Z loupe · I info · Esc close</div>
+              <div style={{ ...mono, fontSize: 7.5, color: t.faint, lineHeight: 1.9 }}>← → browse · D develop · Z loupe · I info · Esc</div>
             )}
           </motion.aside>
         )}
