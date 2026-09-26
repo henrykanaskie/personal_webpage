@@ -91,7 +91,8 @@ export default function Lightbox({
   const { photo } = item;
   const ratio = aspect(photo);
 
-  const [panelOpen, setPanelOpen] = useState(true);
+  // Photo details are opt-in: the photo gets the whole stage until the visitor asks for info
+  const [panelOpen, setPanelOpen] = useState(false);
   const [box, setBox] = useState<Box | null>(null);
   const [loupe, setLoupe] = useState(false);
   const [zoom, setZoom] = useState(2.6);
@@ -114,11 +115,6 @@ export default function Lightbox({
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
   }, [ratio, panelOpen]);
-
-  // Mobile starts with the panel tucked away so the photo gets the screen
-  useEffect(() => {
-    if (window.innerWidth < 1024) setPanelOpen(false);
-  }, []);
 
   // Shutter click on open and on every frame change (silent unless the visitor opted in)
   useEffect(() => {
@@ -441,7 +437,15 @@ export default function Lightbox({
             aria-label="Toggle photo details"
             aria-pressed={panelOpen}
             onClick={() => setPanelOpen((p) => !p)}
-            style={{ ...roundBtn, width: 38, height: 38 }}
+            title={panelOpen ? "Hide photo info" : "Show photo info"}
+            style={{
+              ...roundBtn,
+              width: 38,
+              height: 38,
+              background: panelOpen ? t.ink : t.glass,
+              color: panelOpen ? t.bg : t.ink,
+              transition: "background 0.25s ease, color 0.25s ease",
+            }}
           >
             <span style={{ fontFamily: "Georgia, serif", fontStyle: "italic", fontSize: 15 }}>i</span>
           </button>
