@@ -270,6 +270,9 @@ void main() {
   // on top, a little on the bottom, and the film band just inside it
   float lipA = mix(0.45 + 0.47 * max(-n.y, 0.0) + 0.22 * max(n.y, 0.0), 0.09 + 0.19 * max(-n.y, 0.0), uDark);
   vec3 rimCol = vec3(1.0);
+  // only near the bud: elsewhere the card's own (DOM) edge is still there,
+  // and the two hand over across the same 40px falloff the rim's hole uses
+  float own = uHole.z > 0.5 ? 1.0 - clamp((length(p - uHole.xy) - uHole.z) / 40.0, 0.0, 1.0) : 0.0;
   float reach = uRim * max(own, smoothstep(0.5, 1.5, dc));
   float rimA = line * lipA * reach;
   float filmA = glow * mix(0.3, 0.27, uDark) * reach;
@@ -351,7 +354,12 @@ export function LiquidBud({
     gl.attachShader(prog, sh(gl.VERTEX_SHADER, BUD_VERT));
     gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, BUD_FRAG));
     gl.linkProgram(prog);
-    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) { finish(); return; }
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+      // a broken shader would otherwise just skip the animation silently
+      if (process.env.NODE_ENV !== "production") console.error("LiquidBud shader:", gl.getProgramInfoLog(prog));
+      finish();
+      return;
+    }
     gl.useProgram(prog);
     gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
@@ -407,8 +415,8 @@ export function LiquidBud({
     // and bulge as one shape, handing over across the same falloff.
 
     // After the break: springs carry the bubble to its box, and the stub on the card's side recoils.
-    const px: Spring = { x: 0, v: 0 }, py: Spring = { x: 0, v: 0 };
-    const sw: Spring = { x: 0, v: 0 }, shh: Spring = { x: 0, v: 0 };
+    const flight: Spring = { x: 0, v: 0 };
+    const from = { cx: 0, cy: 0, hw: 0, hh: 0 };
     const stub: Spring = { x: 0, v: 0 };
     let broken = false;
     let brokeAt = 0;
@@ -446,36 +454,41 @@ export function LiquidBud({
         }
       } else {
         if (!broken) {
-          // the break: the bubble leaves with the speed it had, and the card's
-          // side keeps a stub of the bulge that snaps back
+          // the break: the bubble leaves from where the neck let go, with the
+          // speed it had, and the card's side keeps a stub that snaps back
           broken = true;
           const out = rb * 1.8;
-          px.x = ex + nx * out; py.x = ey + ny * out;
-          const v = (rb * 1.55 * 2) / (NECK_MS / 1000); // d/dt of the stretch at its end
-          px.v = nx * v; py.v = ny * v;
-          sw.x = nx !== 0 ? rb * 1.22 : rb * 0.9; shh.x = nx !== 0 ? rb * 0.9 : rb * 1.22;
-          sw.v = shh.v = 0;
+          from.cx = ex + nx * out; from.cy = ey + ny * out;
+          from.hw = nx !== 0 ? rb * 1.22 : rb * 0.9; from.hh = nx !== 0 ? rb * 0.9 : rb * 1.22;
+          // carry the stretch's speed into the flight, as a rate of progress
+          const v = (rb * 1.55 * 2) / (NECK_MS / 1000);
+          const dist = Math.hypot(goal.cx - from.cx, goal.cy - from.cy) || 1;
+          flight.x = 0; flight.v = Math.min(4, v / dist);
           stub.x = rb * 0.55; stub.v = 0;
           brokeAt = t;
         }
-        // burst: it pops up to size with an overshoot, and wobbles in
-        // one soft overshoot as it swells to size, not a jelly wobble
-        stepSpring(px, goal.cx, 10, 0.72, dt);
-        stepSpring(py, goal.cy, 10, 0.72, dt);
-        stepSpring(sw, goal.hw, 12, 0.62, dt);
-        stepSpring(shh, goal.hh, 12, 0.62, dt);
+        // One motion: a single spring carries the bubble from where it broke
+        // off to its box, moving and growing together (size, position and
+        // corners all follow the same progress), with one soft overshoot. Two
+        // springs (one to move, one to grow) made it arrive and then inflate,
+        // like filling a shape.
+        stepSpring(flight, 1, 8.5, 0.78, dt);
         stepSpring(stub, 0, 20, 0.3, dt);
-        const speed = Math.hypot(px.v, py.v);
-        const stretch = Math.min(0.2, speed / 3000);
-        const ux = speed > 1 ? Math.abs(px.v) / speed : 0, uy = speed > 1 ? Math.abs(py.v) / speed : 0;
-        cx = px.x; cy = py.x;
-        hw = Math.max(0, sw.x) * (1 + stretch * ux - stretch * 0.6 * uy);
-        hh = Math.max(0, shh.x) * (1 + stretch * uy - stretch * 0.6 * ux);
-        k = 16;
+        const q = flight.x;
+        cx = from.cx + (goal.cx - from.cx) * q;
+        cy = from.cy + (goal.cy - from.cy) * q;
+        hw = Math.max(0, from.hw + (goal.hw - from.hw) * q);
+        hh = Math.max(0, from.hh + (goal.hh - from.hh) * q);
+        // It never touches the card again (a smooth union there made it
+        // reconnect as it grew): as it swells it's pushed away to keep a gap.
+        const GAP = 8;
+        if (nx < 0) cx = Math.min(cx, ex - GAP - hw);
+        if (nx > 0) cx = Math.max(cx, ex + GAP + hw);
+        if (ny < 0) cy = Math.min(cy, ey - GAP - hh);
+        if (ny > 0) cy = Math.max(cy, ey + GAP + hh);
+        k = 0.5; // a plain union from here on: separate shapes
         hole.r = clamp01(stub.x / (rb * 0.55)) * (rb * 0.55 + 30);
-        const settled =
-          Math.abs(px.x - goal.cx) < 2 && Math.abs(py.x - goal.cy) < 2 &&
-          Math.abs(sw.x - goal.hw) < 2 && Math.abs(shh.x - goal.hh) < 2 && speed < 40;
+        const settled = Math.abs(1 - flight.x) < 0.004 && Math.abs(flight.v) < 0.05;
         const tb = t - SWELL_MS - NECK_MS;
         if ((settled || tb > 1800) && !fading) {
           fading = true;
@@ -485,10 +498,12 @@ export function LiquidBud({
         // ...as this one fades out (on the clock, not per frame, so dropped frames can't stall it)
         if (fading) fade = Math.max(0, 1 - (now - fadeAt) / 300);
       }
-      // round while small; the finished bubble's own corners once it's big
+      // round while it's a bud; after the break the corners go from round to
+      // the finished bubble's own on the same progress as everything else
       const small = Math.min(hw, hh);
-      const k01 = clamp01((small - 50) / 60);
-      const dropR = small * (1 - k01) + Math.min(bubbleRadius, small) * k01;
+      const dropR = broken
+        ? Math.min(small, Math.min(from.hw, from.hh) + (Math.min(bubbleRadius, goal.hw, goal.hh) - Math.min(from.hw, from.hh)) * clamp01(flight.x))
+        : small;
 
       const cr = canvas.getBoundingClientRect();
       gl.viewport(0, 0, canvas.width, canvas.height);
