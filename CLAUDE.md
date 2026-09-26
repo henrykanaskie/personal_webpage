@@ -28,7 +28,7 @@ The voice is confident but never loud: precision over promotion. Every interacti
   - Chrome lettering falls back to `1.2em` lines where `lh` isn't supported (Safari before 16.4). The chrome glint on controls runs only under `(hover: hover)`, so a tap doesn't leave it stuck.
 - Theme switching is the halftone curtain (`lib/themeTransition.ts`, from the toggle in `Header.tsx`): from the toggle, the page's own dots swell in a wave, in the colour of the sheet they're becoming, each with a hairline in the old ink as it grows, until the cells close up; the theme swaps under the cover; then the same wave shrinks them back down to ordinary dots in the new ink, uncovering the page. It's a 2D canvas over everything on the page's grid, so it works in every browser; reduced motion swaps instantly, and timers make sure the page is never left covered.
 - Motion: cards rise into place on the shared critically damped spring in `lib/motion.ts`; nothing slides in from off screen. Line drawings are CSS transitions (`.line-draw`), drawn once and left drawn.
-- Projects also appear as a bill of materials (`components/PartsList.tsx`, data in `lib/parts.ts`), mirroring the GitHub profile's `data/profile.toml`
+- Projects also appear as a parts list titled "Everything I've built" (no sheet numbers) (`components/PartsList.tsx`, data in `lib/parts.ts`), mirroring the GitHub profile's `data/profile.toml`
 - Glass morphism with subtle blur, saturation, and specular highlights
 - Iridescent color shifts: Photography's palette; on the CS side only as thin film and dispersion on the glass bubbles (everything else is graphite ink and chrome; the `cs.iridescent*` token names remain but hold neutral values)
 - Film grain overlay for photographic texture

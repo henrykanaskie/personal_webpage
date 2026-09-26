@@ -8,7 +8,7 @@ import { glassBoxClassNames, metalClassNames } from "@/lib/tokens";
 
 // ─── AboutSheet ─────────────────────────────────────────────────────────────
 // The About section as the first sheet of the drawing set: the name as a title
-// on the paper (like every other section), then one glass sheet holding the
+// on the paper (like every other section), then one glass panel holding the
 // portrait, a spec table, the prose and the contact controls. Every spec row is
 // something a stranger could check.
 
@@ -16,6 +16,7 @@ const SPEC: [string, string][] = [
   ["Now", "Intern, Daimler Truck North America"],
   ["Study", "M.S. Computer Science, Oregon State"],
   ["Before", "Honors B.S. Computer Science, 3.95 GPA"],
+  ["Based", "Corvallis, Oregon"],
   ["Focus", "Machine learning · signal processing · embedded C · optimization"],
 ];
 
@@ -54,15 +55,6 @@ export default function AboutSheet({
       <motion.div {...rise(0)} className="w-full max-w-[1180px] px-3 md:px-6">
         <div data-liquid className={`${glassBoxClassNames} relative rounded-[28px] overflow-hidden`}>
           <GlassLayers />
-
-          {/* Title strip */}
-          <div
-            className="relative z-[1] mono flex items-center justify-between gap-4 px-5 md:px-8 py-3"
-            style={{ fontSize: 11, letterSpacing: "0.16em", color: "var(--ink-3)", borderBottom: "1px solid var(--hair)" }}
-          >
-            <span>SHEET 00 / ABOUT</span>
-            <span className="hidden sm:inline">CORVALLIS, OREGON</span>
-          </div>
 
           <div className="relative z-[1] grid md:grid-cols-[minmax(220px,300px)_1fr] gap-6 md:gap-10 p-5 md:p-8">
             {/* Portrait, framed in metal */}

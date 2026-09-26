@@ -96,13 +96,10 @@ export default function PartsList() {
       <div data-liquid className={`${glassBoxClassNames} relative rounded-[24px] overflow-hidden`}>
         <GlassLayers />
 
-        {/* Title block, as on a drawing sheet */}
+        {/* Title */}
         <div className="relative z-[1] flex flex-wrap items-end justify-between gap-3 px-5 md:px-8 pt-6 md:pt-7 pb-5" style={{ borderBottom: "1px solid var(--hair)" }}>
           <div>
-            <div className="mono" style={{ fontSize: 11, letterSpacing: "0.18em", color: "var(--ink-3)" }}>
-              SHEET 01 / BILL OF MATERIALS
-            </div>
-            <div className="font-[family-name:var(--font-elevated)] metal-text mt-1" style={{ fontSize: "clamp(1.5rem, 2.4vw, 2rem)", fontWeight: 700, letterSpacing: "-0.02em" }}>
+            <div className="font-[family-name:var(--font-elevated)] metal-text" style={{ fontSize: "clamp(1.5rem, 2.4vw, 2rem)", fontWeight: 700, letterSpacing: "-0.02em" }}>
               Everything I&apos;ve built
             </div>
           </div>
