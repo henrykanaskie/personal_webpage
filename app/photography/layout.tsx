@@ -1,6 +1,7 @@
 "use client";
 
 import { useIsDark } from "@/lib/glass";
+import AfCursor from "@/components/photo/AfCursor";
 
 export default function PhotographyLayout({
   children,
@@ -47,6 +48,8 @@ export default function PhotographyLayout({
         </defs>
         <rect width="100%" height="100%" filter="url(#photo-layout-grain)" />
       </svg>
+
+      <AfCursor />
 
       {/* Page content */}
       <div
