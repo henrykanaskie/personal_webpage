@@ -157,9 +157,15 @@ void main() {
       // (same falloff as .ring-mask), so the border molds into the swell.
       float ringVis = uHoleR > 0.5 ? clamp((length(p - uBlob.xy) - uHoleR) / 14.0, 0.0, 1.0) : 1.0;
       float lineW = max(smoothstep(0.5, 1.5, dc) * (1.0 - smoothstep(-0.5, 0.5, dl - 1.5)), 1.0 - ringVis);
+      // the glass edge (--edge-lip, --edge-film in globals.css): a white
+      // hairline, brighter on top, with the thin film just inside it
       float line = (1.0 - smoothstep(0.0, 1.0, abs(dl - 0.4))) * lineW;
-      vec3 rimCol = mix(vec3(1.0), vec3(0.38, 0.36, 0.33), smoothstep(-0.4, 0.6, n.y));
-      col = mix(col, rimCol, line * ca * (0.6 - 0.25 * uDark));
+      float lipA = mix(0.45 + 0.47 * max(-n.y, 0.0) + 0.22 * max(n.y, 0.0), 0.09 + 0.19 * max(-n.y, 0.0), uDark);
+      float wl = max(-n.x, 0.0), wr = max(n.x, 0.0), wt = max(-n.y, 0.0), wb = max(n.y, 0.0);
+      vec3 film = (vec3(1.0, 0.59, 0.8) * wl + vec3(0.47, 0.8, 1.0) * wr + vec3(0.73, 0.63, 1.0) * wt + vec3(1.0, 0.86, 0.55) * wb) / (wl + wr + wt + wb + 1e-3);
+      float band = smoothstep(-6.0, -0.5, dl) * (1.0 - smoothstep(-0.5, 0.5, dl)) * lineW;
+      col = mix(col, film, band * ca * mix(0.3, 0.27, uDark));
+      col = mix(col, vec3(1.0), line * ca * lipA);
     }
   }
   gl_FragColor = vec4(col, 1.0);

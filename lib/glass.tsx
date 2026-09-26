@@ -54,7 +54,8 @@ export const FuzzyText = ({
 );
 
 // ─── GlassLayers ────────────────────────────────────────────────────────────
-// Decorates a .glass-panel: a hairline satin-metal rim, a specular line along
+// Decorates a .glass-panel: the glass edge (the same lip and thin film as the
+// bubbles, .edge-ring), a specular line along
 // the top edge, and a faint brushed sheen that catches light from the upper left.
 
 export function GlassLayers({
@@ -69,7 +70,7 @@ export function GlassLayers({
     <>
       {/* the rim sits in a mask the liquid swells can open (.ring-mask) */}
       <div className="ring-mask" style={{ zIndex: 0 }}>
-        <div className="metal-ring" />
+        <div className="edge-ring" />
       </div>
       <div
         className="glass-spec"

@@ -261,24 +261,18 @@ void main() {
     outc = mix(outc, mix(cardM, bubM, stretch), cover);
   }
 
-  // The edge. The card keeps its whole rim while the bubble grows: the canvas
-  // draws it round the entire liquid outline (card and bulge as one shape), so
-  // the card's chrome hairline runs unbroken out along the bulge, turning into
-  // the bubble's iridescent film as it stretches, and the bubble leaves with it.
+  // The edge. Cards and bubbles share one glass edge, so around the bud the
+  // canvas draws that edge round card and bulge as one outline, and the bubble
+  // leaves carrying it.
   float line = 1.0 - smoothstep(0.0, 1.1, abs(d + 0.6));
   float glow = smoothstep(-6.0, -0.5, d) * (1.0 - smoothstep(-0.5, 0.5, d));
-  vec3 chrome = mix(mix(vec3(1.0), vec3(0.55, 0.53, 0.5), smoothstep(-0.4, 0.6, n.y)),
-                    mix(vec3(0.62), vec3(0.26), smoothstep(-0.4, 0.6, n.y)), uDark);
-  // the settled bubble's edge: a white lip, bright on top and faint below,
-  // with the film as a narrow soft band just inside it
-  float lipA = mix(mix(0.85, 0.4, smoothstep(-0.6, 0.6, n.y)), mix(0.3, 0.08, smoothstep(-0.6, 0.6, n.y)), uDark);
-  vec3 rimCol = mix(chrome, vec3(1.0), stretch);
-  // Only near the bud: elsewhere the card's own (DOM) rim is still there, and
-  // the two hand over across the same 40px falloff the rim's hole uses.
-  float own = uHole.z > 0.5 ? 1.0 - clamp((length(p - uHole.xy) - uHole.z) / 40.0, 0.0, 1.0) : 0.0;
+  // the glass edge (--edge-lip, --edge-film): a hairline all round, brighter
+  // on top, a little on the bottom, and the film band just inside it
+  float lipA = mix(0.45 + 0.47 * max(-n.y, 0.0) + 0.22 * max(n.y, 0.0), 0.09 + 0.19 * max(-n.y, 0.0), uDark);
+  vec3 rimCol = vec3(1.0);
   float reach = uRim * max(own, smoothstep(0.5, 1.5, dc));
-  float rimA = line * mix(0.6, lipA, stretch) * reach;
-  float filmA = glow * stretch * mix(0.3, 0.34, uDark) * reach;
+  float rimA = line * lipA * reach;
+  float filmA = glow * mix(0.3, 0.27, uDark) * reach;
   outc = vec4(film, 1.0) * filmA + outc * (1.0 - filmA);
   outc = vec4(rimCol, 1.0) * rimA + outc * (1.0 - rimA);
   gl_FragColor = outc * uAlpha;
