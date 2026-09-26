@@ -158,7 +158,7 @@ export default function InfoBox({
             >
               <FuzzyText>
                 <span
-                  className="bg-clip-text text-transparent"
+                  className="bg-clip-text text-transparent metal-text"
                   style={{
                     WebkitBackgroundClip: "text",
                     backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),

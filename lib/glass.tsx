@@ -67,7 +67,10 @@ export function GlassLayers({
   const lightX = refractionSide === "left" ? "18%" : "82%";
   return (
     <>
-      <div className="metal-ring" style={{ zIndex: 0 }} />
+      {/* the rim sits in a mask the liquid swells can open (.ring-mask) */}
+      <div className="ring-mask" style={{ zIndex: 0 }}>
+        <div className="metal-ring" />
+      </div>
       <div
         style={{
           position: "absolute",

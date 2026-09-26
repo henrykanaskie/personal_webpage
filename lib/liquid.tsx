@@ -11,11 +11,11 @@ import { paper } from "./tokens";
 //                  displacement map built for the bubble's exact shape.
 //                  Chromium only; elsewhere the bubble is plain clear glass.
 //
-//   LiquidBud      while a bubble opens, a liquid neck joins it to its card and
-//                  stretches until it snaps, like a drop separating. It's the
-//                  classic metaball trick (blur the two shapes together, then
-//                  threshold the alpha), masked so only the neck between the
-//                  card and the bubble is ever painted.
+//   LiquidBud      while a bubble opens, it is born out of the card's side:
+//                  the edge bulges, necks, pinches and bursts free (below).
+//
+//   setRingHole    opens the panel's rim (.ring-mask) where a swell leaves the
+//                  card, so the border molds into the swell.
 
 // ─── useGlassLens ───────────────────────────────────────────────────────────
 
@@ -27,8 +27,13 @@ const supportsLens = () =>
   );
 
 // Displacement map for a rounded rectangle, encoded as R = x, G = y around 128.
-// Near the rim the surface curves away, so the image bends outward along the
-// edge normal; across the middle it magnifies gently toward the centre.
+// The bubble is a thick convex lens: flat across the middle (no distortion
+// there), curving over in a band at the rim. Where the surface tilts, what's
+// behind is seen from further in (magnified and compressed toward the edge),
+// with the tilt following a circular profile, so the bend is gentle at the
+// start of the band and steep at the very edge, as through real glass. Samples
+// always come from inside the bubble, which is what keeps the rim clean (a map
+// that looked outward read the empty space past the element's box).
 function lensMap(w: number, h: number, radius: number, bevel: number): string {
   const c = document.createElement("canvas");
   c.width = w;
@@ -45,15 +50,15 @@ function lensMap(w: number, h: number, radius: number, bevel: number): string {
   for (let j = 0; j < h; j++) {
     for (let i = 0; i < w; i++) {
       const x = i + 0.5, y = j + 0.5;
-      const t = Math.min(1, Math.max(0, -sd(x, y) / bevel));
-      const rim = (1 - t) * (1 - t);
+      const t = Math.min(1, Math.max(0, -sd(x, y) / bevel)); // 0 at the rim, 1 past the band
+      const u = 1 - t;
+      const tilt = 1 - Math.sqrt(Math.max(0, 1 - u * u)); // circular profile
       const gx = sd(x + 1, y) - sd(x - 1, y);
       const gy = sd(x, y + 1) - sd(x, y - 1);
       const g = Math.hypot(gx, gy) || 1;
-      const mx = (-(x - w / 2) / (w / 2)) * 0.3;
-      const my = (-(y - h / 2) / (h / 2)) * 0.3;
-      const vx = (rim * gx) / g * 0.7 + mx * (1 - rim);
-      const vy = (rim * gy) / g * 0.7 + my * (1 - rim);
+      // outward normal is (gx, gy); sample inward, against it
+      const vx = -(gx / g) * tilt;
+      const vy = -(gy / g) * tilt;
       const o = (j * w + i) * 4;
       img.data[o] = 128 + 127 * Math.max(-1, Math.min(1, vx));
       img.data[o + 1] = 128 + 127 * Math.max(-1, Math.min(1, vy));
@@ -67,7 +72,7 @@ function lensMap(w: number, h: number, radius: number, bevel: number): string {
 
 export function useGlassLens(
   ref: React.RefObject<HTMLElement | null>,
-  { radius = 24, strength = 44, frost = "" }: { radius?: number; strength?: number; frost?: string } = {},
+  { radius = 24, strength = 38, frost = "" }: { radius?: number; strength?: number; frost?: string } = {},
 ) {
   const id = `lens-${useId().replace(/:/g, "")}`;
   const [map, setMap] = useState<{ href: string; w: number; h: number } | null>(null);
@@ -83,7 +88,7 @@ export function useGlassLens(
       const key = `${w}x${h}`;
       if (!w || !h || key === last) return;
       last = key;
-      setMap({ href: lensMap(w, h, radius, Math.min(28, Math.min(w, h) / 3)), w, h });
+      setMap({ href: lensMap(w, h, radius, Math.min(22, Math.min(w, h) / 4)), w, h });
     };
     build();
     const ro = new ResizeObserver(build);
@@ -95,10 +100,10 @@ export function useGlassLens(
     <svg width="0" height="0" aria-hidden style={{ position: "absolute", pointerEvents: "none" }}>
       <filter id={id} x="0" y="0" width={map.w} height={map.h} filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
         <feImage href={map.href} x="0" y="0" width={map.w} height={map.h} preserveAspectRatio="none" result="map" />
-        {/* three passes at slightly different strengths: glass disperses colour at its edge */}
+        {/* three passes at very slightly different strengths: glass disperses colour a little at its edge */}
         <feDisplacementMap in="SourceGraphic" in2="map" scale={strength} xChannelSelector="R" yChannelSelector="G" result="dR" />
-        <feDisplacementMap in="SourceGraphic" in2="map" scale={strength * 1.05} xChannelSelector="R" yChannelSelector="G" result="dG" />
-        <feDisplacementMap in="SourceGraphic" in2="map" scale={strength * 1.1} xChannelSelector="R" yChannelSelector="G" result="dB" />
+        <feDisplacementMap in="SourceGraphic" in2="map" scale={strength * 1.015} xChannelSelector="R" yChannelSelector="G" result="dG" />
+        <feDisplacementMap in="SourceGraphic" in2="map" scale={strength * 1.03} xChannelSelector="R" yChannelSelector="G" result="dB" />
         <feColorMatrix in="dR" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r" />
         <feColorMatrix in="dG" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="g" />
         <feColorMatrix in="dB" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="b" />
@@ -117,6 +122,24 @@ export function useGlassLens(
   return { filter, style };
 }
 
+// ─── setRingHole ────────────────────────────────────────────────────────────
+// Open (or close, r <= 0) a hole in a panel's rim at x, y (panel-local px).
+// "s" is the cursor swell's hole, "b" a budding bubble's.
+
+const ringOf = new WeakMap<HTMLElement, HTMLElement | null>();
+export function setRingHole(panel: HTMLElement, which: "s" | "b", x: number, y: number, r: number) {
+  let ring = ringOf.get(panel);
+  if (ring === undefined) {
+    ring = panel.querySelector<HTMLElement>(":scope > .ring-mask");
+    ringOf.set(panel, ring);
+  }
+  if (!ring) return;
+  const on = r > 0.5;
+  ring.style.setProperty(`--${which}x`, on ? `${x.toFixed(1)}px` : "-9999px");
+  ring.style.setProperty(`--${which}y`, on ? `${y.toFixed(1)}px` : "-9999px");
+  ring.style.setProperty(`--${which}r`, on ? `${r.toFixed(1)}px` : "0px");
+}
+
 // ─── LiquidBud ──────────────────────────────────────────────────────────────
 // The info bubble is born out of the side of its card, the way a soap film
 // buds: the card's own edge swells, and keeps swelling, into a dome; the dome
@@ -131,7 +154,11 @@ export function useGlassLens(
 // draws the neck in until it pinches. The material is the cards' frosted glass
 // (blurred dots bent at the rim, the card fill, a chrome hairline), so the
 // swell reads as the card. Only what lies outside the card is painted (the
-// card is DOM). When the bubble settles, the real frosted bubble fades in.
+// card is DOM), except the rim: the card's own rim is opened around the bud
+// (setRingHole) and the bud draws the rim of the whole liquid outline there,
+// so the border molds into the swell. Once it breaks free, the bud turns from
+// card material into the see-through bubble, and when it settles the real
+// frosted bubble fades in.
 
 const BUD_VERT = `attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }`;
 const BUD_FRAG = `
@@ -144,6 +171,9 @@ uniform float uCardR;
 uniform vec4 uDrop;   // cx, cy, half-w, half-h
 uniform float uDropR, uK;
 uniform vec3 uStub;   // the card side's recoil after the break: x, y, radius
+uniform vec3 uHole;   // the hole opened in the card's rim: x, y, radius
+uniform float uBubble; // 0 card material, 1 see-through bubble
+uniform float uBubA;
 uniform float uAlpha, uDark;
 uniform float uGap, uDotR, uDotA;
 uniform vec3 uBg, uDot, uFill;
@@ -184,24 +214,32 @@ void main() {
   float sh = smoothstep(18.0, -4.0, scene(p - vec2(0.0, 6.0))) * outside * (1.0 - cover);
   outc = vec4(0.0, 0.0, 0.0, 1.0) * sh * (0.1 + 0.2 * uDark);
 
+  // the rim: wherever the liquid leaves the card, and inside the opened hole
+  float ringVis = uHole.z > 0.5 ? clamp((length(p - uHole.xy) - uHole.z) / 14.0, 0.0, 1.0) : 1.0;
+  float lineW = max(smoothstep(0.5, 1.5, card(p)), 1.0 - ringVis);
+  vec2 g = vec2(scene(p + vec2(1.0, 0.0)) - d, scene(p + vec2(0.0, 1.0)) - d);
+  vec2 n = normalize(g + 1e-5);
+  float line = (1.0 - smoothstep(0.0, 1.0, abs(d + 0.5))) * lineW;
+  vec3 rimCol = mix(vec3(1.0), vec3(0.38, 0.36, 0.33), smoothstep(-0.4, 0.6, n.y));
+  float rimA = line * (0.6 - 0.25 * uDark);
+
   if (cover > 0.0) {
-    vec2 g = vec2(scene(p + vec2(1.0, 0.0)) - d, scene(p + vec2(0.0, 1.0)) - d);
-    vec2 n = normalize(g + 1e-5);
     float rim = 1.0 - clamp(-d / 26.0, 0.0, 1.0);
     rim *= rim;
-    // frosted dots, bent outward at the rim like the cards
+    float lit = dot(-n, normalize(vec2(-0.6, -0.8)));
+    // card material: frosted dots bent at the rim under the card fill
     vec3 col = mix(uBg, uDot, frostDots(p + n * rim * 11.0) * uDotA);
     col = mix(col, uFill, uFillA);
-    // volume: light from the upper left across the rim, shade low on the right
-    float lit = dot(-n, normalize(vec2(-0.6, -0.8)));
     col += vec3(1.0) * rim * max(lit, 0.0) * (0.22 - 0.1 * uDark);
     col *= 1.0 - rim * max(-lit, 0.0) * (0.1 + 0.1 * uDark);
-    // chrome hairline
-    float line = 1.0 - smoothstep(0.0, 1.2, abs(d + 0.6));
-    vec3 rimCol = mix(vec3(1.0), vec3(0.38, 0.36, 0.33), smoothstep(-0.4, 0.6, n.y));
-    col = mix(col, rimCol, line * (0.55 - 0.25 * uDark));
-    outc = mix(outc, vec4(col, 1.0), cover);
+    vec4 cardM = vec4(col, 1.0);
+    // bubble material: a light see-through fill, a bright rim on the lit side
+    float ba = uBubA + rim * 0.25;
+    vec3 bc = uFill * ba + vec3(1.0) * rim * max(lit, 0.0) * (0.35 - 0.1 * uDark);
+    vec4 bubM = vec4(bc, min(1.0, ba + rim * max(lit, 0.0) * 0.3));
+    outc = mix(outc, mix(cardM, bubM, uBubble), cover);
   }
+  outc = mix(outc, vec4(rimCol, 1.0), rimA);
   gl_FragColor = outc * uAlpha;
 }
 `;
@@ -220,8 +258,8 @@ const smooth = (t: number) => t * t * (3 - 2 * t);
 const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
 
 // Timeline (ms): the side swells, then stretches and necks, then breaks.
-const SWELL_MS = 820;
-const NECK_MS = 460;
+const SWELL_MS = 560;
+const NECK_MS = 330;
 
 export function LiquidBud({
   bubbleRef,
@@ -315,14 +353,26 @@ export function LiquidBud({
     const dark = document.documentElement.classList.contains("dark");
     const pal = dark ? paper.dark : paper.light;
     const glass = dark ? paper.glass.dark : paper.glass.light;
+    const bubA = dark ? 0.42 : 0.16; // .glass-bubble's fill
+
+    // The card element whose rim we open: the liquid panel that fills the host.
+    let panel: HTMLElement | null = null;
+    let best = 12;
+    document.querySelectorAll<HTMLElement>("[data-liquid]").forEach((el) => {
+      const r = el.getBoundingClientRect();
+      const e = Math.abs(r.left - hr.left) + Math.abs(r.top - hr.top) + Math.abs(r.width - hr.width) + Math.abs(r.height - hr.height);
+      if (e < best) { best = e; panel = el; }
+    });
+    const hole = { x: ex, y: ey, r: 0 };
 
     // After the break: springs carry the bubble to its box, and the stub on the card's side recoils.
     const px: Spring = { x: 0, v: 0 }, py: Spring = { x: 0, v: 0 };
     const sw: Spring = { x: 0, v: 0 }, shh: Spring = { x: 0, v: 0 };
     const stub: Spring = { x: 0, v: 0 };
     let broken = false;
+    let brokeAt = 0;
     const t0 = performance.now();
-    let last = t0, raf = 0, fade = 1, fading = false;
+    let last = t0, raf = 0, fade = 1, fading = false, fadeAt = 0;
 
     const frame = (now: number) => {
       const dt = Math.min(0.034, (now - last) / 1000);
@@ -339,6 +389,7 @@ export function LiquidBud({
           const out = -r + (r * 1.25) * e;
           cx = ex + nx * out; cy = ey + ny * out; hw = hh = r;
           k = 70 - 12 * e;
+          hole.r = r + k * 0.9 + 6;
         } else {
           // stretch: it pulls away, faster and faster, and the union's reach
           // narrows so the base draws in to a neck until it pinches
@@ -350,6 +401,7 @@ export function LiquidBud({
           const along = rb * (1 + 0.22 * a), across = rb * (1 - 0.1 * a);
           hw = nx !== 0 ? along : across; hh = nx !== 0 ? across : along;
           k = 58 - 42 * a;
+          hole.r = across + k * 0.9 + 6;
         }
       } else {
         if (!broken) {
@@ -363,12 +415,13 @@ export function LiquidBud({
           sw.x = nx !== 0 ? rb * 1.22 : rb * 0.9; shh.x = nx !== 0 ? rb * 0.9 : rb * 1.22;
           sw.v = shh.v = 0;
           stub.x = rb * 0.55; stub.v = 0;
+          brokeAt = t;
         }
         // burst: it pops up to size with an overshoot, and wobbles in
-        stepSpring(px, goal.cx, 9, 0.52, dt);
-        stepSpring(py, goal.cy, 9, 0.52, dt);
-        stepSpring(sw, goal.hw, 12, 0.4, dt);
-        stepSpring(shh, goal.hh, 12, 0.4, dt);
+        stepSpring(px, goal.cx, 11, 0.52, dt);
+        stepSpring(py, goal.cy, 11, 0.52, dt);
+        stepSpring(sw, goal.hw, 14, 0.4, dt);
+        stepSpring(shh, goal.hh, 14, 0.4, dt);
         stepSpring(stub, 0, 20, 0.3, dt);
         const speed = Math.hypot(px.v, py.v);
         const stretch = Math.min(0.2, speed / 3000);
@@ -377,15 +430,18 @@ export function LiquidBud({
         hw = Math.max(0, sw.x) * (1 + stretch * ux - stretch * 0.6 * uy);
         hh = Math.max(0, shh.x) * (1 + stretch * uy - stretch * 0.6 * ux);
         k = 16;
+        hole.r = clamp01(stub.x / (rb * 0.55)) * (rb * 0.55 + 30);
         const settled =
           Math.abs(px.x - goal.cx) < 2 && Math.abs(py.x - goal.cy) < 2 &&
           Math.abs(sw.x - goal.hw) < 2 && Math.abs(shh.x - goal.hh) < 2 && speed < 40;
         const tb = t - SWELL_MS - NECK_MS;
         if ((settled || tb > 1800) && !fading) {
           fading = true;
+          fadeAt = now;
           doneRef.current(); // the frosted bubble fades in over this one...
         }
-        if (fading) fade = Math.max(0, fade - dt / 0.3); // ...as this one fades out
+        // ...as this one fades out (on the clock, not per frame, so dropped frames can't stall it)
+        if (fading) fade = Math.max(0, 1 - (now - fadeAt) / 300);
       }
       // round while small; the finished bubble's own corners once it's big
       const small = Math.min(hw, hh);
@@ -405,6 +461,10 @@ export function LiquidBud({
       gl.uniform1f(U("uDropR"), dropR);
       gl.uniform1f(U("uK"), k);
       gl.uniform3f(U("uStub"), ex, ey, Math.max(0, stub.x));
+      gl.uniform3f(U("uHole"), hole.x, hole.y, hole.r);
+      gl.uniform1f(U("uBubble"), broken ? clamp01((t - brokeAt) / 220) : 0);
+      gl.uniform1f(U("uBubA"), bubA);
+      if (panel) setRingHole(panel, "b", hole.x - card.x, hole.y - card.y, fade > 0 ? hole.r : 0);
       gl.uniform1f(U("uAlpha"), fade);
       gl.uniform1f(U("uDark"), dark ? 1 : 0);
       gl.uniform1f(U("uGap"), paper.gap);
@@ -422,6 +482,7 @@ export function LiquidBud({
     raf = requestAnimationFrame(frame);
     return () => {
       cancelAnimationFrame(raf);
+      if (panel) setRingHole(panel, "b", 0, 0, 0);
       gl.getExtension("WEBGL_lose_context")?.loseContext();
     };
   }, [box, bubbleRef, cardRadius, bubbleRadius]);

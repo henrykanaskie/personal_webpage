@@ -287,7 +287,7 @@ export function InfoBubble({
   desktopX?: number;
 }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
-  const lens = useGlassLens(bubbleRef, { radius: 999, frost: "blur(12px) saturate(1.3)" });
+  const lens = useGlassLens(bubbleRef, { radius: 32, frost: "blur(1.4px) saturate(1.2)" });
   // Hidden at its resting spot until LiquidBud has grown the droplet onto it.
   const [budDone, setBudDone] = useState(false);
   const showBelow = isMobile;
@@ -327,21 +327,17 @@ export function InfoBubble({
   return (
     <>
       {lens.filter}
-      <LiquidBud bubbleRef={bubbleRef} bubbleRadius={999} onDone={() => setBudDone(true)} />
+      <LiquidBud bubbleRef={bubbleRef} bubbleRadius={32} onDone={() => setBudDone(true)} />
       <motion.div
         ref={bubbleRef}
         style={{
           position: "absolute",
           top: showBelow ? "100%" : "50%",
           ...sideAnchor,
-          // a round bubble: the content sits in the middle of the sphere
-          width: showBelow ? "min(300px, 86vw)" : 300,
-          aspectRatio: "1 / 1",
-          padding: "30px 44px",
-          borderRadius: "50%",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
+          // a soft rectangular bubble, like the cards it grows out of
+          width: showBelow ? "min(280px, 86vw)" : 280,
+          padding: "22px 26px",
+          borderRadius: 32,
           cursor: "pointer",
           pointerEvents: "auto",
           transformOrigin: showBelow

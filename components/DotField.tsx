@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { paper } from "@/lib/tokens";
+import { setRingHole } from "@/lib/liquid";
 
 // ─── DotField ───────────────────────────────────────────────────────────────
 // The page's dot grid, redrawn in WebGL as one fixed backdrop behind every CS
@@ -47,6 +48,7 @@ uniform vec4 uCards[8];   // x, y, w, h (viewport) of the visible cards
 uniform vec2 uCardP[8];   // corner radius, opacity
 uniform float uNCards;
 uniform vec3 uBlob;       // the swell a card grows toward the cursor: x, y, radius
+uniform float uHoleR;     // radius of the hole opened in that card's rim (centred on the blob)
 uniform vec3 uFill;
 uniform float uFillA;
 uniform float uDark;
@@ -132,7 +134,7 @@ void main() {
     float ca;
     float dc = cards(p, ca);
     float dl = liquid(p, dc);
-    if (dl < 1.5 && ca > 0.01) {
+    if (dl < 2.5 && ca > 0.01) {
       float aa = 0.7 / uDpr;
       // rim normal of the liquid, and how close to the rim we are
       float t1, t2;
@@ -148,12 +150,16 @@ void main() {
       float outCard = smoothstep(-aa, aa, dc);
       // where the liquid reaches past the DOM card, paint the card's fill too
       vec3 swell = mix(frost, uFill, uFillA);
-      // a hairline chrome rim along the swell: bright above, darker below
-      float line = 1.0 - smoothstep(0.0, 1.2, abs(dl + 0.6));
-      vec3 rimCol = mix(vec3(1.0), vec3(0.38, 0.36, 0.33), smoothstep(-0.4, 0.6, n.y));
-      swell = mix(swell, rimCol, line * (0.55 - 0.25 * uDark));
       vec3 inside = mix(frost, swell, outCard);
       col = mix(col, inside, inLiquid * ca);
+      // The rim of the whole liquid outline, just outside it: along the swell,
+      // and along the card's edge inside the hole opened in the card's own rim
+      // (same falloff as .ring-mask), so the border molds into the swell.
+      float ringVis = uHoleR > 0.5 ? clamp((length(p - uBlob.xy) - uHoleR) / 14.0, 0.0, 1.0) : 1.0;
+      float lineW = max(smoothstep(0.5, 1.5, dc) * (1.0 - smoothstep(-0.5, 0.5, dl - 1.5)), 1.0 - ringVis);
+      float line = (1.0 - smoothstep(0.0, 1.0, abs(dl - 0.4))) * lineW;
+      vec3 rimCol = mix(vec3(1.0), vec3(0.38, 0.36, 0.33), smoothstep(-0.4, 0.6, n.y));
+      col = mix(col, rimCol, line * ca * (0.6 - 0.25 * uDark));
     }
   }
   gl_FragColor = vec4(col, 1.0);
@@ -220,7 +226,7 @@ export default function DotField() {
       res: U("uRes"), dpr: U("uDpr"), scroll: U("uScroll"), gap: U("uGap"), dotR: U("uDotR"),
       bg: U("uBg"), dot: U("uDot"), dotA: U("uDotA"), mouse: U("uMouse"), mouseOn: U("uMouseOn"),
       ripple: U("uRipple"), origin: U("uOrigin"), intro: U("uIntro"),
-      cards: U("uCards"), cardP: U("uCardP"), nCards: U("uNCards"), blob: U("uBlob"),
+      cards: U("uCards"), cardP: U("uCardP"), nCards: U("uNCards"), blob: U("uBlob"), holeR: U("uHoleR"),
       fill: U("uFill"), fillA: U("uFillA"), dark: U("uDark"),
     };
     const cardBuf = new Float32Array(32), cardPBuf = new Float32Array(16);
@@ -230,6 +236,7 @@ export default function DotField() {
     let lastSig = "";
     // The swell: a blob that rises out of the nearest card's edge toward the cursor.
     const blob = { x: 0, y: 0, vx: 0, vy: 0, r: 0, vr: 0 };
+    let holeEl: HTMLElement | null = null;
 
     // Opacity from inline styles up the tree (Framer Motion writes it there), so
     // the frost appears with its card rather than before it.
@@ -339,7 +346,7 @@ export default function DotField() {
       }
       let n = 0;
       let sig = "";
-      let near: { d: number; ex: number; ey: number; nx: number; ny: number } | null = null;
+      let near: { d: number; ex: number; ey: number; nx: number; ny: number; el: HTMLElement; left: number; top: number } | null = null;
       for (const el of panels) {
         if (n >= 8) break;
         const r = el.getBoundingClientRect();
@@ -359,7 +366,7 @@ export default function DotField() {
           const ex = Math.max(r.left, Math.min(r.right, mouse.x));
           const ey = Math.max(r.top, Math.min(r.bottom, mouse.y));
           const d = Math.hypot(mouse.x - ex, mouse.y - ey);
-          if (d > 0 && (!near || d < near.d)) near = { d, ex, ey, nx: (mouse.x - ex) / d, ny: (mouse.y - ey) / d };
+          if (d > 0 && (!near || d < near.d)) near = { d, ex, ey, nx: (mouse.x - ex) / d, ny: (mouse.y - ey) / d, el, left: r.left, top: r.top };
         }
       }
       const moved = sig !== lastSig;
@@ -386,6 +393,19 @@ export default function DotField() {
       }
       const blobBusy = Math.abs(blob.vr) > 0.5 || Math.abs(blob.r - tr) > 0.3 || Math.hypot(blob.vx, blob.vy) > 2;
       if (moved || blobBusy) { lastActive = now; busy = true; }
+
+      // Open the card's rim around the swell (the shader draws the rim there instead).
+      const holeR = blob.r > 0.5 ? blob.r + 34 : 0;
+      if (near && near.el !== holeEl && holeEl) setRingHole(holeEl, "s", 0, 0, 0);
+      if (near) {
+        holeEl = near.el;
+        setRingHole(near.el, "s", blob.x - near.left, blob.y - near.top, holeR);
+      } else if (holeEl) {
+        // the cursor left: keep following the swell as it settles back on the last card
+        const r = holeEl.getBoundingClientRect();
+        setRingHole(holeEl, "s", blob.x - r.left, blob.y - r.top, holeR);
+        if (holeR === 0) holeEl = null;
+      }
       const sp = springTo(mouse.on, mouse.onV, mouse.x > -9000 ? 1 : 0, 9, dt);
       mouse.on = sp[0];
       mouse.onV = sp[1];
@@ -409,6 +429,7 @@ export default function DotField() {
       gl.uniform2fv(u.cardP, cardPBuf);
       gl.uniform1f(u.nCards, n);
       gl.uniform3f(u.blob, blob.x, blob.y, Math.max(0, blob.r));
+      gl.uniform1f(u.holeR, holeR);
       gl.uniform3f(u.fill, glass.fill[0] / 255, glass.fill[1] / 255, glass.fill[2] / 255);
       gl.uniform1f(u.fillA, glass.alpha);
       gl.uniform1f(u.dark, dark ? 1 : 0);
