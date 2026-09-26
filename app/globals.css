@@ -522,3 +522,17 @@ html:not(.lens) .glass-bubble::before {
   --bud-rim: rgba(255, 255, 255, 0.16);
   --bud-shadow: rgba(0, 0, 0, 0.55);
 }
+
+/* Photography autofocus cursor: replaces the native pointer on fine pointers */
+@media (pointer: fine) {
+  html.af-cursor,
+  html.af-cursor * {
+    cursor: none !important;
+  }
+}
+.af-box[data-locked="0"] > div {
+  opacity: 0;
+}
+.af-box > div {
+  transition: opacity 0.2s ease;
+}
