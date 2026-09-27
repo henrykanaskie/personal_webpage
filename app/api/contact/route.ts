@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { NextResponse } from "next/server";
 import { isEmail } from "@/lib/contact";
+import { contactEmailHtml, oneLine } from "@/lib/contactEmail";
 
 // Created on first use, not at import: the build imports this module to
 // collect route data, and Resend throws without an API key.
@@ -49,7 +50,10 @@ export async function POST(request: Request) {
       ipSubmissions.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
     }
 
-    if (!name || !email || !subject || !message) {
+    // Anything but a non-empty string (a number, an array, an object) is rejected
+    // here rather than stringified into the email.
+    const fields = [name, email, subject, message];
+    if (!fields.every((f) => typeof f === "string" && f.trim())) {
       return NextResponse.json(
         { error: "All fields are required." },
         { status: 400 }
@@ -67,20 +71,9 @@ export async function POST(request: Request) {
     const { error } = await resend.emails.send({
       from: "Website Contact <onboarding@resend.dev>",
       to: "kanaskiehenry@gmail.com",
-      subject: `[Website] ${subject}`,
+      subject: `[Website] ${oneLine(subject)}`,
       replyTo: email,
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px;">
-          <h2 style="color: #64738d;">New message from your website</h2>
-          <p><strong>Name:</strong> ${name}</p>
-          <p><strong>Email:</strong> ${email}</p>
-          <p><strong>Subject:</strong> ${subject}</p>
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 16px 0;" />
-          <p style="white-space: pre-wrap;">${message}</p>
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 16px 0;" />
-          <p style="font-size: 0; line-height: 0; color: transparent; overflow: hidden; max-height: 0;">site-verification: ${CONTACT_SECRET}</p>
-        </div>
-      `,
+      html: contactEmailHtml({ name, email, subject, message }, CONTACT_SECRET),
     });
 
     if (error) {
