@@ -9,16 +9,6 @@ import { EASE_OUT, aspect, frameClock, pad2, photoTheme, smoothing } from "./uti
 
 const PREVIEW_W = 300;
 
-function yearSpan(section: Section): string {
-  const years = section.photos
-    .map((p) => p.exif.date?.slice(0, 4))
-    .filter(Boolean)
-    .sort() as string[];
-  if (years.length === 0) return "";
-  const [a, b] = [years[0], years[years.length - 1]];
-  return a === b ? a : `${a}-${b.slice(2)}`;
-}
-
 /**
  * Chapter list. Hovering a row summons a floating stack of that chapter's
  * prints which trails the pointer, leans into its velocity and shuffles
@@ -51,22 +41,29 @@ export default function ChapterIndex({ sections, isDark }: { sections: Section[]
     return () => clearInterval(id);
   }, [hovered]);
 
-  // Floating preview follows the pointer with lag and velocity skew
+  // Pointer position is tracked cheaply at all times; the animation loop only runs while a row is hovered
+  const pointer = useRef({ x: 0, y: 0 });
   useEffect(() => {
-    if (!finePointer) return;
-    const pos = { x: 0, y: 0 };
-    const target = { x: 0, y: 0 };
-    let raf = 0;
     const onMove = (e: PointerEvent) => {
-      target.x = e.clientX;
-      target.y = e.clientY;
+      pointer.current.x = e.clientX;
+      pointer.current.y = e.clientY;
     };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    return () => window.removeEventListener("pointermove", onMove);
+  }, []);
+
+  // Floating preview follows the pointer with lag and velocity skew
+  const hovering = hovered !== null;
+  useEffect(() => {
+    if (!finePointer || !hovering) return;
+    const pos = { ...pointer.current };
+    let raf = 0;
     const clock = frameClock();
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
       const k = smoothing(0.12, clock(now));
-      const dx = target.x - pos.x;
-      const dy = target.y - pos.y;
+      const dx = pointer.current.x - pos.x;
+      const dy = pointer.current.y - pos.y;
       pos.x += dx * k;
       pos.y += dy * k;
       const el = floatRef.current;
@@ -76,12 +73,8 @@ export default function ChapterIndex({ sections, isDark }: { sections: Section[]
       el.style.transform = `translate3d(${pos.x + 36}px, ${pos.y - 120}px, 0) rotate(${rot}deg) skewX(${-skew}deg)`;
     };
     raf = requestAnimationFrame(tick);
-    window.addEventListener("pointermove", onMove, { passive: true });
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("pointermove", onMove);
-    };
-  }, [finePointer]);
+    return () => cancelAnimationFrame(raf);
+  }, [finePointer, hovering]);
 
   const mono: React.CSSProperties = {
     fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
@@ -103,11 +96,6 @@ export default function ChapterIndex({ sections, isDark }: { sections: Section[]
         margin: "0 auto",
       }}
     >
-      <div style={{ ...mono, fontSize: 9.5, color: t.sub, display: "flex", justifyContent: "space-between", marginBottom: 28 }}>
-        <span>Index</span>
-        <span>{live.reduce((n, s) => n + s.photos.length, 0)} frames</span>
-      </div>
-
       <div ref={listRef} onPointerLeave={() => setHovered(null)}>
         {live.map((section, i) => {
           const dim = hovered !== null && hovered !== i;
@@ -121,13 +109,13 @@ export default function ChapterIndex({ sections, isDark }: { sections: Section[]
             >
               <Link
                 href={`/photography/${section.id}`}
-                data-af={`${section.photos.length} frames`}
+                data-af=""
                 onPointerEnter={() => setHovered(i)}
                 onFocus={() => setHovered(i)}
                 onBlur={() => setHovered(null)}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: narrow ? "28px 1fr" : "clamp(34px, 6vw, 90px) 1fr auto",
+                  gridTemplateColumns: narrow ? "28px 1fr auto" : "clamp(34px, 6vw, 90px) 1fr auto",
                   alignItems: "center",
                   gap: "clamp(10px, 2vw, 28px)",
                   padding: "clamp(14px, 2.4vw, 26px) 0",
@@ -145,9 +133,9 @@ export default function ChapterIndex({ sections, isDark }: { sections: Section[]
                       fontWeight: 300,
                       fontSize: "clamp(1.9rem, 7.5vw, 6.5rem)",
                       lineHeight: 0.95,
-                      letterSpacing: hovered === i ? "0.01em" : "-0.03em",
+                      letterSpacing: "-0.03em",
                       transform: hovered === i ? "translateX(clamp(6px, 1.5vw, 22px))" : "none",
-                      transition: "letter-spacing 0.7s cubic-bezier(0.22,1,0.36,1), transform 0.7s cubic-bezier(0.22,1,0.36,1)",
+                      transition: "transform 0.7s cubic-bezier(0.22,1,0.36,1)",
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -155,11 +143,6 @@ export default function ChapterIndex({ sections, isDark }: { sections: Section[]
                   >
                     {section.title}
                   </span>
-                  {narrow && (
-                    <span style={{ ...mono, fontSize: 8.5, color: t.sub }}>
-                      {section.sub} · {pad2(section.photos.length)} · {yearSpan(section)}
-                    </span>
-                  )}
                   {!finePointer && (
                     <span style={{ display: "flex", gap: 4, overflow: "hidden" }}>
                       {section.photos.slice(0, 6).map((p) => (
@@ -181,14 +164,9 @@ export default function ChapterIndex({ sections, isDark }: { sections: Section[]
                     </span>
                   )}
                 </span>
-                {!narrow && (
-                  <span style={{ ...mono, fontSize: 9, color: t.sub, textAlign: "right", lineHeight: 2 }}>
-                    <span style={{ display: "block" }}>{section.sub}</span>
-                    <span style={{ display: "block", color: t.faint }}>
-                      {pad2(section.photos.length)} · {yearSpan(section)}
-                    </span>
-                  </span>
-                )}
+                <span style={{ ...mono, fontSize: 9, color: t.faint, fontVariantNumeric: "tabular-nums" }}>
+                  {pad2(section.photos.length)}
+                </span>
               </Link>
             </motion.div>
           );

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { animate, motion, useMotionValue, useReducedMotion, useScroll } from "framer-motion";
 import type { PhotoEntry } from "@/app/photography/data";
-import { EASE_OUT, exposureLine, frameClock, pad2, smoothing } from "./utils";
+import { EASE_OUT, frameClock, pad2, smoothing } from "./utils";
 import { shutter } from "./feedback";
 
 const BLADES = 9;
@@ -14,6 +14,8 @@ const ROTATE_MS = 7000;
 export interface HeroItem {
   photo: PhotoEntry;
   sectionTitle: string;
+  /** Pre-blurred, darkened background image made at build time */
+  plate?: string;
 }
 
 /**
@@ -31,41 +33,22 @@ function bladeTransform(i: number, r: number): string {
  * renders it sharp inside a focus ring, and scrolling pulls focus until the
  * whole frame is crisp. Between frames an aperture iris closes and reopens.
  */
-export default function IrisHero({
-  items,
-  totalFrames,
-  chapters,
-  isDark,
-}: {
-  items: HeroItem[];
-  totalFrames: number;
-  chapters: number;
-  isDark: boolean;
-}) {
+export default function IrisHero({ items, isDark }: { items: HeroItem[]; isDark: boolean }) {
   const sectionRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const sharpRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<SVGGElement>(null);
   const ticksRef = useRef<SVGGElement>(null);
-  const readoutRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
   const bladeRefs = useRef<(SVGPathElement | null)[]>([]);
 
   const [active, setActive] = useState(0);
   const [irisClosed, setIrisClosed] = useState(true);
-  const [isNarrow, setIsNarrow] = useState(false);
   const iris = useMotionValue(0);
   const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start start", "end start"] });
   const reduceMotion = !!useReducedMotion();
 
   const current = items[active];
-
-  useEffect(() => {
-    const check = () => setIsNarrow(window.innerWidth < 640);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
 
   // Drive blade geometry straight from the motion value (no React re-renders)
   useEffect(() => {
@@ -147,6 +130,7 @@ export default function IrisHero({
     };
 
     const clock = frameClock();
+    let lastMask = "";
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
       const k = smoothing(0.085, clock(now));
@@ -169,8 +153,10 @@ export default function IrisHero({
       const x = pos.x * w;
       const y = pos.y * h;
 
-      const mask = `radial-gradient(circle at ${x}px ${y}px, #000 ${r - 1}px, rgba(0,0,0,0.6) ${r + 10}px, transparent ${r + 42}px)`;
-      if (sharpRef.current) {
+      const mask = `radial-gradient(circle at ${x.toFixed(1)}px ${y.toFixed(1)}px, #000 ${(r - 1).toFixed(1)}px, rgba(0,0,0,0.6) ${(r + 10).toFixed(1)}px, transparent ${(r + 42).toFixed(1)}px)`;
+      // Repainting the mask is the costly part; skip frames where it wouldn't visibly change
+      if (sharpRef.current && mask !== lastMask) {
+        lastMask = mask;
         sharpRef.current.style.maskImage = mask;
         sharpRef.current.style.webkitMaskImage = mask;
       }
@@ -182,28 +168,21 @@ export default function IrisHero({
         ringRef.current.style.opacity = String(Math.max(0, 1 - p * 2.2));
       }
       if (ticksRef.current) ticksRef.current.setAttribute("transform", `rotate(${ringAngle})`);
-      if (readoutRef.current) {
-        if (w < 640) {
-          // Narrow screens: centre the readout under the lens, clamped inside the frame
-          const cx = Math.min(w - 110, Math.max(110, x));
-          readoutRef.current.style.transform = `translate3d(${cx}px, ${y + r + 18}px, 0) translateX(-50%)`;
-          readoutRef.current.style.textAlign = "center";
-        } else {
-          const flip = x + r + 300 > w;
-          readoutRef.current.style.transform = `translate3d(${flip ? x - r - 16 : x + r + 16}px, ${y - 8}px, 0) translateX(${flip ? "-100%" : "0"})`;
-          readoutRef.current.style.textAlign = flip ? "right" : "left";
-        }
-        readoutRef.current.style.opacity = String(Math.max(0, 1 - p * 2.2));
-      }
       if (titleRef.current) {
-        titleRef.current.style.transform = `translate3d(0, ${p * -60}px, 0) scale(${1 + p * 0.08})`;
-        titleRef.current.style.letterSpacing = `${-0.04 + p * 0.12}em`;
+        // Transform and opacity only: animating letter-spacing would re-lay out the title every frame
+        titleRef.current.style.transform = `translate3d(0, ${p * -60}px, 0) scale(${1 + p * 0.1})`;
         titleRef.current.style.opacity = String(1 - p * 0.9);
       }
     };
-    raf = requestAnimationFrame(tick);
+    // Only run while the hero is on screen
+    const io = new IntersectionObserver(([entry]) => {
+      cancelAnimationFrame(raf);
+      if (entry.isIntersecting) raf = requestAnimationFrame(tick);
+    });
+    io.observe(stage);
     window.addEventListener("pointermove", onMove, { passive: true });
     return () => {
+      io.disconnect();
       cancelAnimationFrame(raf);
       window.removeEventListener("pointermove", onMove);
     };
@@ -229,7 +208,7 @@ export default function IrisHero({
     >
       <div
         ref={stageRef}
-        data-af="Tap to shoot"
+        data-af=""
         onClick={() => shootRef.current(true)}
         style={{ position: "sticky", top: 0, height: "100svh", overflow: "hidden", background: "#060508", cursor: "pointer" }}
       >
@@ -245,19 +224,19 @@ export default function IrisHero({
           />
         )}
         {/* Out-of-focus plate */}
-        <div style={{ position: "absolute", inset: 0, filter: "blur(22px) saturate(0.55) brightness(0.55)", transform: "scale(1.1)" }}>
-          <Image
-            key={`soft-${current.photo.src}`}
-            src={current.photo.src}
-            alt=""
-            fill
-            sizes="60vw"
-            placeholder={current.photo.blur ? "blur" : "empty"}
-            blurDataURL={current.photo.blur || undefined}
-            style={{ objectFit: "cover" }}
-            priority
-          />
-        </div>
+        {/* Out-of-focus plate: a tiny pre-blurred image scaled up, so there is no live blur filter */}
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            transform: "scale(1.06)",
+            backgroundImage: `url("${current.plate ?? current.photo.blur}")`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundColor: "#0c0b10",
+          }}
+        />
 
         {/* In-focus plate, revealed through the lens */}
         <div ref={sharpRef} style={{ position: "absolute", inset: 0 }}>
@@ -322,27 +301,6 @@ export default function IrisHero({
           </g>
         </svg>
 
-        <div
-          ref={readoutRef}
-          aria-hidden
-          style={{
-            ...mono,
-            position: "absolute",
-            left: 0,
-            top: 0,
-            fontSize: 9,
-            lineHeight: 1.9,
-            color: "rgba(255,255,255,0.85)",
-            whiteSpace: "nowrap",
-            pointerEvents: "none",
-            textShadow: "0 1px 8px rgba(0,0,0,0.6)",
-          }}
-        >
-          <div style={{ color: "rgb(140,255,180)" }}>● AF-C Lock</div>
-          <div>{exposureLine(current.photo.exif)}</div>
-          <div style={{ opacity: 0.6 }}>{current.sectionTitle}</div>
-        </div>
-
         {/* Title */}
         <div
           style={{
@@ -373,12 +331,8 @@ export default function IrisHero({
               }}
             >
               <span>Henry Kanaskie</span>
-              <span style={{ width: 28, height: 1, background: "rgba(255,255,255,0.4)" }} />
-              <span>
-                {totalFrames} frames · {chapters} chapters
-              </span>
             </motion.div>
-            <div style={{ mixBlendMode: "difference", color: "#fff" }}>
+            <div style={{ color: "#fff", textShadow: "0 2px 30px rgba(0,0,0,0.25)" }}>
               <h1
                 aria-label="Photography"
                 style={{
@@ -455,7 +409,7 @@ export default function IrisHero({
             ))}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ whiteSpace: "nowrap" }}>{isNarrow ? "Tap to shoot · scroll" : "Click to shoot · scroll to pull focus"}</span>
+            <span style={{ whiteSpace: "nowrap" }}>Scroll</span>
             <motion.span
               animate={{ y: [0, 6, 0] }}
               transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}

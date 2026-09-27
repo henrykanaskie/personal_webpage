@@ -292,9 +292,10 @@ export default function Lightbox({
             <motion.div
               key={photo.src}
               custom={direction}
-              initial={{ opacity: 0, x: direction * 40, filter: "blur(12px)" }}
-              animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-              exit={{ opacity: 0, x: direction * -40, filter: "blur(12px)" }}
+              // Slide and fade only: animating a blur filter on a full-size photo repaints it every frame
+              initial={{ opacity: 0, x: direction * 48, scale: 0.985 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: direction * -48, scale: 0.985 }}
               transition={{ duration: 0.55, ease: EASE_OUT }}
               style={{ position: "absolute", inset: 0, overflow: "hidden" }}
             >

@@ -8,7 +8,7 @@ import { useIsDark } from "@/lib/glass";
 import type { Section, PhotoEntry } from "../data";
 import DevelopTile from "@/components/photo/DevelopTile";
 import Lightbox, { LightboxItem } from "@/components/photo/Lightbox";
-import { EASE_OUT, aspect, formatAperture, pad2, photoTheme } from "@/components/photo/utils";
+import { EASE_OUT, aspect, photoTheme } from "@/components/photo/utils";
 
 export interface ChapterLink {
   id: string;
@@ -59,24 +59,7 @@ function layoutColumns(photos: PhotoEntry[], numCols: number) {
   return { cols, order, flex };
 }
 
-function range(values: number[], fmt: (v: number) => string): string | null {
-  if (values.length === 0) return null;
-  const lo = Math.min(...values);
-  const hi = Math.max(...values);
-  return fmt(lo) === fmt(hi) ? fmt(lo) : `${fmt(lo)}-${fmt(hi).replace(/^ƒ\//, "")}`;
-}
-
-export default function CategoryPageClient({
-  section,
-  chapterIndex,
-  chapterCount,
-  next,
-}: {
-  section: Section;
-  chapterIndex: number;
-  chapterCount: number;
-  next: ChapterLink | null;
-}) {
+export default function CategoryPageClient({ section, next }: { section: Section; next: ChapterLink | null }) {
   const isDark = useIsDark();
   const t = photoTheme(isDark);
   const [numCols, setNumCols] = useState(3);
@@ -116,28 +99,6 @@ export default function CategoryPageClient({
     [order, section.id, section.title],
   );
 
-  const stats = useMemo(() => {
-    const focal = range(
-      photos.map((p) => p.exif.focal).filter((v): v is number => !!v),
-      (v) => `${Math.round(v)}mm`,
-    );
-    const aperture = range(
-      photos.map((p) => p.exif.aperture).filter((v): v is number => !!v),
-      (v) => formatAperture(v)!,
-    );
-    const years = photos
-      .map((p) => p.exif.date?.slice(0, 4))
-      .filter((v): v is string => !!v)
-      .sort();
-    const yearText = years.length ? (years[0] === years[years.length - 1] ? years[0] : `${years[0]}-${years[years.length - 1]}`) : null;
-    return [
-      ["Frames", pad2(photos.length)],
-      ["Focal", focal],
-      ["Aperture", aperture],
-      ["Years", yearText],
-    ].filter(([, v]) => v) as [string, string][];
-  }, [photos]);
-
   const mono: React.CSSProperties = {
     fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
     letterSpacing: "0.22em",
@@ -149,14 +110,6 @@ export default function CategoryPageClient({
 
   return (
     <>
-      <style>{`
-        @keyframes chapterDrift {
-          0% { background-position: 30% 40%; }
-          50% { background-position: 70% 60%; }
-          100% { background-position: 30% 40%; }
-        }
-      `}</style>
-
       <div style={{ position: "relative", padding: "clamp(28px, 6vw, 64px) clamp(18px, 5vw, 72px) 0" }}>
         {/* Top rail */}
         <motion.div
@@ -168,10 +121,6 @@ export default function CategoryPageClient({
           <Link href="/photography" style={{ color: t.sub, textDecoration: "none", display: "inline-flex", gap: 10, alignItems: "center" }}>
             <span style={{ letterSpacing: 0, fontSize: 12 }}>←</span> All chapters
           </Link>
-          <span>
-            Chapter {section.num}
-            {chapterIndex >= 0 ? ` · ${pad2(chapterIndex + 1)} of ${pad2(chapterCount)}` : ""}
-          </span>
         </motion.div>
 
         {/* Title filled with the chapter's own photograph */}
@@ -194,8 +143,9 @@ export default function CategoryPageClient({
                 backgroundSize: "140% auto",
                 WebkitBackgroundClip: "text",
                 backgroundClip: "text",
-                animation: "chapterDrift 22s ease-in-out infinite",
-                filter: isDark ? "saturate(1.2) brightness(1.15)" : "saturate(1.1)",
+                backgroundPosition: "50% 45%",
+                // A hairline outline keeps the word readable when the photo is close to the page colour
+                WebkitTextStroke: `1px ${isDark ? "rgba(255,255,255,0.22)" : "rgba(30,27,25,0.28)"}`,
               }}
             >
               {section.title}
@@ -219,24 +169,6 @@ export default function CategoryPageClient({
             >
               {section.sub}
             </p>
-            <dl style={{ display: "flex", gap: "clamp(18px, 3vw, 44px)", margin: 0 }}>
-              {stats.map(([label, value]) => (
-                <div key={label}>
-                  <dt style={{ ...mono, fontSize: 7.5, color: t.faint, marginBottom: 6 }}>{label}</dt>
-                  <dd
-                    style={{
-                      margin: 0,
-                      fontFamily: "var(--font-elevated)",
-                      fontSize: "clamp(0.95rem, 1.4vw, 1.2rem)",
-                      color: t.ink,
-                      fontVariantNumeric: "tabular-nums",
-                    }}
-                  >
-                    {value}
-                  </dd>
-                </div>
-              ))}
-            </dl>
           </motion.div>
         </header>
 
@@ -254,28 +186,23 @@ export default function CategoryPageClient({
                   type="button"
                   key={p.src}
                   aria-label={`Open frame ${i + 1}`}
-                  data-af={`Frame ${pad2(i + 1)}`}
+                  data-af=""
                   onPointerEnter={() => setBarHover(i)}
                   onClick={(e) => setOpen({ index: i, origin: e.currentTarget.getBoundingClientRect() })}
                   initial={{ scaleY: 0 }}
-                  animate={{ scaleY: 1 }}
-                  transition={{ duration: 0.7, delay: 0.55 + i * 0.025, ease: EASE_OUT }}
+                  animate={{ scaleY: barHover === i ? 1.6 : 1 }}
+                  transition={{ duration: barHover === i ? 0.35 : 0.7, delay: barHover === null ? 0.55 + i * 0.025 : 0, ease: EASE_OUT }}
                   style={{
-                    flex: barHover === i ? 4 : 1,
+                    flex: 1,
                     padding: 0,
                     border: "none",
                     borderRadius: 2,
                     cursor: "pointer",
                     transformOrigin: "bottom",
                     background: `linear-gradient(to bottom, ${p.palette[0] ?? p.color}, ${p.palette[1] ?? p.color} 60%, ${p.palette[2] ?? p.color})`,
-                    transition: "flex 0.5s cubic-bezier(0.22,1,0.36,1)",
                   }}
                 />
               ))}
-            </div>
-            <div style={{ ...mono, fontSize: 7.5, color: t.faint, marginTop: 10, display: "flex", justifyContent: "space-between" }}>
-              <span>Colour signature</span>
-              <span>{barHover !== null ? `Frame ${pad2(barHover + 1)}` : `${photos.length} frames`}</span>
             </div>
           </motion.div>
         )}

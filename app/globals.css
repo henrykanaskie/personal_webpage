@@ -125,9 +125,3 @@ body {
     cursor: none !important;
   }
 }
-.af-box[data-locked="0"] > div {
-  opacity: 0;
-}
-.af-box > div {
-  transition: opacity 0.2s ease;
-}
