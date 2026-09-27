@@ -374,6 +374,25 @@ body {
   display: none;
 }
 
+/* the "scroll" hint's arrows bob on the compositor, not the main thread */
+.scroll-nudge {
+  animation: scrollNudge 1.4s ease-in-out infinite;
+}
+@keyframes scrollNudge {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scroll-nudge {
+    animation: none;
+  }
+}
+
 @keyframes dividerPulse {
   0%,
   100% {

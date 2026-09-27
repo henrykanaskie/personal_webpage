@@ -550,11 +550,9 @@ export default function CSPage() {
           >
             scroll
           </span>
-          <motion.div
-            className="flex flex-col items-center"
-            animate={{ y: [0, 6, 0] }}
-            transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
-          >
+          {/* a CSS animation, so the compositor runs it: a Framer Motion loop
+              here kept the main thread rendering every frame, forever */}
+          <div className="scroll-nudge flex flex-col items-center">
             {[0, 1].map((i) => (
               <svg
                 key={i}
@@ -574,7 +572,7 @@ export default function CSPage() {
                 <polyline points="3 3 12 11 21 3" />
               </svg>
             ))}
-          </motion.div>
+          </div>
         </motion.div>
 
         {/* Resume modal */}
