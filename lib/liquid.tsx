@@ -154,6 +154,30 @@ export function useGlassLens(
   return { filter, style };
 }
 
+// The lens filter as DOM, for an element that isn't rendered by React (the
+// droplet LiquidBud flies): the same three-pass colour split as useGlassLens.
+const SVGNS = "http://www.w3.org/2000/svg";
+function lensFilterEl(id: string, href: string, w: number, h: number, strength: number): SVGSVGElement {
+  const svg = document.createElementNS(SVGNS, "svg");
+  svg.setAttribute("width", "0");
+  svg.setAttribute("height", "0");
+  svg.style.position = "absolute";
+  const f = document.createElementNS(SVGNS, "filter");
+  const attrs = (el: Element, a: Record<string, string | number>) => { for (const k in a) el.setAttribute(k, String(a[k])); return el; };
+  attrs(f, { id, x: 0, y: 0, width: w, height: h, filterUnits: "userSpaceOnUse", "color-interpolation-filters": "sRGB" });
+  const add = (tag: string, a: Record<string, string | number>) => f.appendChild(attrs(document.createElementNS(SVGNS, tag), a));
+  add("feImage", { href, x: 0, y: 0, width: w, height: h, preserveAspectRatio: "none", result: "map" });
+  [["dR", 1], ["dG", 1.07], ["dB", 1.14]].forEach(([r, m]) =>
+    add("feDisplacementMap", { in: "SourceGraphic", in2: "map", scale: strength * (m as number), xChannelSelector: "R", yChannelSelector: "G", result: r as string }));
+  add("feColorMatrix", { in: "dR", type: "matrix", values: "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0", result: "r" });
+  add("feColorMatrix", { in: "dG", type: "matrix", values: "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0", result: "g" });
+  add("feColorMatrix", { in: "dB", type: "matrix", values: "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0", result: "b" });
+  add("feComposite", { in: "r", in2: "g", operator: "arithmetic", k2: 1, k3: 1, result: "rg" });
+  add("feComposite", { in: "rg", in2: "b", operator: "arithmetic", k2: 1, k3: 1 });
+  svg.appendChild(f);
+  return svg;
+}
+
 // ─── CardLens ───────────────────────────────────────────────────────────────
 // The bubbles' lens on a card: what's behind the card (line drawings, titles,
 // the dots) bends at its rim exactly as through a bubble, with the same
@@ -656,6 +680,37 @@ export function LiquidBud({
       if (e < best) { best = e; panel = el; }
     });
     const hole = { x: ex, y: ey, r: 0 };
+
+    // The droplet: once it pinches free, the bubble's real lens flies with it,
+    // under the canvas (which keeps drawing the rim, film and shadow), so what
+    // it passes over bends through it exactly as through the settled bubble.
+    // It sits at the bubble's box and is carried there by a transform that
+    // follows the same spring, corners and all. Chromium only, like the lens.
+    let droplet: HTMLDivElement | null = null;
+    let dropletSvg: SVGSVGElement | null = null;
+    if (supportsLens()) {
+      const gw = Math.round(goal.hw * 2), gh = Math.round(goal.hh * 2);
+      const href = lensMap(gw, gh, Math.min(bubbleRadius, gw / 2, gh / 2), Math.min(22, Math.min(gw, gh) / 4));
+      if (href) {
+        const fid = `budlens-${Math.random().toString(36).slice(2)}`;
+        dropletSvg = lensFilterEl(fid, href, gw, gh, 38);
+        droplet = document.createElement("div");
+        Object.assign(droplet.style, {
+          position: "absolute",
+          left: `${goal.cx - gw / 2}px`,
+          top: `${goal.cy - gh / 2}px`,
+          width: `${gw}px`,
+          height: `${gh}px`,
+          transformOrigin: "50% 50%",
+          pointerEvents: "none",
+          opacity: "0",
+          backdropFilter: `url(#${fid}) var(--glass-frost)`,
+          webkitBackdropFilter: `url(#${fid}) var(--glass-frost)`,
+        } as Partial<CSSStyleDeclaration>);
+        holder.insertBefore(dropletSvg, canvas);
+        holder.insertBefore(droplet, canvas);
+      }
+    }
     // The card keeps its own (DOM) rim; around the bud it's opened
     // (setRingHole) and the canvas draws the edge there instead, round card
     // and bulge as one shape, handing over across the same falloff.
@@ -758,6 +813,16 @@ export function LiquidBud({
         ? Math.min(small, Math.min(from.hw, from.hh) + (Math.min(bubbleRadius, goal.hw, goal.hh) - Math.min(from.hw, from.hh)) * clamp01(flight.x))
         : small;
 
+      if (droplet) {
+        const on = broken ? clamp01((t - brokeAt) / 220) * fade : 0;
+        droplet.style.opacity = on.toFixed(3);
+        if (on > 0) {
+          const sx = Math.max(0.01, hw / goal.hw), sy = Math.max(0.01, hh / goal.hh);
+          droplet.style.transform = `translate(${(cx - goal.cx).toFixed(2)}px, ${(cy - goal.cy).toFixed(2)}px) scale(${sx.toFixed(4)}, ${sy.toFixed(4)})`;
+          droplet.style.borderRadius = `${(dropR / sx).toFixed(2)}px / ${(dropR / sy).toFixed(2)}px`;
+        }
+      }
+
       const cr = canvas.getBoundingClientRect();
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.clearColor(0, 0, 0, 0);
@@ -796,6 +861,8 @@ export function LiquidBud({
     return () => {
       cancelAnimationFrame(raf);
       if (panel) setRingHole(panel as HTMLElement, "b", 0, 0, 0);
+      droplet?.remove();
+      dropletSvg?.remove();
       returnBudGL(b);
     };
   }, [box, bubbleRef, cardRadius, bubbleRadius]);
