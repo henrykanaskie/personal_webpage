@@ -464,10 +464,12 @@ function CSSide({
   active,
   isDark,
   isMobile,
+  onGo,
 }: {
   active: boolean;
   isDark: boolean;
   isMobile: boolean;
+  onGo: (section?: string) => void;
 }) {
   const divColor = isDark ? "rgba(180,200,255,0.15)" : "rgba(80,100,140,0.18)";
   const dotColor = isDark ? "rgba(180,200,255,0.2)" : "rgba(80,100,140,0.22)";
@@ -490,7 +492,7 @@ function CSSide({
       >
         <p
           style={{
-            color: isDark ? "rgba(200,210,225,0.55)" : "rgba(80,90,110,0.55)",
+            color: "var(--ink-2)",
             fontFamily: "var(--font-elevated)",
             fontSize: "clamp(1rem, 1.8vw, 1.4rem)",
             letterSpacing: "0.5em",
@@ -514,8 +516,8 @@ function CSSide({
       >
         <GlassTitle
           text="Computer Science"
-          variant="crystalline"
-          fontSize={isMobile ? "clamp(1.6rem, 8vw, 3rem)" : "clamp(2.8rem, 5.5vw, 5rem)"}
+          variant="metal"
+          fontSize={isMobile ? "clamp(1.6rem, 8vw, 3rem)" : "clamp(2.6rem, 4.7vw, 4.6rem)"}
           containerClassName="!pt-0 !pb-0"
           disableEntrance
           noWrap
@@ -554,17 +556,15 @@ function CSSide({
               <Link
                 href={link.href}
                 scroll={false}
-                onClick={() => {
-                  if ("sectionId" in link && link.sectionId) {
-                    sessionStorage.setItem("csScrollTo", link.sectionId);
-                  }
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onGo(link.sectionId);
                 }}
-                className="px-3 py-1.5 rounded-full font-semibold tracking-wide transition-colors duration-200 hover:bg-white/[0.05] dark:hover:bg-white/[0.06]"
+                className="metal-surface px-4 py-1.5 rounded-full font-semibold tracking-wide transition-transform duration-200 hover:-translate-y-px"
                 style={{ fontSize: "15px" }}
               >
-                <span style={{ color: isDark ? "rgba(200,210,225,0.55)" : "rgba(80,90,110,0.55)" }}>
-                  {link.name}
-                </span>
+                <span>{link.name}</span>
               </Link>
               {i < navLinks.length - 1 && (
                 <span
@@ -605,6 +605,31 @@ export default function HomePage() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
+  // Choosing a side expands it to fill the screen first, then navigates. The CS
+  // half is already drawn on the dot paper the CS pages use, so its handoff has
+  // no seam at all; the photography half fills with its own darkroom first.
+  const [leaving, setLeaving] = useState<"left" | "right" | null>(null);
+  const go = (side: "left" | "right", section?: string) => {
+    if (leaving) return;
+    if (section) {
+      try {
+        sessionStorage.setItem("csScrollTo", section);
+      } catch {
+        // private mode: land at the top instead
+      }
+    }
+    setLeaving(side);
+    window.setTimeout(() => router.push(side === "left" ? "/photography" : "/cs"), 420);
+  };
+  const flexFor = (side: "left" | "right") => {
+    if (leaving) return leaving === side ? 1 : 0.0001;
+    if (isMobile || !hovered) return 1;
+    return hovered === side ? 1.6 : 0.5;
+  };
+  const panelTransition = leaving
+    ? { duration: 0.42, ease: [0.65, 0, 0.35, 1] as const }
+    : { duration: 0.75, ease: [0.22, 1, 0.36, 1] as const };
+
   const inactiveDim = "brightness(0.62)";
   const outerRef = useRef<HTMLDivElement>(null);
   const dividerRef = useRef<HTMLDivElement>(null);
@@ -642,54 +667,46 @@ export default function HomePage() {
       {/* Photography */}
       <motion.div
         animate={{
-          flex:
-            !isMobile && hovered === "left"
-              ? 1.6
-              : !isMobile && hovered === "right"
-                ? 0.5
-                : 1,
-          filter: hovered === "right" ? inactiveDim : "brightness(1)",
+          flex: flexFor("left"),
+          filter: hovered === "right" && !leaving ? inactiveDim : "brightness(1)",
         }}
-        transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+        transition={panelTransition}
         style={{
           minWidth: 0,
           minHeight: 0,
           overflow: "hidden",
           cursor: "pointer",
         }}
-        onClick={() => router.push("/photography")}
+        onClick={() => go("left")}
+       
       >
         <PhotoSide active={hovered === "left"} isDark={isDark} />
       </motion.div>
 
-      <AnimatedDivider hovered={hovered} horizontal={isMobile} dividerRef={dividerRef} />
+      <motion.div animate={{ opacity: leaving ? 0 : 1 }} transition={{ duration: 0.2 }} style={{ display: "flex", width: isMobile ? "100%" : undefined }}>
+        <AnimatedDivider hovered={hovered} horizontal={isMobile} dividerRef={dividerRef} />
+      </motion.div>
 
       {/* CS */}
       <motion.div
         animate={{
-          flex:
-            !isMobile && hovered === "right"
-              ? 1.6
-              : !isMobile && hovered === "left"
-                ? 0.5
-                : 1,
-          filter: hovered === "left" ? inactiveDim : "brightness(1)",
+          flex: flexFor("right"),
+          filter: hovered === "left" && !leaving ? inactiveDim : "brightness(1)",
         }}
-        transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+        transition={panelTransition}
         style={{
           minWidth: 0,
           minHeight: 0,
           overflow: "hidden",
           cursor: "pointer",
         }}
-        onClick={(e) => {
-          if (!(e.target as Element).closest("a")) router.push("/cs");
-        }}
+        onClick={() => go("right")}
       >
         <CSSide
           active={hovered === "right"}
           isDark={isDark}
           isMobile={isMobile}
+          onGo={(section) => go("right", section)}
         />
       </motion.div>
     </div>

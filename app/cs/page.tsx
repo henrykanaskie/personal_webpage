@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import GlassTitle from "@/components/GlassTitle";
 import {
@@ -9,17 +8,14 @@ import {
   glassStyle,
   FuzzyText,
   useIsDark,
-  useIsMobile,
 } from "@/lib/glass";
 import {
   cs,
   themed,
   glassBoxClassNames,
-  glassBubbleClassNames,
 } from "@/lib/tokens";
-import { CrystallineText } from "@/components/Header";
 import InfoBox from "@/components/InfoBox";
-import AboutBlurb from "@/components/AboutBlurb";
+import AboutSheet from "@/components/AboutSheet";
 import ProjectCard from "@/components/ProjectCard";
 import EducationCard from "@/components/EducationCard";
 import { rocketPaths } from "@/svgs/rocketPaths";
@@ -29,23 +25,21 @@ import { thrusterPaths } from "@/svgs/thrusterPaths";
 import { cpuPaths } from "@/svgs/cpuPaths";
 import { beePaths } from "@/svgs/beePaths";
 import { nnPaths } from "@/svgs/nnPaths";
+import { daimlerPaths } from "@/svgs/daimlerPaths";
+import PartsList from "@/components/PartsList";
 
 // ── Section divider ───────────────────────────────────────────────────────────
 function SectionDivider() {
-  const isDark = useIsDark();
   return (
-    <div className="w-full px-[5%] my-12 md:my-24">
-      <div
-        style={{
-          height: "2px",
-          background: isDark
-            ? "linear-gradient(90deg, transparent 5%, rgba(180,200,255,0.22) 25%, rgba(200,185,225,0.32) 50%, rgba(180,200,255,0.22) 75%, transparent 95%)"
-            : "linear-gradient(90deg, transparent 5%, rgba(22,90,139,0.5) 25%, rgba(22,90,139,0.65) 50%, rgba(22,90,139,0.5) 75%, transparent 95%)",
-        }}
-      />
+    <div className="w-full px-[5%] my-12 md:my-24" aria-hidden>
+      <div className="dot-rule" />
     </div>
   );
 }
+
+// ── About ─────────────────────────────────────────────────────────────────────
+const ABOUT =
+  "Hey there! My name's Henry. I'm a Computer Science master's student at Oregon State University, where I also finished my honors undergrad, and I'm joining Daimler Truck North America as an intern. I'm passionate about machine learning, space, and medicine, and I love working on software and impactful technology that helps people. I'm driven by problems where computation meets real-world change and improvement. Outside of engineering, I'm usually behind a camera, on the slopes, lifting, or finding new music. I value growth and learning above everything, and I'm always excited to connect with others who share that mindset!";
 
 // ── Projects helpers ──────────────────────────────────────────────────────────
 // Two cards per row keeps each card at full width and leaves room for the
@@ -91,7 +85,7 @@ const projects = [
       "Paste a GitHub URL, get an interactive guide to the repository. Source is chunked by AST rather than line count and reranked before an LLM answers, so every claim cites the exact lines behind it. Q&A, architecture walkthroughs, an agentic mode, and dependency tracing. Built at BeaverHacks 2026.",
     deployment: {
       progress: 100,
-      githubUrl: "https://github.com/henrykanaskie/beaverhacks26",
+      githubUrl: "https://github.com/henrykanaskie/accliMate",
     },
     svgs: [placeholderSvgLeft],
   },
@@ -100,9 +94,9 @@ const projects = [
     techStack: "Swift 6, SpriteKit, AppKit",
     thumbnail: "/projects/sprite-room.webp",
     description:
-      "A macOS app that drops from the notch and renders a live coding agent's activity as a pixel-art room: each agent a character, each tool call something it is visibly doing. Read-only by design: it never controls an agent or shows prompt content. 396 tests and a replay harness keep the scene deterministic.",
+      "A macOS app that drops from the notch and renders a live coding agent's activity as a pixel-art room: each agent a character, each tool call something it is visibly doing. Read-only by design: it never controls an agent or shows prompt content. 871 tests across 87 suites and a replay harness keep the scene deterministic.",
     deployment: {
-      progress: 80,
+      progress: 100,
       githubUrl: "https://github.com/henrykanaskie/animAgent",
     },
     svgs: [placeholderSvgRight],
@@ -204,7 +198,6 @@ const projects = [
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CSPage() {
   const isDark = useIsDark();
-  const isMobile = useIsMobile(850);
 
   // Active section for nav dots
   const [activeSection, setActiveSection] = useState("about");
@@ -501,24 +494,16 @@ export default function CSPage() {
                   }}
                 >
                   <motion.div
+                    className={isActive ? "metal-bead" : undefined}
                     animate={{
-                      width: isActive ? 7 : 3,
-                      height: isActive ? 7 : 3,
-                      opacity: isActive ? 1 : 0.22,
-                      boxShadow: isActive
-                        ? isDark
-                          ? "0 0 8px rgba(180,200,255,0.9), 0 0 18px rgba(210,185,230,0.5)"
-                          : "0 0 8px rgba(100,115,145,0.7), 0 0 14px rgba(125,110,135,0.35)"
-                        : "none",
+                      width: isActive ? 9 : 3,
+                      height: isActive ? 9 : 3,
+                      opacity: isActive ? 1 : 0.35,
                     }}
-                    transition={{ duration: 0.35, ease: "easeInOut" }}
+                    transition={{ type: "spring", stiffness: 420, damping: 26 }}
                     style={{
                       borderRadius: "50%",
-                      backgroundImage: themed(
-                        isDark,
-                        cs.iridescentShort.dark,
-                        cs.iridescentShort.light,
-                      ),
+                      background: isActive ? undefined : "var(--ink)",
                     }}
                   />
                 </button>
@@ -534,257 +519,29 @@ export default function CSPage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 1.4, repeat: 0, ease: "easeInOut" }}
-        style={{ scrollMarginTop: "80px" }}
+        style={{ scrollMarginTop: "80px", position: "relative" }}
         className="flex flex-col items-center gap-12 md:gap-28 pb-[5vh]"
       >
-        {/* Single row: Photo + Name/Links + Bio */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "row",
-            alignItems: "flex-start",
-            minHeight: isMobile ? undefined : "400px",
-            gap: "clamp(1rem, 3vw, 2.5rem)",
+        <AboutSheet
+          about={ABOUT}
+          onEmail={() => {
+            setEmailOpen(true);
+            setEmailStatus("idle");
+            emailFormOpenedAt.current = Date.now();
           }}
-          className="w-full px-2 md:px-[5%] pt-8 md:pt-14"
-        >
-          {isMobile ? (
-            /* ── Mobile layout ── */
-            <div className="flex flex-col gap-5 w-full">
-              {/* Name */}
-              <GlassTitle
-                text="Henry Kanaskie"
-                variant="crystalline"
-                containerClassName="justify-center items-center !pt-0 !pb-0"
-                fontSize="clamp(2rem, 11vw, 3.5rem)"
-                disableEntrance
-              />
-
-              {/* Photo: with side margins */}
-              <div
-                style={{
-                  position: "relative",
-                  width: "clamp(200px, 50vw, 300px)",
-                  alignSelf: "center",
-                  aspectRatio: "3 / 4",
-                  borderRadius: "16px",
-                  overflow: "hidden",
-                  border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.1)"}`,
-                  boxShadow: isDark
-                    ? "0 4px 32px rgba(0,0,0,0.55)"
-                    : "0 2px 16px rgba(0,0,0,0.12)",
-                }}
-              >
-                <Image
-                  src="/photography/cs_profile/IMG_4059.jpeg"
-                  alt="Henry Kanaskie"
-                  fill
-                  style={{ objectFit: "cover", objectPosition: "center top" }}
-                  sizes="100vw"
-                  priority={false}
-                />
-              </div>
-
-              {/* Links */}
-              <div className="flex flex-row justify-center items-center gap-2 flex-wrap">
-                {[
-                  {
-                    label: "Email",
-                    href: undefined,
-                    action: () => {
-                      setEmailOpen(true);
-                      setEmailStatus("idle");
-                      emailFormOpenedAt.current = Date.now();
-                    },
-                  },
-                  {
-                    label: "LinkedIn",
-                    href: "https://linkedin.com/in/henry-kanaskie",
-                    action: undefined,
-                  },
-                  {
-                    label: "Resume",
-                    href: undefined,
-                    action: () => setResumeOpen(true),
-                  },
-                ].map((item) => {
-                  const pillClassName = `${glassBubbleClassNames} rounded-full font-semibold transition-all duration-200 hover:scale-105 active:scale-95`;
-                  const pillStyle: React.CSSProperties = {
-                    ...glassStyle,
-                    fontSize: "0.85rem",
-                    padding: "0.35rem 0.85rem",
-                    whiteSpace: "nowrap",
-                  };
-                  const label = (
-                    <CrystallineText isDark={isDark}>
-                      {item.label}
-                    </CrystallineText>
-                  );
-                  return item.href ? (
-                    <a
-                      key={item.label}
-                      href={item.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={pillStyle}
-                      className={pillClassName}
-                    >
-                      {label}
-                    </a>
-                  ) : (
-                    <button
-                      key={item.label}
-                      onClick={item.action}
-                      style={pillStyle}
-                      className={`${pillClassName} cursor-pointer`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Blurb */}
-              <AboutBlurb
-                about={
-                  "Hey there! My name's Henry. I'm a Computer Science honors student at Oregon State University, passionate about machine learning, space, and medicine. I love working on software and impactful technology that helps people. I'm driven by problems where computation meets real-world change and improvement. Outside of engineering, I'm usually behind a camera, on the slopes, lifting, or finding new music. I value growth and learning above everything, and I'm always excited to connect with others who share that mindset!"
-                }
-              />
-            </div>
-          ) : (
-            /* ── Desktop layout ── */
-            <>
-              {/* Left column: photo + links stacked */}
-              <div
-                className="flex flex-col gap-3 shrink-0 items-center"
-                style={{ width: "300px" }}
-              >
-                <div
-                  style={{
-                    position: "relative",
-                    width: "300px",
-                    height: "400px",
-                    borderRadius: "16px",
-                    overflow: "hidden",
-                    border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.1)"}`,
-                    boxShadow: isDark
-                      ? "0 4px 32px rgba(0,0,0,0.55)"
-                      : "0 2px 16px rgba(0,0,0,0.12)",
-                  }}
-                >
-                  <Image
-                    src="/photography/cs_profile/IMG_4059.jpeg"
-                    alt="Henry Kanaskie"
-                    fill
-                    style={{ objectFit: "cover" }}
-                    sizes="300px"
-                    priority={false}
-                  />
-                </div>
-
-                {/* Link bubbles under photo */}
-                <div className="flex flex-row items-center justify-center gap-2 flex-wrap w-full">
-                  {[
-                    {
-                      label: "Email",
-                      href: undefined,
-                      action: () => {
-                        setEmailOpen(true);
-                        setEmailStatus("idle");
-                        emailFormOpenedAt.current = Date.now();
-                      },
-                    },
-                    {
-                      label: "LinkedIn",
-                      href: "https://linkedin.com/in/henry-kanaskie",
-                      action: undefined,
-                    },
-                    {
-                      label: "Resume",
-                      href: undefined,
-                      action: () => setResumeOpen(true),
-                    },
-                  ].map((item) => {
-                    const pillClassName = `${glassBubbleClassNames} rounded-full font-semibold transition-all duration-200 hover:scale-105 active:scale-95`;
-                    const pillStyle: React.CSSProperties = {
-                      ...glassStyle,
-                      fontSize: "0.8rem",
-                      padding: "0.3rem 0.9rem",
-                      whiteSpace: "nowrap",
-                    };
-                    const label = (
-                      <CrystallineText isDark={isDark}>
-                        {item.label}
-                      </CrystallineText>
-                    );
-                    return item.href ? (
-                      <a
-                        key={item.label}
-                        href={item.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={pillStyle}
-                        className={pillClassName}
-                      >
-                        {label}
-                      </a>
-                    ) : (
-                      <button
-                        key={item.label}
-                        onClick={item.action}
-                        style={pillStyle}
-                        className={`${pillClassName} cursor-pointer`}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Right column: name top, blurb bottom */}
-              <div
-                className="flex flex-col gap-4 flex-1 min-w-0"
-                style={{ minHeight: "400px" }}
-              >
-                {/* Name */}
-                <div className="shrink-0">
-                  <GlassTitle
-                    text="Henry Kanaskie"
-                    variant="crystalline"
-                    containerClassName="justify-start items-start !pt-0 md:!pt-0 !pb-0 md:!pb-0"
-                    fontSize="clamp(2.4rem, 7.5vw, 10rem)"
-                    noWrap
-                    disableEntrance
-                  />
-                </div>
-
-                {/* Spacer */}
-                <div className="flex-1" />
-
-                {/* Blurb */}
-                <div>
-                  <AboutBlurb
-                    about={
-                      "Hey there! My name's Henry. I'm a Computer Science honors student at Oregon State University, passionate about machine learning, space, and medicine. I love working on software and impactful technology that helps people. I'm driven by problems where computation meets real-world change and improvement. Outside of engineering, I'm usually behind a camera, on the slopes, lifting, or finding new music. I value growth and learning above everything, and I'm always excited to connect with others who share that mindset!"
-                    }
-                  />
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+          onResume={() => setResumeOpen(true)}
+        />
 
         {/* Scroll hint */}
         <motion.div
           animate={{ opacity: hasScrolled ? 0 : 1 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="flex flex-col items-center gap-1 pointer-events-none select-none -mt-6 md:-mt-14"
+          className="relative z-[1] flex flex-col items-center gap-1 pointer-events-none select-none -mt-4 md:-mt-12"
           style={{ opacity: 1 }}
         >
           <span
             style={{
-              color: isDark ? "rgba(255,255,255,0.92)" : "rgba(22,90,139,0.85)",
+              color: "var(--ink-2)",
               fontSize: "0.65rem",
               fontWeight: 600,
               letterSpacing: "0.18em",
@@ -806,9 +563,8 @@ export default function CSPage() {
                 viewBox="0 0 24 14"
                 fill="none"
                 style={{
-                  stroke: isDark
-                    ? `rgba(255,255,255,${i === 0 ? 0.7 : 0.3})`
-                    : `rgba(22,90,139,${i === 0 ? 0.7 : 0.35})`,
+                  stroke: "var(--ink)",
+                  opacity: i === 0 ? 0.6 : 0.28,
                   strokeWidth: 2,
                   strokeLinecap: "round",
                   strokeLinejoin: "round",
@@ -850,13 +606,7 @@ export default function CSPage() {
                 <a
                   href="/Kanaskie_Henry_Resume.pdf"
                   download
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-opacity hover:opacity-70 ${glassBoxClassNames}`}
-                  style={{
-                    ...glassStyle,
-                    backgroundColor: isDark
-                      ? "rgba(255,255,255,0.06)"
-                      : "rgba(0,0,0,0.04)",
-                  }}
+                  className="metal-surface flex items-center gap-2 px-4 py-2 rounded-full"
                 >
                   <span
                     className="flex items-center gap-2 bg-clip-text text-transparent"
@@ -876,7 +626,7 @@ export default function CSPage() {
                       height="16"
                       viewBox="0 0 24 24"
                       fill="none"
-                      stroke={themed(isDark, cs.color.dark, cs.color.light)}
+                      stroke="currentColor"
                       strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -890,16 +640,8 @@ export default function CSPage() {
                 </a>
                 <button
                   onClick={() => setResumeOpen(false)}
-                  className={`w-10 h-10 flex items-center justify-center rounded-full transition-opacity hover:opacity-70 cursor-pointer ${glassBoxClassNames}`}
-                  style={{
-                    ...glassStyle,
-                    backgroundColor: isDark
-                      ? "rgba(255,255,255,0.06)"
-                      : "rgba(0,0,0,0.04)",
-                    color: isDark
-                      ? "rgba(255,255,255,0.6)"
-                      : "rgba(20,28,48,0.5)",
-                  }}
+                  className="metal-surface w-10 h-10 flex items-center justify-center rounded-full cursor-pointer"
+                  aria-label="Close"
                 >
                   ✕
                 </button>
@@ -974,16 +716,8 @@ export default function CSPage() {
                 </FuzzyText>
                 <button
                   onClick={() => setEmailOpen(false)}
-                  className={`w-10 h-10 flex items-center justify-center rounded-full transition-opacity hover:opacity-70 cursor-pointer ${glassBoxClassNames}`}
-                  style={{
-                    ...glassStyle,
-                    backgroundColor: isDark
-                      ? "rgba(255,255,255,0.06)"
-                      : "rgba(0,0,0,0.04)",
-                    color: isDark
-                      ? "rgba(255,255,255,0.6)"
-                      : "rgba(20,28,48,0.5)",
-                  }}
+                  className="metal-surface w-10 h-10 flex items-center justify-center rounded-full cursor-pointer"
+                  aria-label="Close"
                 >
                   ✕
                 </button>
@@ -1171,19 +905,10 @@ export default function CSPage() {
                   <button
                     type="submit"
                     disabled={emailStatus === "sending"}
-                    className={`mt-2 w-full py-3 rounded-xl transition-opacity cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${glassBoxClassNames}`}
-                    style={{
-                      ...glassStyle,
-                      backgroundColor: isDark
-                        ? "rgba(255,255,255,0.07)"
-                        : "rgba(0,0,0,0.05)",
-                    }}
+                    className="metal-surface mt-2 w-full py-3 rounded-full cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span
                       style={{
-                        color: isDark
-                          ? "rgba(255,255,255,0.88)"
-                          : "rgba(20,28,48,0.8)",
                         fontSize: "0.95rem",
                         fontWeight: 700,
                       }}
@@ -1216,8 +941,21 @@ export default function CSPage() {
           svgOffsetRight={{ x: 10, y: 10 }}
           svgSizeRight={47}
         />
+        {/* TODO(henry): add the role, team, dates and stack once they're public, and an
+            extraInfo block like the others so the "More Info" bubble appears. */}
         <InfoBox
           side="left"
+          title="Intern"
+          company="Daimler Truck North America"
+          role="Commercial Vehicles"
+          description="I'm joining Daimler Truck North America, the company behind Freightliner, as an intern. It's early, so this entry is short on purpose: I'll write it up properly once there's work here I can talk about."
+          svgPaths={daimlerPaths}
+          svgSize={70}
+          svgDrawDuration={5}
+          svgOffset={{ x: 50, y: -30 }}
+        />
+        <InfoBox
+          side="right"
           title="Software Engineering Intern"
           company="DZYNE Technologies"
           role="Embedded Systems & Full-Stack"
@@ -1236,7 +974,7 @@ export default function CSPage() {
           }}
         />
         <InfoBox
-          side="right"
+          side="left"
           title="Applied Machine Learning Researcher"
           company="Plasma, Energy, and Space Propulsion Laboratory"
           role="Signal Processing & ML"
@@ -1255,7 +993,7 @@ export default function CSPage() {
           }}
         />
         <InfoBox
-          side="left"
+          side="right"
           title="Undergraduate Researcher"
           company="Jason Clark Research Group"
           role="FPGA & DSP Engineering"
@@ -1307,6 +1045,7 @@ export default function CSPage() {
             </div>
           ))}
         </div>
+        <PartsList />
       </section>
 
       <SectionDivider />
@@ -1320,8 +1059,9 @@ export default function CSPage() {
         <GlassTitle text="Education" />
         <EducationCard
           school="Oregon State University"
-          degree="Honors B.S. Computer Science"
-          timeline="Sep 2022 - Jun 2026"
+          degree="M.S. Computer Science"
+          timeline="2026 - Present"
+          earlier={{ degree: "Honors B.S. Computer Science", timeline: "Sep 2022 - Jun 2026" }}
           gpa="3.95 / 4.0"
           coursework={[
             "Data Structures & Algorithms",

@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import { glassStyle, GlassLayers, FuzzyText, useIsDark, useIsMobile } from "../lib/glass";
 import { glassBoxClassNames, cs, themed } from "../lib/tokens";
+import { rise, settle, leave } from "../lib/motion";
 
 interface EducationCardProps {
   school: string;
@@ -12,6 +13,8 @@ interface EducationCardProps {
   gpa?: string;
   coursework?: string[];
   extras?: string;
+  /** A previous degree at the same school; GPA and coursework belong to it. */
+  earlier?: { degree: string; timeline: string };
 }
 
 export default function EducationCard({
@@ -21,6 +24,7 @@ export default function EducationCard({
   gpa,
   coursework,
   extras,
+  earlier,
 }: EducationCardProps) {
   const isDark = useIsDark();
   const isMobile = useIsMobile(1000);
@@ -30,19 +34,10 @@ export default function EducationCard({
   return (
     <motion.div
       ref={ref}
-      initial={{ x: "-70vw" }}
-      animate={
-        isInView
-          ? { x: 0, y: 0 }
-          : isMobile
-            ? { x: 0, y: 15 }
-            : { x: -20, y: 10 }
-      }
-      exit={{
-        x: "-70vw",
-        transition: { duration: 0.55, ease: [0.5, 0, 0.75, 0] },
-      }}
-      transition={{ duration: 1.2, ease: "easeInOut" }}
+      initial={rise.hidden}
+      animate={isInView ? rise.shown : rise.hidden}
+      exit={leave}
+      transition={settle}
       style={{
         position: "relative",
         width: "100%",
@@ -52,14 +47,12 @@ export default function EducationCard({
     >
       {/* Glass box */}
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={isInView ? { opacity: 1 } : { opacity: 0 }}
-        transition={{ duration: 1.8, ease: "easeInOut" }}
         style={{
           position: "relative",
           borderRadius: "24px",
           ...glassStyle,
         }}
+        data-liquid
         className={`${glassBoxClassNames} p-5 md:p-10 lg:p-12`}
       >
         <GlassLayers refractionSide="left" />
@@ -78,7 +71,7 @@ export default function EducationCard({
           >
             <FuzzyText>
               <span
-                className="bg-clip-text text-transparent"
+                className="bg-clip-text text-transparent metal-text"
                 style={{
                   WebkitBackgroundClip: "text",
                   backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
@@ -127,6 +120,24 @@ export default function EducationCard({
             className="bg-black/[0.08] dark:bg-white/[0.1]"
             style={{ height: 1, margin: "8px 0 16px" }}
           />
+
+          {/* The earlier degree, which the GPA and coursework below belong to */}
+          {earlier && (
+            <div style={{ textAlign: "center", marginBottom: 14 }}>
+              <div
+                className="font-[family-name:var(--font-elevated)]"
+                style={{ fontSize: "clamp(0.95rem, 1.3vw, 1.125rem)", fontWeight: 500, color: themed(isDark, cs.bodyColor.dark, cs.bodyColor.light) }}
+              >
+                {earlier.degree}
+              </div>
+              <div
+                className="font-[family-name:var(--font-elevated)]"
+                style={{ fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)", letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--ink-2)", marginTop: 2 }}
+              >
+                {earlier.timeline}
+              </div>
+            </div>
+          )}
 
           {/* GPA */}
           {gpa && (

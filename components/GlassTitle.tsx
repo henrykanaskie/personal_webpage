@@ -7,7 +7,7 @@ import { useIsDark } from "../lib/glass";
 import { cs, themed } from "../lib/tokens";
 import { registerShineEffect } from "../lib/scrollVelocity";
 
-type GlassTitleVariant = "iridescent" | "crystalline" | "crystalline-blur";
+type GlassTitleVariant = "metal" | "iridescent" | "crystalline" | "crystalline-blur";
 
 export default function GlassTitle({
   text = "experience",
@@ -20,7 +20,7 @@ export default function GlassTitle({
   svgOffsetRight = { x: 0, y: 0 },
   svgSizeRight = 80,
   svgSizeLeft = 80,
-  variant = "crystalline",
+  variant = "metal",
   debugVariantToggle = false,
   fontSize,
   containerClassName,
@@ -55,7 +55,7 @@ export default function GlassTitle({
   const drawTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const variants = useMemo(
-    () => ["crystalline", "crystalline-blur", "iridescent"] as const,
+    () => ["metal", "crystalline", "crystalline-blur", "iridescent"] as const,
     [],
   );
   const [debugVariant, setDebugVariant] = useState<GlassTitleVariant>(variant);
@@ -64,10 +64,16 @@ export default function GlassTitle({
       ? debugVariant
       : variant;
 
+  const isMetal = effectiveVariant === "metal";
   const isCrystalline = effectiveVariant === "crystalline";
   const isCrystallineBlur = effectiveVariant === "crystalline-blur";
 
   const titleStyles: React.CSSProperties = useMemo(() => {
+    if (effectiveVariant === "metal") {
+      // Ink pressed into the page (.metal-text): solid colour and a debossed
+      // highlight. No gradient in the letters, so no band through them.
+      return {};
+    }
     if (effectiveVariant === "iridescent") {
       return {
         WebkitBackgroundClip: "text",
@@ -295,7 +301,7 @@ export default function GlassTitle({
         {/* Title text */}
         <span
           ref={textMeasureRef}
-          className="relative bg-clip-text text-transparent"
+          className={`relative bg-clip-text text-transparent ${isMetal ? "metal-text" : ""}`}
           style={titleStyles}
         >
           {text}
@@ -360,8 +366,9 @@ export default function GlassTitle({
           </>
         )}
 
-        {/* Shine: driven by scroll direction/speed */}
+        {/* Shine: driven by scroll direction/speed (glass variants only; ink doesn't glint) */}
         <span
+          hidden={isMetal}
           ref={shineRef}
           aria-hidden
           className="absolute inset-0 -bottom-[0.15em] bg-clip-text text-transparent pointer-events-none"

@@ -1,27 +1,332 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ─── Surface system ──────────────────────────────────────────────────────────
+   Three materials, one sheet of paper:
+     paper   a dot grid, the drafting sheet everything sits on
+     metal   polished chrome: a studio reflection (bright sky above, a crisp
+             dark horizon, a bright ground bounce below), for titles and the
+             primary controls
+     glass   frosted panels with a metal rim, for anything that holds content
+   Paper and dot values are mirrored in lib/tokens.ts (`paper`), which the
+   WebGL dot field reads so its dots land exactly on the CSS ones. */
+
+:root {
+  --paper: #f1f0ed;
+  --dot: rgba(52, 48, 42, 0.27);
+  --dot-gap: 24px;
+  --ink: #17161a;
+  --ink-2: rgba(23, 22, 26, 0.68);
+  --ink-3: rgba(23, 22, 26, 0.44);
+  --hair: rgba(23, 22, 26, 0.1);
+  --accent: rgb(76, 96, 140);
+
+  /* Type is ink pressed into the page, never chrome: a gradient inside
+     letterforms puts the horizon band straight through them. The metal lives on
+     surfaces (.metal-surface); text gets a crisp highlight below, debossed. */
+  --title-ink: #1b1a17;
+  --deboss: 0 1px 0 rgba(255, 255, 255, 0.75);
+  /* Chrome lettering: the pill's satin chrome, sized to one line of type so
+     every line (and so every letter) gets the whole reflection, with a soft
+     horizon instead of a hard band. On the light sheet it is the same bright
+     chrome; the dark horizon and a soft cast shadow (no outline) carry it. */
+  --chrome-type: linear-gradient(180deg, #f4f2ee 0%, #d3d0ca 22%, #a6a29b 41%, #5f5c57 51%, #4d4b46 55%, #7e7a74 67%, #bfbbb5 85%, #e8e5e0 100%);
+  --chrome-edge: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.8)) drop-shadow(0 0.025em 0.035em rgba(40, 34, 28, 0.16));
+  /* Steel wire for the line drawings */
+  --wire-hi: #8d8a84;
+  --wire-mid: #45433f;
+  --wire-lo: #1f1e1c;
+  /* Satin chrome, as a surface (pills, knobs). */
+  --metal-surface:
+    radial-gradient(120% 70% at 30% 0%, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 55%),
+    linear-gradient(180deg, #ffffff 0%, #e6e4e0 20%, #cbc8c2 44%, #9a968f 58%, #75716b 62%, #a9a59f 75%, #dfdcd6 91%, #f8f6f2 100%);
+  --metal-rim:
+    inset 0 0 0 1px rgba(46, 38, 28, 0.22), inset 0 1.5px 0 #fff, inset 0 -2px 2px rgba(255, 255, 255, 0.6),
+    inset 0 -10px 16px -10px rgba(60, 48, 36, 0.35);
+  --metal-ink: #1b1a17;
+  --metal-edge: linear-gradient(180deg, #fff, rgba(180, 176, 170, 0.6) 42%, rgba(96, 92, 86, 0.55) 58%, rgba(214, 211, 206, 0.9));
+
+  /* Glass reads as glass through its fill, rim and light, not blur: panels carry
+     no backdrop-filter (it was the single biggest scroll cost). */
+  /* Frosted: the dot field draws the dots under a card blurred and bent at its
+     rim, and this fill (mirrored in lib/tokens `paper.glass`) sits over them. */
+  --glass-fill: rgba(255, 255, 255, 0.58);
+  --glass-shadow:
+    inset 0 1px 0 #fff, inset 0 -1px 0 rgba(255, 255, 255, 0.5), 0 0 0 1px rgba(40, 36, 30, 0.06),
+    0 1px 2px rgba(40, 36, 30, 0.05), 0 18px 36px -20px rgba(40, 36, 30, 0.3);
+  --glass-drop: 0 1px 2px rgba(40, 36, 30, 0.05), 0 18px 36px -20px rgba(40, 36, 30, 0.3);
+  --pill-blur: blur(8px) saturate(1.2);
+
+  /* The glass edge, one for every glass surface (cards and bubbles alike):
+     the light a curved edge catches (a bright lip on top, a faint one below,
+     a hairline all round) and a thin film just inside it, pink on the left,
+     cyan on the right, violet on top, gold below. Mirrored in the shaders
+     (lib/liquid.tsx, DotField.tsx) so a swell or a growing bubble carries
+     exactly this edge. */
+  --edge-lip: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(255, 255, 255, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+  --edge-film:
+    inset 3px 0 6px -4px rgba(255, 150, 205, 0.5), inset -3px 0 6px -4px rgba(120, 205, 255, 0.48),
+    inset 0 3px 6px -4px rgba(185, 160, 255, 0.48), inset 0 -3px 6px -4px rgba(255, 220, 140, 0.48);
+}
+
+.dark {
+  --paper: #0c0d10;
+  --dot: rgba(196, 204, 222, 0.16);
+  --ink: #eef0f4;
+  --ink-2: rgba(238, 240, 244, 0.64);
+  --ink-3: rgba(238, 240, 244, 0.4);
+  --hair: rgba(238, 240, 244, 0.1);
+  --accent: rgb(170, 190, 240);
+
+  /* The chrome is a material, not a theme colour: it stays the same satin
+     chrome on the dark sheet, with the same dark ink pressed into it. */
+  --title-ink: #efede9;
+  --deboss: 0 -1px 0 rgba(0, 0, 0, 0.7);
+  --chrome-type: linear-gradient(180deg, #fbfaf8 0%, #dedbd6 24%, #aeaaa3 42%, #6c6963 52%, #57544f 56%, #8b8780 68%, #cfcbc5 86%, #f3f1ed 100%);
+  --chrome-edge: none;
+  --wire-hi: #f4f2ee;
+  --wire-mid: #a3a09a;
+  --wire-lo: #5f5d59;
+  --metal-edge: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.06) 45%, rgba(0, 0, 0, 0.2) 60%, rgba(255, 255, 255, 0.14));
+
+  --glass-fill: rgba(26, 28, 33, 0.7);
+  --glass-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 1px 2px rgba(0, 0, 0, 0.3), 0 24px 48px -24px rgba(0, 0, 0, 0.7);
+  --glass-drop: 0 1px 2px rgba(0, 0, 0, 0.3), 0 24px 48px -24px rgba(0, 0, 0, 0.7);
+  --edge-lip: inset 0 1px 0 rgba(255, 255, 255, 0.28), inset 0 -1px 0 rgba(255, 255, 255, 0.06), inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+  --edge-film:
+    inset 3px 0 6px -4px rgba(255, 150, 205, 0.45), inset -3px 0 6px -4px rgba(120, 205, 255, 0.43),
+    inset 0 3px 6px -4px rgba(185, 160, 255, 0.43), inset 0 -3px 6px -4px rgba(255, 220, 140, 0.43);
+}
+
 html {
   scroll-behavior: auto;
 }
+/* Nothing decorative (a bud's canvas, a swell, a vapor puff) may widen the
+   page: on a phone that lets the whole page slide sideways. clip, unlike
+   hidden, makes no scroll container, so sticky positioning still works. */
+html,
 body {
-  /* The color of the "paper" */
-  background-color: #ffffff;
-
-  /* The grid lines */
-  background-image:
-    linear-gradient(to right, #1070c45c 1px, transparent 1px),
-    linear-gradient(to bottom, #1070c45c 1px, transparent 1px);
-  /* The size of the grid squares (e.g., 40px by 40px) */
-  background-size: 25px 25px;
+  overflow-x: clip;
+}
+body {
+  background-color: var(--paper);
+  background-image: radial-gradient(circle, var(--dot) 1.15px, transparent 1.65px);
+  background-size: var(--dot-gap) var(--dot-gap);
 }
 
-/* Dark mode inverted colors */
-.dark body {
-  background-color: #0d0d0d;
-  background-image:
-    linear-gradient(to right, #2a2a2a 1px, transparent 1px),
-    linear-gradient(to bottom, #2a2a2a 1px, transparent 1px);
+/* ─── Metal ────────────────────────────────────────────────────────────────── */
+
+.metal-text {
+  background-image: var(--chrome-type) !important;
+  background-size: 100% 1.2em; /* before Safari 16.4, which has no lh */
+  background-size: 100% 1lh;
+  background-repeat: repeat-y;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+  filter: var(--chrome-edge);
+}
+
+.metal-surface {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--metal-surface);
+  box-shadow: var(--metal-rim), 0 1px 2px rgba(40, 30, 20, 0.14), 0 14px 30px -12px rgba(40, 30, 20, 0.34);
+  color: var(--metal-ink);
+  -webkit-text-fill-color: var(--metal-ink);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+.dark .metal-surface {
+  box-shadow: var(--metal-rim), 0 1px 2px rgba(0, 0, 0, 0.5), 0 14px 30px -12px rgba(0, 0, 0, 0.75);
+}
+/* A glint crosses the chrome on hover, like light moving over a knob. */
+.metal-surface::after {
+  content: "";
+  position: absolute;
+  inset: -20% auto -20% 0;
+  width: 45%;
+  z-index: -1;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.75) 50%, rgba(255, 255, 255, 0));
+  transform: translateX(-160%) skewX(-18deg);
+  opacity: 0;
+  pointer-events: none;
+}
+.metal-surface:focus-visible::after {
+  opacity: 1;
+  transform: translateX(330%) skewX(-18deg);
+  transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+}
+/* Only where there's a real hover: on touch a tap would leave the glint stuck. */
+@media (hover: hover) {
+  .metal-surface:hover::after {
+    opacity: 1;
+    transform: translateX(330%) skewX(-18deg);
+    transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+  }
+}
+
+/* The dot field canvas: sized to the large viewport so the iOS toolbar
+   collapsing doesn't resize it mid-scroll (DotField.tsx). */
+.dot-field {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  height: 100lvh;
+  z-index: -1;
+  pointer-events: none;
+}
+.metal-surface > * {
+  position: relative;
+  z-index: 1;
+}
+.metal-surface * {
+  -webkit-text-fill-color: var(--metal-ink);
+}
+.metal-surface svg {
+  color: var(--metal-ink);
+}
+.metal-surface:active {
+  transform: translateY(1px);
+}
+
+/* Every control is chrome, so "you are here" can't be the material. The current
+   item is the same chrome pressed into its socket: the light flips to the lower
+   half, the rim shadow moves inside, and a small ink dot sits under the label. */
+.metal-surface.is-current {
+  background:
+    radial-gradient(120% 70% at 50% 100%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 60%),
+    linear-gradient(180deg, #8e8a83 0%, #b3afa8 22%, #d4d1cb 48%, #e9e7e2 70%, #f7f5f1 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(46, 38, 28, 0.3), inset 0 2px 5px rgba(40, 32, 24, 0.45), inset 0 -1px 0 rgba(255, 255, 255, 0.8),
+    0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.dark .metal-surface.is-current {
+  box-shadow:
+    inset 0 0 0 1px rgba(46, 38, 28, 0.3), inset 0 2px 5px rgba(40, 32, 24, 0.45), inset 0 -1px 0 rgba(255, 255, 255, 0.8),
+    0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.metal-surface.is-current::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 5px;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: var(--metal-ink);
+  z-index: 1;
+}
+
+/* A chrome bead: the section index on the CS page. */
+.metal-bead {
+  border-radius: 50%;
+  background:
+    radial-gradient(60% 60% at 35% 28%, #fff, rgba(255, 255, 255, 0) 70%),
+    linear-gradient(180deg, #f4f2ee 0%, #bdb9b2 45%, #6f6b65 58%, #b9b5ae 78%, #efece7 100%);
+  box-shadow: inset 0 0 0 0.5px rgba(46, 38, 28, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* The panels' rim can be opened where a liquid swell leaves the card, so the
+   border molds into the swell instead of cutting across it. Two holes: the
+   cursor swell (DotField) and a bubble budding off (LiquidBud). The shaders
+   draw the swell's own rim inside the same holes with the same falloff. */
+.ring-mask {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  --hole: 14px;
+  -webkit-mask-image:
+    radial-gradient(circle at var(--sx, -9999px) var(--sy, -9999px), transparent var(--sr, 0px), #000 calc(var(--sr, 0px) + var(--hole))),
+    radial-gradient(circle at var(--bx, -9999px) var(--by, -9999px), transparent var(--br, 0px), #000 calc(var(--br, 0px) + 40px));
+  mask-image:
+    radial-gradient(circle at var(--sx, -9999px) var(--sy, -9999px), transparent var(--sr, 0px), #000 calc(var(--sr, 0px) + var(--hole))),
+    radial-gradient(circle at var(--bx, -9999px) var(--by, -9999px), transparent var(--br, 0px), #000 calc(var(--br, 0px) + 40px));
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
+/* The glass edge on a card: the same lip and film as a bubble's. */
+.edge-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: var(--edge-lip), var(--edge-film);
+  pointer-events: none;
+}
+
+/* Hairline metal border for any rounded element: a gradient ring cut out by a mask. */
+.metal-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--metal-edge);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  pointer-events: none;
+}
+
+/* ─── Glass ────────────────────────────────────────────────────────────────── */
+
+.glass-panel {
+  background: var(--glass-fill);
+  box-shadow: var(--glass-shadow);
+  transition: box-shadow 0.25s ease;
+}
+/* While a bubble grows out of a card, the card has no border at all: its rim,
+   hairlines and edge light fade out so the growth reads as the card itself. */
+.glass-panel.is-budding {
+  box-shadow: var(--glass-drop);
+}
+.glass-panel > .ring-mask,
+.glass-panel > .glass-spec {
+  transition: opacity 0.25s ease;
+}
+.glass-panel.is-budding > .ring-mask,
+.glass-panel.is-budding > .glass-spec {
+  opacity: 0 !important; /* the specular line sets its opacity inline */
+}
+
+.glass-pill {
+  background: var(--glass-fill);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 0 0 1px rgba(28, 32, 42, 0.1), 0 4px 12px -6px rgba(20, 24, 32, 0.25);
+  -webkit-backdrop-filter: var(--pill-blur);
+  backdrop-filter: var(--pill-blur);
+  color: var(--ink-2);
+  transition: color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+.dark .glass-pill {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 0 0 1px rgba(255, 255, 255, 0.07), 0 6px 14px -6px rgba(0, 0, 0, 0.7);
+}
+.glass-pill:hover {
+  color: var(--ink);
+}
+
+/* ─── Drafting details ─────────────────────────────────────────────────────── */
+
+.mono {
+  font-family: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+  font-feature-settings: "zero" 1;
+}
+
+/* A rule drawn in dots, not a line. */
+.dot-rule {
+  height: 3px;
+  background-image: radial-gradient(circle, var(--ink-3) 1.1px, transparent 1.5px);
+  background-size: 12px 3px;
+  background-position: center;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
 }
 
 /* First-paint curtain on photography reloads (before React hydrates) */
@@ -116,6 +421,106 @@ body {
       40% 70%,
       -20% 50%;
   }
+}
+
+/* Line drawings: every path is normalised to length 1 (pathLength="1"), so one
+   dash the length of the path, offset by its whole length, hides it; the
+   transition to 0 draws it. Started once by adding .drawn. */
+.line-draw path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+.line-draw.drawn path {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset var(--draw-dur, 3s) cubic-bezier(0.45, 0, 0.25, 1);
+}
+
+/* Info bubbles: frosted bubbles you can still see through. They're small, so
+   they can afford a real (light) backdrop blur, which the page-wide panels
+   can't. A thin-film sheen at the rim and a little inner light give them
+   their volume. */
+.glass-bubble {
+  isolation: isolate;
+  overflow: hidden;
+  /* Frosted glass scatters a little light: in both themes the fill is white
+     at low strength, so the glass reads slightly lighter than what's behind
+     it (never a grey slab painted over it). */
+  background: var(--bubble-fill);
+  -webkit-backdrop-filter: blur(1.6px) saturate(1.25) brightness(var(--bubble-lift));
+  backdrop-filter: blur(1.6px) saturate(1.25) brightness(var(--bubble-lift));
+  box-shadow: var(--bubble-edge);
+  color: var(--ink-2);
+  --bubble-fill: rgba(255, 255, 255, 0.14);
+  --bubble-lift: 1.02;
+  /* the light a curved glass edge catches: a bright lip on top, a faint
+     one below, the rim slightly brighter than the middle (it's seen through
+     more glass), and the shadow it casts */
+  --bubble-edge:
+    var(--edge-lip), inset 0 0 22px -8px rgba(255, 255, 255, 0.55),
+    0 1px 2px rgba(40, 36, 30, 0.06), 0 22px 44px -24px rgba(40, 36, 30, 0.3);
+}
+.dark .glass-bubble {
+  --bubble-fill: rgba(255, 255, 255, 0.035);
+  --bubble-lift: 1.12;
+  --bubble-edge:
+    var(--edge-lip), inset 0 0 26px -10px rgba(255, 255, 255, 0.14),
+    0 24px 48px -24px rgba(0, 0, 0, 0.85);
+}
+/* Where the SVG lens isn't available (Safari, Firefox), a stand-in for it:
+   real thick glass scatters and bends most at its rim, so a feathered band
+   along the edge frosts harder and lifts a little. It reads as the rim of a
+   lens without any displacement. */
+html:not(.lens) .glass-bubble::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  -webkit-backdrop-filter: blur(6px) saturate(1.5) brightness(1.05);
+  backdrop-filter: blur(6px) saturate(1.5) brightness(1.05);
+  -webkit-mask-image:
+    linear-gradient(to right, #000, transparent 16px, transparent calc(100% - 16px), #000),
+    linear-gradient(to bottom, #000, transparent 16px, transparent calc(100% - 16px), #000);
+  mask-image:
+    linear-gradient(to right, #000, transparent 16px, transparent calc(100% - 16px), #000),
+    linear-gradient(to bottom, #000, transparent 16px, transparent calc(100% - 16px), #000);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Thin film: the colours a soap film or coated glass throws at its edge,
+   a narrow band at the rim where the film is seen most obliquely, slowly
+   drifting as the film thins and flows. */
+.glass-bubble::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: var(--edge-film);
+  animation: filmDrift 14s linear infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+@keyframes filmDrift {
+  to {
+    filter: hue-rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .glass-bubble::after {
+    animation: none;
+  }
+}
+
+/* The neck drawn by LiquidBud sits outside the bubble, so it reads the fill from the page. */
+:root {
+  --bud-fill: #fbfaf7;
+  --bud-rim: rgba(40, 36, 30, 0.2);
+  --bud-shadow: rgba(40, 36, 30, 0.18);
+}
+.dark {
+  --bud-fill: #1d1f24;
+  --bud-rim: rgba(255, 255, 255, 0.16);
+  --bud-shadow: rgba(0, 0, 0, 0.55);
 }
 
 /* Photography autofocus cursor: replaces the native pointer on fine pointers */

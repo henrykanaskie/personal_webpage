@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   motion,
   AnimatePresence,
@@ -16,6 +16,7 @@ import {
 import { glassStyle, GlassLayers, FuzzyText, useIsMobile, useIsDark } from "../lib/glass";
 import { glassBoxClassNames, cs, themed } from "../lib/tokens";
 import { useSvgDrawAnimation } from "../hooks/useSvgDrawAnimation";
+import { rise, settle, leave } from "../lib/motion";
 
 interface InfoBoxProps {
   side: "left" | "right";
@@ -65,6 +66,16 @@ export default function InfoBox({
 
   const { svgProgress, onViewportEnter, onViewportLeave } = useSvgDrawAnimation(svgDrawDuration);
 
+  // The bubble is part of the box's resting composition, but it only buds off
+  // once the box has been seen and has mostly settled, so the separation is
+  // something you actually watch rather than something that happened off screen.
+  const [budReady, setBudReady] = useState(false);
+  useEffect(() => {
+    if (!isInView || budReady) return;
+    const t = setTimeout(() => setBudReady(true), 450);
+    return () => clearTimeout(t);
+  }, [isInView, budReady]);
+
   return (
     <>
       {vaporOrigin && (
@@ -79,24 +90,12 @@ export default function InfoBox({
 
       <motion.div
         ref={boxRef}
-        initial={{ x: isLeft ? "-70vw" : "70vw" }}
-        animate={
-          isInView
-            ? { x: 0, y: 0 }
-            : isMobile
-              ? { x: 0, y: 15 }
-              : { x: isLeft ? -20 : 20, y: 10 }
-        }
-        exit={{
-          x: isLeft ? "-70vw" : "70vw",
-          transition: { duration: 0.55, ease: [0.5, 0, 0.75, 0] },
-        }}
+        initial={rise.hidden}
+        animate={isInView ? rise.shown : rise.hidden}
+        exit={leave}
         onViewportEnter={onViewportEnter}
         onViewportLeave={onViewportLeave}
-        transition={{
-          duration: 1.2,
-          ease: "easeInOut",
-        }}
+        transition={settle}
         style={{
           position: "relative",
           maxWidth: "clamp(320px, 55vw, 780px)",
@@ -130,19 +129,18 @@ export default function InfoBox({
             strokeWidth={0.8}
             scrollProgress={svgProgress}
             rotate={svgRotate}
+            duration={svgDrawDuration}
           />
         </motion.div>
 
         {/* Glass box */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={isInView ? { opacity: 1 } : { opacity: 0 }}
-          transition={{ duration: 1.8, ease: "easeInOut" }}
           style={{
             position: "relative",
             borderRadius: "24px",
             ...glassStyle,
           }}
+          data-liquid
           className={`${glassBoxClassNames} p-5 md:p-10 lg:p-12`}
         >
           <GlassLayers refractionSide={isLeft ? "left" : "right"} />
@@ -160,7 +158,7 @@ export default function InfoBox({
             >
               <FuzzyText>
                 <span
-                  className="bg-clip-text text-transparent"
+                  className="bg-clip-text text-transparent metal-text"
                   style={{
                     WebkitBackgroundClip: "text",
                     backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
@@ -219,13 +217,7 @@ export default function InfoBox({
               <div className="mt-6 flex justify-center">
                 <button
                   onClick={isBubbleOpen ? requestPop : openBubble}
-                  className="
-                  group relative px-4 py-2 rounded-full text-sm font-medium
-                  text-black dark:text-white
-                  bg-blue-500/3 hover:bg-blue-500/5 dark:bg-white/5 dark:hover:bg-white/10
-                  border border-[rgba(100,130,200,0.2)]
-                  dark:border-[rgba(255,255,255,0.05)] transition-all duration-300
-                "
+                  className="metal-surface group relative px-4 py-2 rounded-full text-sm font-semibold hover:-translate-y-px"
                 >
                   <span className="relative z-10">
                     {isBubbleOpen ? "Close" : "More Info"}
@@ -250,7 +242,7 @@ export default function InfoBox({
           }}
         >
           <AnimatePresence>
-            {isBubbleOpen && extraInfo && (
+            {isBubbleOpen && extraInfo && budReady && (
               <InfoBubble
                 extraInfo={extraInfo}
                 side={isLeft ? "right" : "left"}

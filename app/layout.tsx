@@ -4,6 +4,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 import PageTransition from "@/components/PageTransition";
 import PhotographyBackground from "@/components/PhotographyBackground";
+import DotField from "@/components/DotField";
 
 const dmSans = DM_Sans({ subsets: ["latin"], weight: ["400", "500", "700"] });
 const spaceGrotesk = Space_Grotesk({
@@ -50,6 +51,7 @@ export default function RootLayout({
       </head>
       <body className={`${dmSans.className} ${spaceGrotesk.variable}`}>
         <PhotographyBackground />
+        <DotField />
         <div className="w-full">
           <Header />
           <main className="px-3 pt-10 md:pt-0">

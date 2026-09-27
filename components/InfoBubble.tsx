@@ -2,8 +2,8 @@
 
 import { useRef, useCallback, useState, useEffect, memo } from "react";
 import { motion } from "framer-motion";
-import { FuzzyText, glassStyle, GlassLayers } from "../lib/glass";
-import { glassBubbleClassNames } from "../lib/tokens";
+import { FuzzyText, glassStyle } from "../lib/glass";
+import { useGlassLens, LiquidBud } from "../lib/liquid";
 
 // ─── Border Vapor Particle ───
 interface BorderParticle {
@@ -107,7 +107,8 @@ function generateBorderParticles(
 ): BorderParticle[] {
   const halfW = bubbleWidth / 2;
   const halfH = bubbleHeight / 2;
-  const borderRadius = 24; // matches the bubble's borderRadius
+  // a square bubble is a circle; everything else uses the soft bubble radius
+  const borderRadius = Math.abs(bubbleWidth - bubbleHeight) < 6 ? bubbleWidth / 2 : 40;
 
   return Array.from({ length: count }, (_, i) => {
     const { x: bx, y: by } = sampleRoundedRectBorder(
@@ -286,6 +287,9 @@ export function InfoBubble({
   desktopX?: number;
 }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
+  const lens = useGlassLens(bubbleRef, { radius: 32, frost: "blur(1.6px) saturate(1.25) brightness(var(--bubble-lift))" });
+  // Hidden at its resting spot until LiquidBud has grown the droplet onto it.
+  const [budDone, setBudDone] = useState(false);
   const showBelow = isMobile;
   const [isPopping, setIsPopping] = useState(false);
   const isRight = side === "right";
@@ -322,15 +326,18 @@ export function InfoBubble({
 
   return (
     <>
+      {lens.filter}
+      <LiquidBud bubbleRef={bubbleRef} bubbleRadius={32} onDone={() => setBudDone(true)} />
       <motion.div
         ref={bubbleRef}
         style={{
           position: "absolute",
           top: showBelow ? "100%" : "50%",
           ...sideAnchor,
-          width: showBelow ? "min(260px, 85vw)" : 260,
-          padding: "20px 24px",
-          borderRadius: "24px",
+          // a soft rectangular bubble, like the cards it grows out of
+          width: showBelow ? "min(280px, 86vw)" : 280,
+          padding: "22px 26px",
+          borderRadius: 32,
           cursor: "pointer",
           pointerEvents: "auto",
           transformOrigin: showBelow
@@ -341,20 +348,24 @@ export function InfoBubble({
           zIndex: 9999999,
           willChange: "auto",
           ...glassStyle,
+          ...lens.style,
         }}
-        className={glassBubbleClassNames}
+        className="glass-bubble"
         onClick={(e) => {
           if ((e.target as HTMLElement).closest("a")) return;
           handleClick();
         }}
         initial={
           showBelow
-            ? { x: "-50%", y: "0%", scaleX: 0.5, scaleY: 0.15, opacity: 0 }
+            ? { x: "-50%", y: "16px", opacity: 0 }
             : {
                 y: "-50%",
-                x: isRight ? "30%" : "-30%",
-                scaleX: 0.15,
-                scaleY: 0.3,
+                x:
+                  desktopX !== undefined
+                    ? desktopX
+                    : isRight
+                      ? `calc(100% + ${BUBBLE_REST_OFFSET - 200}px)`
+                      : `calc(-100% - ${BUBBLE_REST_OFFSET - 200}px)`,
                 opacity: 0,
               }
         }
@@ -393,7 +404,7 @@ export function InfoBubble({
                 y: "16px",
                 scaleX: isPopping || isPressed ? 1.08 : 1,
                 scaleY: isPopping || isPressed ? 1.08 : 1,
-                opacity: parentInView ? 1 : 0,
+                opacity: budDone && parentInView ? 1 : 0,
               }
             : {
                 y: "-50%",
@@ -405,7 +416,7 @@ export function InfoBubble({
                       : `calc(-100% - ${BUBBLE_REST_OFFSET - 200}px)`,
                 scaleX: isPopping || isPressed ? 1.08 : 1,
                 scaleY: isPopping || isPressed ? 1.08 : 1,
-                opacity: parentInView ? 1 : 0,
+                opacity: budDone && parentInView ? 1 : 0,
               }
         }
         transition={
@@ -415,9 +426,15 @@ export function InfoBubble({
                 opacity: { duration: 0.08 },
               }
             : {
-                duration: 0.75,
-                ease: [0.34, 1.56, 0.64, 1],
-                opacity: { duration: 1.4, ease: "easeInOut" },
+                // The droplet itself is drawn by LiquidBud; this element only
+                // fades in once the droplet has settled onto its box.
+                x: { type: "spring", stiffness: 170, damping: 26 },
+                y: { type: "spring", stiffness: 170, damping: 26 },
+                top: { type: "spring", stiffness: 170, damping: 26 },
+                scaleX: { type: "spring", stiffness: 170, damping: 14 },
+                scaleY: { type: "spring", stiffness: 170, damping: 14 },
+                // the clear bubble frosts over: a slower crossfade with the droplet
+                opacity: { duration: 0.32, ease: "easeInOut" },
               }
         }
         exit={{ opacity: 0, transition: { duration: 0.001 } }}
@@ -425,8 +442,6 @@ export function InfoBubble({
           isPopping ? {} : { scale: 1.03, transition: { duration: 0.2 } }
         }
       >
-        <GlassLayers refractionSide={isRight ? "right" : "left"} specularInset="15%" />
-
         {/* Content */}
         <div
           style={{
@@ -464,7 +479,7 @@ export function InfoBubble({
 
           <div
             className="bg-black/[0.22] dark:bg-white/[0.15]"
-            style={{ height: 1, margin: "10px 0" }}
+            style={{ height: 1, margin: "7px 12px" }}
           />
 
           {/* Tech Stack */}
@@ -485,7 +500,7 @@ export function InfoBubble({
               display: "flex",
               flexWrap: "wrap",
               gap: 4,
-              marginTop: 11,
+              marginTop: 6,
               justifyContent: "center",
             }}
           >
@@ -508,7 +523,7 @@ export function InfoBubble({
 
           <div
             className="bg-black/[0.22] dark:bg-white/[0.15]"
-            style={{ height: 1, margin: "12px 0" }}
+            style={{ height: 1, margin: "8px 12px" }}
           />
 
           {/* Industry */}
@@ -537,7 +552,7 @@ export function InfoBubble({
 
           <div
             className="bg-black/[0.22] dark:bg-white/[0.15]"
-            style={{ height: 1, margin: "10px 0" }}
+            style={{ height: 1, margin: "7px 12px" }}
           />
 
           {/* Location */}
@@ -565,7 +580,7 @@ export function InfoBubble({
           </div>
 
           <p
-            style={{ margin: "10px 0 0", fontSize: 10, opacity: 0.4 }}
+            style={{ margin: "7px 0 0", fontSize: 9, opacity: 0.4 }}
             className="text-black dark:text-white"
           >
             {isMobile ? "tap to dismiss" : "click to dismiss"}
