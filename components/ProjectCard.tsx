@@ -6,6 +6,7 @@ import { useInViewFromBelow } from "../hooks/useInViewFromBelow";
 import { useSvgDrawAnimation } from "../hooks/useSvgDrawAnimation";
 import AnimatedSvg from "./AnimatedSvg";
 import { VaporCloud, useInfoBubble } from "./InfoBubble";
+import { useGlassLens, LiquidBud } from "../lib/liquid";
 import {
   glassStyle,
   GlassLayers,
@@ -13,11 +14,11 @@ import {
   useIsDark,
 } from "../lib/glass";
 import {
-  glassBubbleClassNames,
   glassBoxClassNames,
   cs,
   themed,
 } from "../lib/tokens";
+import { rise, settle, leave } from "../lib/motion";
 
 // ─── Types ───
 
@@ -147,6 +148,9 @@ const BubbleShell = memo(function BubbleShell({
   children: React.ReactNode;
 }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
+  const lens = useGlassLens(bubbleRef, { radius: 40, frost: "blur(1.6px) saturate(1.25) brightness(var(--bubble-lift))" });
+  // Hidden at its resting spot until LiquidBud has grown the droplet onto it.
+  const [budDone, setBudDone] = useState(false);
   const isInView = useInView(bubbleRef, { once: false, amount: 0.4 });
   const showBelow = isMobile;
 
@@ -184,14 +188,17 @@ const BubbleShell = memo(function BubbleShell({
   const mYOff = mobileYOffset ?? 0;
 
   return (
+    <>
+    {lens.filter}
+    <LiquidBud bubbleRef={bubbleRef} bubbleRadius={40} onDone={() => setBudDone(true)} />
     <motion.div
       ref={bubbleRef}
       style={{
         position: "absolute",
         ...(showBelow ? { left: "50%" } : isRight ? { right: 0 } : { left: 0 }),
-        width: showBelow ? "min(240px, 85vw)" : 240,
+        width: showBelow ? "min(250px, 85vw)" : 250,
         padding: "16px 20px",
-        borderRadius: "24px",
+        borderRadius: "40px",
         cursor: "pointer",
         pointerEvents: "auto",
         transformOrigin: showBelow
@@ -201,8 +208,9 @@ const BubbleShell = memo(function BubbleShell({
             : "right center",
         zIndex: 9999999,
         ...glassStyle,
+        ...lens.style,
       }}
-      className={glassBubbleClassNames}
+      className="glass-bubble"
       onClick={handleClick}
       onMouseDown={() => setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
@@ -226,18 +234,19 @@ const BubbleShell = memo(function BubbleShell({
         showBelow
           ? {
               top: "100%",
-              x: "-50%",
-              y: "0%",
-              scaleX: 0.5,
-              scaleY: 0.15,
+              x: mobileBubbleX ?? "-50%",
+              y: `${16 + mYOff}px`,
               opacity: 0,
             }
           : {
               top: "50%",
-              y: "-50%",
-              x: isRight ? "30%" : "-30%",
-              scaleX: 0.15,
-              scaleY: 0.3,
+              y: `calc(-50% + ${dYOff}px)`,
+              x:
+                desktopX !== undefined
+                  ? desktopX
+                  : isRight
+                    ? "calc(100% + 80px)"
+                    : "calc(-100% - 80px)",
               opacity: 0,
             }
       }
@@ -249,7 +258,7 @@ const BubbleShell = memo(function BubbleShell({
               y: `${16 + mYOff}px`,
               scaleX: isPopping || isPressed ? 1.08 : 1,
               scaleY: isPopping || isPressed ? 1.08 : 1,
-              opacity: isInView || parentInView ? 1 : 0,
+              opacity: budDone && (isInView || parentInView) ? 1 : 0,
             }
           : {
               top: "50%",
@@ -262,7 +271,7 @@ const BubbleShell = memo(function BubbleShell({
                     : "calc(-100% - 80px)",
               scaleX: isPopping || isPressed ? 1.08 : 1,
               scaleY: isPopping || isPressed ? 1.08 : 1,
-              opacity: isInView || parentInView ? 1 : 0,
+              opacity: budDone && (isInView || parentInView) ? 1 : 0,
             }
       }
       transition={
@@ -272,11 +281,15 @@ const BubbleShell = memo(function BubbleShell({
               opacity: { duration: 0.08 },
             }
           : {
-              duration: 0.75,
-              ease: [0.34, 1.56, 0.64, 1],
-              top: { duration: 0.5, ease: [0.25, 1, 0.5, 1] },
-              x: { duration: 0.5, ease: [0.25, 1, 0.5, 1] },
-              opacity: { duration: 0.9, ease: "easeInOut" },
+                // The droplet itself is drawn by LiquidBud; this element only
+                // fades in once the droplet has settled onto its box.
+                x: { type: "spring", stiffness: 170, damping: 26 },
+                y: { type: "spring", stiffness: 170, damping: 26 },
+                top: { type: "spring", stiffness: 170, damping: 26 },
+                scaleX: { type: "spring", stiffness: 170, damping: 14 },
+                scaleY: { type: "spring", stiffness: 170, damping: 14 },
+                // the clear bubble frosts over: a slower crossfade with the droplet
+                opacity: { duration: 0.32, ease: "easeInOut" },
             }
       }
       exit={{ opacity: 0, transition: { duration: 0.001 } }}
@@ -284,10 +297,9 @@ const BubbleShell = memo(function BubbleShell({
         isPopping ? {} : { scale: 1.03, transition: { duration: 0.2 } }
       }
     >
-      <GlassLayers refractionSide="left" specularInset="15%" />
-
       {children}
     </motion.div>
+    </>
   );
 });
 
@@ -372,15 +384,14 @@ const DeploymentBubbleContent = memo(function DeploymentBubbleContent({
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
           style={{ pointerEvents: "auto" }}
-          className="text-black/80 dark:text-white/80 hover:text-black dark:hover:text-white transition-colors duration-200"
+          className="metal-surface rounded-full px-3 py-1 transition-transform duration-200 hover:-translate-y-px"
         >
           <span
             style={{
-              fontSize: 10,
+              fontSize: 10.5,
+              fontWeight: 600,
               fontFamily: "var(--font-elevated)",
               letterSpacing: "0.04em",
-              textDecoration: "underline",
-              textUnderlineOffset: 3,
             }}
           >
             {label}
@@ -588,22 +599,13 @@ export default function ProjectCard({
 
       <motion.div
         ref={boxRef}
-        initial={{ x: bubbleSide === "left" ? "-100vw" : "100vw" }}
-        animate={
-          isInView
-            ? { x: 0, y: 0 }
-            : {
-                x: isMobile ? 0 : bubbleSide === "left" ? -20 : 20,
-                y: isMobile ? 15 : 10,
-              }
-        }
-        exit={{
-          x: bubbleSide === "left" ? "-100vw" : "100vw",
-          transition: { duration: 0.7, ease: [0.5, 0, 0.75, 0] },
-        }}
+        initial={rise.hidden}
+        animate={isInView ? rise.shown : rise.hidden}
+        exit={leave}
         onViewportEnter={onViewportEnter}
         onViewportLeave={onViewportLeave}
-        transition={{ duration: 0.7, ease: [0.25, 1, 0.5, 1] }}
+        // the right-hand card of a pair arrives a beat after the left
+        transition={{ ...settle, delay: !isMobile && bubbleSide === "right" ? 0.08 : 0 }}
         style={{
           position: "relative",
           zIndex: anyBubbleOpen ? 10 : "auto",
@@ -637,6 +639,7 @@ export default function ProjectCard({
                 strokeWidth={0.8}
                 scrollProgress={svgProgress}
                 rotate={svg.rotate ?? 0}
+                duration={svg.drawDuration ?? 3}
               />
             </motion.div>
           );
@@ -644,15 +647,13 @@ export default function ProjectCard({
 
         {/* Glass box */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={isInView ? { opacity: 1 } : { opacity: 0 }}
-          transition={{ duration: 0.9, ease: "easeInOut" }}
           style={{
             position: "relative",
             borderRadius: "24px",
             flex: 1,
             ...glassStyle,
           }}
+          data-liquid
           className={`${glassBoxClassNames} p-5 md:p-8`}
         >
           <GlassLayers refractionSide="left" />
@@ -671,7 +672,7 @@ export default function ProjectCard({
             >
               <FuzzyText>
                 <span
-                  className="bg-clip-text text-transparent"
+                  className="bg-clip-text text-transparent metal-text"
                   style={{
                     WebkitBackgroundClip: "text",
                     backgroundImage: themed(
@@ -778,7 +779,7 @@ export default function ProjectCard({
                     ? thumbnailBubble.requestPop
                     : thumbnailBubble.openBubble
                 }
-                className="group relative px-3 py-1.5 rounded-full text-xs font-medium text-black dark:text-white bg-blue-500/3 hover:bg-blue-500/5 dark:bg-white/5 dark:hover:bg-white/10 border border-[rgba(100,130,200,0.2)] dark:border-[rgba(255,255,255,0.05)] transition-all duration-300"
+                className="metal-surface group relative px-4 py-1.5 rounded-full text-xs font-semibold transition-transform duration-200 hover:-translate-y-px"
               >
                 <span className="relative z-10">
                   {thumbnailBubble.isBubbleOpen ? "Close" : "About"}
@@ -790,7 +791,7 @@ export default function ProjectCard({
                     ? deploymentBubble.requestPop
                     : deploymentBubble.openBubble
                 }
-                className="group relative px-3 py-1.5 rounded-full text-xs font-medium text-black dark:text-white bg-blue-500/3 hover:bg-blue-500/5 dark:bg-white/5 dark:hover:bg-white/10 border border-[rgba(100,130,200,0.2)] dark:border-[rgba(255,255,255,0.05)] transition-all duration-300"
+                className="metal-surface group relative px-4 py-1.5 rounded-full text-xs font-semibold transition-transform duration-200 hover:-translate-y-px"
               >
                 <span className="relative z-10">
                   {deploymentBubble.isBubbleOpen ? "Close" : "Links"}

@@ -7,61 +7,64 @@
 export const themed = <T>(isDark: boolean, dark: T, light: T): T =>
   isDark ? dark : light;
 
-// ─── CS Palette (cool iridescent blue/purple) ───────────────────────────────
+// ─── CS Palette ─────────────────────────────────────────────────────────────
+// Graphite ink and satin chrome. The old "iridescent" names are kept so the
+// call sites didn't all have to change; none of them is iridescent any more.
 
 export const cs = {
   // 8-stop 135deg: primary titles (GlassTitle, InfoBox h2, ProjectCard h2, EducationCard h2)
   iridescent: {
-    light: `linear-gradient(135deg, rgb(100,115,145) 0%, rgb(125,110,135) 15%, rgb(105,130,150) 30%, rgb(130,115,130) 45%, rgb(100,125,145) 60%, rgb(120,110,140) 75%, rgb(105,120,148) 90%, rgb(128,115,135) 100%)`,
-    dark: `linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 15%, rgb(180,210,235) 30%, rgb(215,190,215) 45%, rgb(170,200,230) 60%, rgb(200,185,225) 75%, rgb(180,195,235) 90%, rgb(210,185,220) 100%)`,
+    light: `linear-gradient(135deg, #2b2a27 0%, #4a4843 45%, #2b2a27 100%)`,
+    dark: `linear-gradient(135deg, #e9e7e2 0%, #b9b6b0 45%, #e9e7e2 100%)`,
   },
 
   // 8-stop 135deg: active/hover state
   iridescentActive: {
-    light: `linear-gradient(135deg, rgb(70,85,115) 0%, rgb(95,80,105) 15%, rgb(75,100,120) 30%, rgb(100,85,100) 45%, rgb(70,95,115) 60%, rgb(90,80,110) 75%, rgb(75,90,118) 90%, rgb(98,85,105) 100%)`,
-    dark: `linear-gradient(135deg, rgb(220,235,255) 0%, rgb(245,230,250) 15%, rgb(220,245,255) 30%, rgb(250,235,245) 45%, rgb(215,240,255) 60%, rgb(240,230,250) 75%, rgb(220,238,255) 90%, rgb(245,230,248) 100%)`,
+    light: `linear-gradient(135deg, #121110, #121110)`,
+    dark: `linear-gradient(135deg, #ffffff, #ffffff)`,
   },
 
   // 8-stop 90deg: SkillBar fill, progress bars
   iridescentHorizontal: {
-    light: `linear-gradient(90deg, rgb(100,115,145) 0%, rgb(125,110,135) 15%, rgb(105,130,150) 30%, rgb(130,115,130) 45%, rgb(100,125,145) 60%, rgb(120,110,140) 75%, rgb(105,120,148) 90%, rgb(128,115,135) 100%)`,
-    dark: `linear-gradient(90deg, rgb(180,200,255) 0%, rgb(210,185,230) 15%, rgb(180,210,235) 30%, rgb(215,190,215) 45%, rgb(170,200,230) 60%, rgb(200,185,225) 75%, rgb(180,195,235) 90%, rgb(210,185,220) 100%)`,
+    light: `linear-gradient(180deg, #ffffff 0%, #e6e4e0 20%, #cbc8c2 44%, #9a968f 58%, #75716b 62%, #a9a59f 75%, #dfdcd6 91%, #f8f6f2 100%)`,
+    dark: `linear-gradient(180deg, #ffffff 0%, #e6e4e0 20%, #cbc8c2 44%, #9a968f 58%, #75716b 62%, #a9a59f 75%, #dfdcd6 91%, #f8f6f2 100%)`,
   },
 
   // 5-stop 90deg: ProjectCard deployment progress bar
   progressBar: {
-    light: `linear-gradient(90deg, rgb(100,115,145), rgb(125,110,135), rgb(105,130,150), rgb(130,115,130), rgb(100,125,145))`,
-    dark: `linear-gradient(90deg, rgb(180,200,255), rgb(210,185,230), rgb(180,210,235), rgb(215,190,215), rgb(180,200,255))`,
+    light: `linear-gradient(180deg, #ffffff 0%, #e6e4e0 20%, #cbc8c2 44%, #9a968f 58%, #75716b 62%, #a9a59f 75%, #dfdcd6 91%, #f8f6f2 100%)`,
+    dark: `linear-gradient(180deg, #ffffff 0%, #e6e4e0 20%, #cbc8c2 44%, #9a968f 58%, #75716b 62%, #a9a59f 75%, #dfdcd6 91%, #f8f6f2 100%)`,
   },
 
   // 2-stop 135deg: GPA, nav dot gradient, short accent
   iridescentShort: {
-    light: `linear-gradient(135deg, rgb(100,115,145), rgb(125,110,135))`,
-    dark: `linear-gradient(135deg, rgb(180,200,255), rgb(210,185,230))`,
+    light: `linear-gradient(135deg, #2b2a27 0%, #4a4843 45%, #2b2a27 100%)`,
+    dark: `linear-gradient(135deg, #e9e7e2 0%, #b9b6b0 45%, #e9e7e2 100%)`,
   },
 
   // 3-stop 180deg: section nav dot fill
   iridescentVertical: {
-    light: `linear-gradient(180deg, rgb(100,115,145), rgb(125,110,135), rgb(105,130,150))`,
-    dark: `linear-gradient(180deg, rgb(180,200,255), rgb(210,185,230), rgb(180,210,235))`,
+    light: `linear-gradient(180deg, #2b2a27 0%, #4a4843 45%, #2b2a27 100%)`,
+    dark: `linear-gradient(180deg, #e9e7e2 0%, #b9b6b0 45%, #e9e7e2 100%)`,
   },
 
   // 3-stop 135deg: mid-weight accent (project section headings, etc.)
   iridescentMedium: {
-    light: `linear-gradient(135deg, rgb(100,115,145) 0%, rgb(125,110,135) 50%, rgb(105,130,150) 100%)`,
-    dark: `linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 50%, rgb(180,210,235) 100%)`,
+    light: `linear-gradient(135deg, #2b2a27 0%, #4a4843 45%, #2b2a27 100%)`,
+    dark: `linear-gradient(135deg, #e9e7e2 0%, #b9b6b0 45%, #e9e7e2 100%)`,
   },
 
   // Liquid glass / crystalline text gradient (matches GlassTitle crystalline variant)
+  // Card headings: solid ink (a flat "gradient" so existing background-clip call sites keep working).
   liquidGlass: {
-    light: `linear-gradient(180deg, rgba(14,18,52,0.88) 0%, rgba(22,32,80,0.72) 48%, rgba(30,45,100,0.52) 100%)`,
-    dark: `linear-gradient(135deg, rgb(180,200,255) 0%, rgb(210,185,230) 15%, rgb(180,210,235) 30%, rgb(215,190,215) 45%, rgb(170,200,230) 60%, rgb(200,185,225) 75%, rgb(180,195,235) 90%, rgb(210,185,220) 100%)`,
+    light: `linear-gradient(#1b1a17, #1b1a17)`,
+    dark: `linear-gradient(#efede9, #efede9)`,
   },
 
   // Standalone color (for stroke, color props, not gradients)
   color: {
-    light: "rgb(100,115,145)",
-    dark: "rgb(180,200,255)",
+    light: "#3a3834",
+    dark: "#d6d4cf",
   },
 
   // 8-stop 135deg: company/role/description text (near-white dark, near-black light)
@@ -84,36 +87,53 @@ export const cs = {
 
   // Theme toggle icon colors
   toggle: {
-    light: "rgb(100, 115, 145)",
-    dark: "rgb(195, 210, 240)",
+    light: "#1b1a17",
+    dark: "#1b1a17",
   },
 
   // Toggle hover background
   toggleHover: {
-    light: "rgba(100,115,145,0.08)",
-    dark: "rgba(180,200,255,0.08)",
+    light: "rgba(0,0,0,0)",
+    dark: "rgba(0,0,0,0)",
   },
 
   // Nav active bubble border/shadow
   navActiveBorder: {
-    light: "1px solid rgba(100,115,145,0.25)",
-    dark: "1px solid rgba(180,200,255,0.3)",
+    light: "none",
+    dark: "none",
   },
   navActiveShadow: {
-    light: "inset 0 1px 0 rgba(255,255,255,0.5), 0 4px 16px rgba(100,115,145,0.1)",
-    dark: "inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 16px rgba(180,200,255,0.1)",
+    light: "var(--metal-rim)",
+    dark: "var(--metal-rim)",
   },
 
   // SkillBar fill glow
   skillBarShadow: {
-    light: "0 0 8px rgba(100,115,145,0.2), inset 0 1px 0 rgba(255,255,255,0.3)",
-    dark: "0 0 10px rgba(180,200,255,0.25), inset 0 1px 0 rgba(255,255,255,0.2)",
+    light: "inset 0 0 0 0.5px rgba(46,38,28,0.35), inset 0 1px 0 #fff",
+    dark: "inset 0 0 0 0.5px rgba(46,38,28,0.35), inset 0 1px 0 #fff",
   },
 
   // GlassTitle text shadow
   titleShadow: {
-    light: `0 1px 2px rgba(0,0,0,0.06), 0 4px 8px rgba(0,0,0,0.04), 0 1px 0 rgba(255,255,255,0.15), 2px 0 8px rgba(255,0,80,0.04), -2px 0 8px rgba(0,100,255,0.04), 0 2px 8px rgba(255,200,0,0.03), 0 -2px 8px rgba(0,200,255,0.03)`,
-    dark: `0 1px 2px rgba(0,0,0,0.2), 0 4px 8px rgba(0,0,0,0.1), 0 1px 0 rgba(255,255,255,0.05)`,
+    light: `0 1px 0 rgba(255,255,255,0.75)`,
+    dark: `0 -1px 0 rgba(0,0,0,0.7)`,
+  },
+} as const;
+
+// ─── Paper ──────────────────────────────────────────────────────────────────
+// Mirrors --paper, --dot and --dot-gap in app/globals.css. The WebGL dot field
+// paints over the CSS dots, so these must match exactly or the seam shows.
+
+export const paper = {
+  gap: 24,
+  dotRadius: 1.15,
+  light: { bg: [0xf1, 0xf0, 0xed], dot: [52, 48, 42], dotAlpha: 0.27 },
+  dark: { bg: [0x0c, 0x0d, 0x10], dot: [196, 204, 222], dotAlpha: 0.16 },
+  // The frosted cards' fill (--glass-fill): the shaders paint the same fill
+  // wherever a card's liquid edge reaches past its DOM box.
+  glass: {
+    light: { fill: [255, 255, 255], alpha: 0.58 },
+    dark: { fill: [26, 28, 33], alpha: 0.7 },
   },
 } as const;
 
@@ -169,35 +189,11 @@ export const glass = {
 
 // ─── Tailwind Class Strings ─────────────────────────────────────────────────
 
-export const glassBubbleClassNames = `
-  bg-white/[0.35]
-  border border-[rgba(80,150,255,0.18)]
-  border-t-[rgba(16,112,196,0.38)]
-  border-r-[rgba(16,112,196,0.18)]
-  border-b-[rgba(16,112,196,0.22)]
-  shadow-[inset_0_1px_0_rgba(80,150,255,0.12)]
-  shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]
-
-  dark:bg-white/[0.02]
-  dark:border-[rgba(255,255,255,0.06)]
-  dark:border-t-[rgba(255,255,255,0.1)]
-  dark:border-r-[rgba(255,255,255,0.04)]
-  dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]
-`;
-
-export const glassBoxClassNames = `
-  bg-transparent
-  border border-[rgba(16,112,196,0.14)]
-  border-t-[rgba(16,112,196,0.36)]
-  border-r-[rgba(16,112,196,0.14)]
-  border-b-[rgba(16,112,196,0.22)]
-  shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]
-
-  dark:border-[rgba(255,255,255,0.06)]
-  dark:border-t-[rgba(255,255,255,0.1)]
-  dark:border-r-[rgba(255,255,255,0.04)]
-  dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]
-`;
+// The materials themselves live in app/globals.css (.glass-pill, .glass-panel,
+// .metal-surface) so light and dark resolve through CSS variables, not React state.
+export const glassBubbleClassNames = "metal-surface";
+export const glassBoxClassNames = "glass-panel";
+export const metalClassNames = "metal-surface";
 
 // ─── Radii ──────────────────────────────────────────────────────────────────
 

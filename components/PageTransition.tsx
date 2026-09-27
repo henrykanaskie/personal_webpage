@@ -38,27 +38,30 @@ export default function PageTransition({
   }, []);
 
   // Single AnimatePresence for all routes.
-  // Exit duration is determined by the CURRENT page type at render time:
-  //   - Full-screen (home, photography): exit instantly so photo→photo navigation
-  //     has no double-load feel: the old page snaps away, new page fades in.
-  //   - CS pages: slow 0.6s exit so navigating to any destination (including
-  //     the split-screen home) has a deliberate, smooth fade-out.
+  //   - Photography: the old page snaps away so photo-to-photo navigation has no
+  //     double-load feel, and the new page fades in.
+  //   - Everything else: the page lifts and fades quickly while the dot field
+  //     (a separate, persistent layer) stays put and replays its configure wave
+  //     from the click, so the paper never blinks between pages. The new page
+  //     then rises into place on a critically damped spring.
+  const photo = isFullScreenPath(pathname);
   return (
     <AnimatePresence mode="wait" onExitComplete={onExitComplete}>
       <motion.div
         key={pathname}
-        initial={{ opacity: 0 }}
+        initial={photo ? { opacity: 0 } : { opacity: 0, y: 18 }}
         animate={{
           opacity: 1,
-          transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
+          y: 0,
+          transition: photo
+            ? { duration: 0.3, ease: [0.22, 1, 0.36, 1] }
+            : { opacity: { duration: 0.35, ease: [0.22, 1, 0.36, 1] }, y: { type: "spring", stiffness: 140, damping: 24 } },
         }}
-        exit={{
-          opacity: 0,
-          transition: {
-            duration: isFullScreenPath(pathname) ? 0 : 0.6,
-            ease: [0.4, 0, 1, 1],
-          },
-        }}
+        exit={
+          photo
+            ? { opacity: 0, transition: { duration: 0 } }
+            : { opacity: 0, y: -10, transition: { duration: 0.24, ease: [0.4, 0, 1, 1] } }
+        }
       >
         <FrozenRouter>{children}</FrozenRouter>
       </motion.div>
