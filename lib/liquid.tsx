@@ -14,8 +14,10 @@ import { paper } from "./tokens";
 //   LiquidBud      while a bubble opens, it is born out of the card's side:
 //                  the edge bulges, necks, pinches and bursts free (below).
 //
-//   setRingHole    opens the panel's rim (.ring-mask) where a swell leaves the
-//                  card, so the border molds into the swell.
+//   CardLens       the same lens on a card, along its rim.
+//
+//   setRingHole    opens the panel's rim (.ring-mask) and lens where a swell
+//                  leaves the card, so the border molds into the swell.
 
 // ─── useGlassLens ───────────────────────────────────────────────────────────
 
@@ -152,6 +154,108 @@ export function useGlassLens(
   return { filter, style };
 }
 
+// ─── CardLens ───────────────────────────────────────────────────────────────
+// The bubbles' lens on a card: what's behind the card (line drawings, titles,
+// the dots) bends at its rim exactly as through a bubble, with the same
+// blur, lift and colour split. The lens only bends light within its 22px
+// bevel (the middle is flat glass, which DotField draws), so rather than
+// filter the whole card, four strips along the edge each carry their slice
+// of one full-card displacement map: a fraction of the area to re-filter
+// while the page scrolls. The strips wear the rim's holes (.ring-mask's
+// --s and --b), so where a swell or a bud leaves the card the canvas draws
+// the glass instead and the lens follows the liquid outline.
+// Chromium only (backdrop-filter: url()); elsewhere DotField draws the rim.
+
+const STRIP = 24; // wider than the bevel plus the deepest inward sample (22px)
+
+export function CardLens({ strength = 38 }: { strength?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const id = `cardlens-${useId().replace(/:/g, "")}`;
+  const [map, setMap] = useState<{ href: string; w: number; h: number } | null>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !supportsLens()) return;
+    document.documentElement.classList.add("lens");
+    let last = "";
+    let idle = 0;
+    const build = () => {
+      const w = el.offsetWidth, h = el.offsetHeight;
+      const panel = el.parentElement;
+      const radius = panel ? parseFloat(getComputedStyle(panel).borderTopLeftRadius) || 0 : 0;
+      const key = `${w}x${h}:${radius}`;
+      if (w < STRIP * 3 || h < STRIP * 3 || key === last) return;
+      last = key;
+      setMap({ href: lensMap(w, h, radius, 22), w, h });
+    };
+    const schedule = () => {
+      if (idle) return;
+      const run = () => { idle = 0; build(); };
+      idle = window.requestIdleCallback ? window.requestIdleCallback(run, { timeout: 800 }) : window.setTimeout(run, 200);
+    };
+    schedule();
+    const ro = new ResizeObserver(schedule);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      if (idle) (window.cancelIdleCallback ?? window.clearTimeout)(idle);
+    };
+  }, []);
+
+  const strips = map
+    ? [
+        { k: "t", x: 0, y: 0, w: map.w, h: STRIP, fade: "to bottom" },
+        { k: "b", x: 0, y: map.h - STRIP, w: map.w, h: STRIP, fade: "to top" },
+        { k: "l", x: 0, y: STRIP, w: STRIP, h: map.h - STRIP * 2, fade: "to right" },
+        { k: "r", x: map.w - STRIP, y: STRIP, w: STRIP, h: map.h - STRIP * 2, fade: "to left" },
+      ]
+    : [];
+
+  return (
+    <div ref={ref} className="card-lens" aria-hidden>
+      {map && (
+        <svg width="0" height="0" style={{ position: "absolute" }}>
+          {strips.map((s) => (
+            <filter key={s.k} id={`${id}-${s.k}`} x="0" y="0" width={s.w} height={s.h} filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+              <feImage href={map.href} x={-s.x} y={-s.y} width={map.w} height={map.h} preserveAspectRatio="none" result="map" />
+              <feDisplacementMap in="SourceGraphic" in2="map" scale={strength} xChannelSelector="R" yChannelSelector="G" result="dR" />
+              <feDisplacementMap in="SourceGraphic" in2="map" scale={strength * 1.07} xChannelSelector="R" yChannelSelector="G" result="dG" />
+              <feDisplacementMap in="SourceGraphic" in2="map" scale={strength * 1.14} xChannelSelector="R" yChannelSelector="G" result="dB" />
+              <feColorMatrix in="dR" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r" />
+              <feColorMatrix in="dG" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="g" />
+              <feColorMatrix in="dB" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="b" />
+              <feComposite in="r" in2="g" operator="arithmetic" k2="1" k3="1" result="rg" />
+              <feComposite in="rg" in2="b" operator="arithmetic" k2="1" k3="1" />
+            </filter>
+          ))}
+        </svg>
+      )}
+      {strips.map((s) => (
+        <div
+          key={s.k}
+          className="card-lens-strip"
+          style={
+            {
+              left: s.x,
+              top: s.y,
+              width: s.w,
+              height: s.h,
+              "--ox": `${s.x}px`,
+              "--oy": `${s.y}px`,
+              "--fade": s.fade,
+              ...(s.k === "t" || s.k === "b"
+                ? { "--corners": `linear-gradient(to right, #000 ${STRIP}px, transparent ${STRIP}px, transparent calc(100% - ${STRIP}px), #000 calc(100% - ${STRIP}px))` }
+                : {}),
+              backdropFilter: `url(#${id}-${s.k}) var(--glass-frost)`,
+              WebkitBackdropFilter: `url(#${id}-${s.k}) var(--glass-frost)`,
+            } as React.CSSProperties
+          }
+        />
+      ))}
+    </div>
+  );
+}
+
 // ─── The glass, in GLSL ──────────────────────────────────────────────────────
 // One material for every glass surface the shaders draw: a card (DotField,
 // under the card's DOM fill), a card's swell toward the cursor, and a bubble
@@ -208,9 +312,10 @@ export function setRingHole(panel: HTMLElement, which: "s" | "b", x: number, y: 
   }
   if (!ring) return;
   const on = r > 0.5;
-  ring.style.setProperty(`--${which}x`, on ? `${x.toFixed(1)}px` : "-9999px");
-  ring.style.setProperty(`--${which}y`, on ? `${y.toFixed(1)}px` : "-9999px");
-  ring.style.setProperty(`--${which}r`, on ? `${r.toFixed(1)}px` : "0px");
+  // set on the panel: the rim (.ring-mask) and the lens strips (CardLens) both read them
+  panel.style.setProperty(`--${which}x`, on ? `${x.toFixed(1)}px` : "-9999px");
+  panel.style.setProperty(`--${which}y`, on ? `${y.toFixed(1)}px` : "-9999px");
+  panel.style.setProperty(`--${which}r`, on ? `${r.toFixed(1)}px` : "0px");
 }
 
 // ─── LiquidBud ──────────────────────────────────────────────────────────────

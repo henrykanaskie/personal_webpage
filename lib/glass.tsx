@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { CardLens } from "./liquid";
 
 // ─── Hooks ──────────────────────────────────────────────────────────────────
 
@@ -55,20 +56,20 @@ export const FuzzyText = ({
 
 // ─── GlassLayers ────────────────────────────────────────────────────────────
 // Decorates a .glass-panel: the glass edge (the same lip and thin film as the
-// bubbles, .edge-ring), a specular line along
-// the top edge, and a faint brushed sheen that catches light from the upper left.
+// bubbles, .edge-ring), a specular line along the top edge, and the bubbles'
+// lens along the rim (CardLens). No sheen: the bubbles have none.
 
 export function GlassLayers({
-  refractionSide = "left",
   specularInset = "8%",
 }: {
+  /** Kept for existing call sites; the glass has no directional sheen now. */
   refractionSide?: "left" | "right";
   specularInset?: string;
 } = {}) {
-  const lightX = refractionSide === "left" ? "18%" : "82%";
   return (
     <>
-      {/* the rim sits in a mask the liquid swells can open (.ring-mask) */}
+      {/* the bubbles' lens along the rim (Chromium) */}
+      <CardLens />
       {/* the rim and the specular line sit in a mask the liquid swells can
           open (.ring-mask), so nothing on the edge crosses a swell */}
       <div className="ring-mask" style={{ zIndex: 1 }}>
@@ -87,16 +88,6 @@ export function GlassLayers({
           }}
         />
       </div>
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          borderRadius: "inherit",
-          pointerEvents: "none",
-          zIndex: 0,
-          background: `radial-gradient(90% 60% at ${lightX} 0%, rgba(255,255,255,0.18), transparent 60%)`,
-        }}
-      />
     </>
   );
 }

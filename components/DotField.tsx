@@ -52,6 +52,7 @@ uniform float uHoleR;     // radius of the hole opened in that card's rim (centr
 uniform vec3 uFill;
 uniform float uFillA;
 uniform float uDark;
+uniform float uLens;       // 1 where the cards carry the bubbles' DOM lens on their rim (CardLens)
 
 float sdBox(vec2 p, vec2 c, vec2 hs, float r) {
   vec2 q = abs(p - c) - hs + r;
@@ -131,8 +132,9 @@ void main() {
   if (uNCards > 0.5) dc = cards(p, ca);
   if (dc < -30.0 && ca > 0.99 && (uBlob.z < 0.5 || length(p - uBlob.xy) > uBlob.z + 70.0)) {
     // the same glass as the rim path below, flat here (past the lens bevel),
-    // with the tail of the rim's inner light, so there's no step at the tier
-    gl_FragColor = vec4(mix(glassSurface(p, uScroll, dc, vec2(0.0)), vec3(1.0), glassGlow(dc)), 1.0);
+    // with the tail of the rim's inner light (the DOM's, when the lens is on),
+    // so there's no step at the tier
+    gl_FragColor = vec4(mix(glassSurface(p, uScroll, dc, vec2(0.0)), vec3(1.0), glassGlow(dc) * (1.0 - uLens)), 1.0);
     return;
   }
   vec3 col = mix(uBg, uDot, dots(p) * uDotA);
@@ -158,12 +160,22 @@ void main() {
       float outCard = smoothstep(-aa, aa, dc + 0.75);
       // where the liquid reaches past the DOM card, paint the card's fill too
       vec3 swell = mix(frost, uFill, uFillA);
-      vec3 inside = mix(mix(frost, swell, outCard), vec3(1.0), glassGlow(dl));
+      // The rim's hole (same falloff as .ring-mask and the lens strips): 0 in
+      // the hole around a swell, 1 away from it.
+      float ringVis = uHoleR > 0.5 ? clamp((length(p - uBlob.xy) - uHoleR) / 14.0, 0.0, 1.0) : 1.0;
+      // Along a card's rim the DOM lens (CardLens) is the glass: it refracts
+      // the page behind, these dots included, so here the canvas shows the
+      // plain page for it to bend, and the rim's light is the DOM's too. In the
+      // hole it's the canvas again, lensed along the liquid outline, so the
+      // refraction follows the swell.
+      // (the strips fade out from 10px to 24px in, and this fades back in over the same band)
+      float dom = uLens * ringVis * (1.0 - clamp((-dc - 10.0) / 14.0, 0.0, 1.0)) * (1.0 - step(0.75, dc));
+      vec3 inside = mix(mix(frost, swell, outCard), vec3(1.0), glassGlow(dl) * (1.0 - uLens * ringVis));
+      inside = mix(inside, col, dom);
       col = mix(col, inside, inLiquid * ca);
       // The rim of the whole liquid outline, just outside it: along the swell,
-      // and along the card's edge inside the hole opened in the card's own rim
-      // (same falloff as .ring-mask), so the border molds into the swell.
-      float ringVis = uHoleR > 0.5 ? clamp((length(p - uBlob.xy) - uHoleR) / 14.0, 0.0, 1.0) : 1.0;
+      // and along the card's edge inside the hole opened in the card's own rim,
+      // so the border molds into the swell.
       float lineW = max(smoothstep(0.5, 1.5, dc) * (1.0 - smoothstep(-0.5, 0.5, dl - 1.5)), 1.0 - ringVis);
       // the glass edge (--edge-lip, --edge-film in globals.css): a white
       // hairline, brighter on top, with the thin film just inside it
@@ -241,7 +253,7 @@ export default function DotField() {
       bg: U("uBg"), dot: U("uDot"), dotA: U("uDotA"), mouse: U("uMouse"), mouseOn: U("uMouseOn"),
       ripple: U("uRipple"), origin: U("uOrigin"), intro: U("uIntro"),
       cards: U("uCards"), cardP: U("uCardP"), nCards: U("uNCards"), blob: U("uBlob"), holeR: U("uHoleR"),
-      fill: U("uFill"), fillA: U("uFillA"), dark: U("uDark"),
+      fill: U("uFill"), fillA: U("uFillA"), dark: U("uDark"), lens: U("uLens"),
     };
     const cardBuf = new Float32Array(32), cardPBuf = new Float32Array(16);
     let panels: HTMLElement[] = [];
@@ -482,6 +494,7 @@ export default function DotField() {
       gl.uniform3f(u.fill, glass.fill[0] / 255, glass.fill[1] / 255, glass.fill[2] / 255);
       gl.uniform1f(u.fillA, glass.alpha);
       gl.uniform1f(u.dark, dark ? 1 : 0);
+      gl.uniform1f(u.lens, document.documentElement.classList.contains("lens") ? 1 : 0);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       canvas.style.opacity = "1";
 

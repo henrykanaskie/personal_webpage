@@ -54,6 +54,9 @@
      rim, lifted), and this fill, the bubbles' own (mirrored in lib/tokens
      `paper.glass`), sits over them. */
   --card-fill: rgba(255, 255, 255, 0.14);
+  /* the bubbles' frost, after their lens (.glass-bubble) */
+  --glass-frost: blur(1.6px) saturate(1.25) brightness(1.02);
+  --glass-glow: inset 0 0 22px -8px rgba(255, 255, 255, 0.55);
   /* Only a broad shadow, set back from the edge (negative spread): a tight
      contact shadow would draw a line across a liquid swell. */
   --glass-drop: 0 18px 36px -20px rgba(40, 36, 30, 0.3);
@@ -93,6 +96,8 @@
 
   --glass-fill: rgba(26, 28, 33, 0.7);
   --card-fill: rgba(255, 255, 255, 0.035);
+  --glass-frost: blur(1.6px) saturate(1.25) brightness(1.12);
+  --glass-glow: inset 0 0 26px -10px rgba(255, 255, 255, 0.14);
   --glass-drop: 0 24px 48px -24px rgba(0, 0, 0, 0.7);
   --edge-lip: inset 0 1px 0 rgba(255, 255, 255, 0.28), inset 0 -1px 0 rgba(255, 255, 255, 0.06), inset 0 0 0 1px rgba(255, 255, 255, 0.09);
   --edge-film:
@@ -254,6 +259,37 @@ body {
   mask-composite: intersect;
 }
 
+/* The bubbles' lens on a card's rim (CardLens in lib/liquid.tsx): four strips
+   along the edge, each refracting what's behind with its slice of the card's
+   lens map, then frosting it as a bubble does. Each wears the rim's holes
+   (offset by its own position), so a swell or a bud opens the lens too, and
+   fades out over its inner edge, where the lens has almost stopped bending,
+   so the frosted rim blends into the clear middle (except over the corners,
+   where the top and bottom strips are the only lens: --corners). */
+.card-lens {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+}
+.card-lens-strip {
+  position: absolute;
+  pointer-events: none;
+  -webkit-mask-image:
+    radial-gradient(circle at calc(var(--sx, -9999px) - var(--ox)) calc(var(--sy, -9999px) - var(--oy)), transparent var(--sr, 0px), #000 calc(var(--sr, 0px) + 14px)),
+    radial-gradient(circle at calc(var(--bx, -9999px) - var(--ox)) calc(var(--by, -9999px) - var(--oy)), transparent var(--br, 0px), #000 calc(var(--br, 0px) + 40px)),
+    linear-gradient(var(--fade), #000 10px, transparent 24px),
+    var(--corners, linear-gradient(transparent, transparent));
+  mask-image:
+    radial-gradient(circle at calc(var(--sx, -9999px) - var(--ox)) calc(var(--sy, -9999px) - var(--oy)), transparent var(--sr, 0px), #000 calc(var(--sr, 0px) + 14px)),
+    radial-gradient(circle at calc(var(--bx, -9999px) - var(--ox)) calc(var(--by, -9999px) - var(--oy)), transparent var(--br, 0px), #000 calc(var(--br, 0px) + 40px)),
+    linear-gradient(var(--fade), #000 10px, transparent 24px),
+    var(--corners, linear-gradient(transparent, transparent));
+  -webkit-mask-composite: source-in, source-in, source-over, source-over;
+  mask-composite: intersect, intersect, add, add;
+}
+
 /* The glass edge on a card: the same lip and film as a bubble's. */
 .edge-ring {
   position: absolute;
@@ -261,6 +297,11 @@ body {
   border-radius: inherit;
   box-shadow: var(--edge-lip), var(--edge-film);
   pointer-events: none;
+}
+/* With the lens on the rim, the rim's inner light is the bubbles' own inset
+   glow (elsewhere DotField draws it under the card). */
+html.lens .edge-ring {
+  box-shadow: var(--edge-lip), var(--edge-film), var(--glass-glow);
 }
 
 /* Hairline metal border for any rounded element: a gradient ring cut out by a mask. */
