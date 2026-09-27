@@ -10,7 +10,7 @@ import { photo } from "@/lib/tokens";
  * Prevents the body's grid background from showing through during
  * route transitions between photography pages.
  */
-const GRAIN = `url("data:image/svg+xml,${encodeURIComponent(
+export const GRAIN = `url("data:image/svg+xml,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 1.4 -0.2"/></filter><rect width="180" height="180" filter="url(#n)"/></svg>',
 )}")`;
 
