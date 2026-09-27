@@ -1,0 +1,90 @@
+// ─── Drawings on the paper ──────────────────────────────────────────────────
+// The line drawings are drawn by the DOM while they draw themselves (a CSS
+// stroke transition), then handed to DotField: each one is rasterised once
+// per theme into an image covering its paths, and DotField paints it into
+// the paper as a texture, exactly where the SVG sits (its screen CTM, so
+// rotations and flips come along). From then on the drawing is part of what
+// the glass sees: a card's frost blurs it, a card's rim and a swell bend it,
+// with the same lens as the dots. The SVG itself is hidden only while
+// DotField is actually painting it, so without WebGL (or when there are more
+// drawings on screen than it takes) the DOM copy is what you see.
+
+export type Drawing = {
+  svg: SVGSVGElement;
+  /** User-space rect the images cover (the SVG's own units). */
+  box: { x: number; y: number; w: number; h: number };
+  /** One raster per theme, power-of-two sized for mipmaps. */
+  images: { light?: HTMLCanvasElement; dark?: HTMLCanvasElement };
+  /** Bumped whenever an image changes, so textures are re-uploaded. */
+  version: number;
+};
+
+const drawings = new Set<Drawing>();
+const listeners = new Set<() => void>();
+const changed = () => listeners.forEach((f) => f());
+
+export function registerDrawing(d: Drawing) {
+  drawings.add(d);
+  changed();
+  return () => {
+    drawings.delete(d);
+    d.svg.style.visibility = "";
+    changed();
+  };
+}
+
+export function updatedDrawing() {
+  changed();
+}
+
+export const allDrawings = () => drawings;
+
+/** Called when the set or an image changes (DotField wakes to draw it). */
+export function onDrawingsChange(f: () => void) {
+  listeners.add(f);
+  return () => listeners.delete(f);
+}
+
+const pow2 = (n: number) => Math.pow(2, Math.ceil(Math.log2(Math.max(1, n))));
+
+/**
+ * Rasterises an SVG's drawing (its <defs> and the group of paths) into a
+ * power-of-two canvas covering `box`, at about `pxPerUnit` pixels per SVG
+ * unit. The CSS that animates the strokes doesn't reach an SVG loaded as an
+ * image, so this is the drawing fully drawn. Both themes are rasterised as
+ * soon as it's drawn, so a theme switch never waits on one.
+ */
+export async function rasterDrawing(
+  svg: SVGSVGElement,
+  box: Drawing["box"],
+  pxPerUnit: number,
+  /** The stroke pattern's image to use, for rasterising the other theme ahead of time. */
+  patternHref?: string,
+): Promise<HTMLCanvasElement | null> {
+  const W = Math.min(2048, pow2(box.w * pxPerUnit));
+  const H = Math.min(2048, pow2(box.h * pxPerUnit));
+  const clone = svg.cloneNode(true) as SVGSVGElement;
+  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  clone.setAttribute("viewBox", `${box.x} ${box.y} ${box.w} ${box.h}`);
+  clone.setAttribute("preserveAspectRatio", "none");
+  clone.setAttribute("width", String(W));
+  clone.setAttribute("height", String(H));
+  clone.removeAttribute("style");
+  clone.style.visibility = "visible";
+  if (patternHref) clone.querySelectorAll("pattern image").forEach((im) => im.setAttribute("href", patternHref));
+  const xml = new XMLSerializer().serializeToString(clone);
+  const img = new Image();
+  img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(xml)}`;
+  try {
+    await img.decode();
+  } catch {
+    return null;
+  }
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const ctx = c.getContext("2d");
+  if (!ctx) return null;
+  ctx.drawImage(img, 0, 0, W, H);
+  return c;
+}
