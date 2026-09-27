@@ -48,9 +48,12 @@
 
   /* Glass reads as glass through its fill, rim and light, not blur: panels carry
      no backdrop-filter (it was the single biggest scroll cost). */
-  /* Frosted: the dot field draws the dots under a card blurred and bent at its
-     rim, and this fill (mirrored in lib/tokens `paper.glass`) sits over them. */
   --glass-fill: rgba(255, 255, 255, 0.58);
+  /* Cards are the bubbles' glass: the dot field draws the dots under a card as
+     a bubble shows them (GLASS_GLSL in lib/liquid.tsx: blurred, lensed at the
+     rim, lifted), and this fill, the bubbles' own (mirrored in lib/tokens
+     `paper.glass`), sits over them. */
+  --card-fill: rgba(255, 255, 255, 0.14);
   /* Only a broad shadow, set back from the edge (negative spread): a tight
      contact shadow would draw a line across a liquid swell. */
   --glass-drop: 0 18px 36px -20px rgba(40, 36, 30, 0.3);
@@ -89,6 +92,7 @@
   --metal-edge: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.06) 45%, rgba(0, 0, 0, 0.2) 60%, rgba(255, 255, 255, 0.14));
 
   --glass-fill: rgba(26, 28, 33, 0.7);
+  --card-fill: rgba(255, 255, 255, 0.035);
   --glass-drop: 0 24px 48px -24px rgba(0, 0, 0, 0.7);
   --edge-lip: inset 0 1px 0 rgba(255, 255, 255, 0.28), inset 0 -1px 0 rgba(255, 255, 255, 0.06), inset 0 0 0 1px rgba(255, 255, 255, 0.09);
   --edge-film:
@@ -279,7 +283,7 @@ body {
    swell can open all of it: a hairline left on the panel would cut straight
    across the swell. */
 .glass-panel {
-  background: var(--glass-fill);
+  background: var(--card-fill);
   box-shadow: var(--glass-drop);
 }
 /* While a bubble grows out of a card, the card has no border at all: its rim,

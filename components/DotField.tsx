@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { paper } from "@/lib/tokens";
-import { setRingHole } from "@/lib/liquid";
+import { GLASS_GLSL, setRingHole } from "@/lib/liquid";
 
 // ─── DotField ───────────────────────────────────────────────────────────────
 // The page's dot grid, redrawn in WebGL as one fixed backdrop behind every CS
@@ -12,8 +12,8 @@ import { setRingHole } from "@/lib/liquid";
 //   - on every navigation the grid configures itself in a wave, starting from
 //     wherever you clicked to get there
 //   - a click on bare paper sends a ripple through the dots
-//   - under every card ([data-liquid]) the dots are frosted: blurred, and bent
-//     by the card's rim like the edge of a lens
+//   - under every card ([data-liquid]) the dots are seen through the info
+//     bubbles' glass: blurred, lensed at the rim, lifted (GLASS_GLSL)
 //   - a card is liquid: as the cursor comes near, its edge swells and reaches
 //     toward it on a critically damped spring, and settles back when the cursor leaves
 //
@@ -78,14 +78,8 @@ float liquid(vec2 p, float dc) {
   return smin(dc, length(p - uBlob.xy) - uBlob.z, 38.0);
 }
 
-// Frosted dots: the same grid, each dot spread soft and wide.
-float frostDots(vec2 p) {
-  vec2 w = p + uScroll;
-  vec2 c = (floor(w / uGap) + 0.5) * uGap - uScroll;
-  float d = length(p - c);
-  float R = uDotR + 2.6;
-  return smoothstep(R, 0.0, d) * 0.6;
-}
+// The glass under every card and swell: the bubble's (lib/liquid GLASS_GLSL).
+${GLASS_GLSL}
 
 float dots(vec2 p) {
   vec2 w = p + uScroll;
@@ -141,11 +135,10 @@ void main() {
       float gx = liquid(p + vec2(1.0, 0.0), cards(p + vec2(1.0, 0.0), t1)) - dl;
       float gy = liquid(p + vec2(0.0, 1.0), cards(p + vec2(0.0, 1.0), t2)) - dl;
       vec2 n = normalize(vec2(gx, gy) + 1e-5);
-      float rim = 1.0 - clamp(-dl / 26.0, 0.0, 1.0);
-      rim *= rim;
-      // the dots under the glass, bent outward at the rim and frosted
-      vec2 q = p + n * rim * 11.0;
-      vec3 frost = mix(uBg, uDot, frostDots(q) * uDotA);
+      // the dots under the glass: blurred, lensed at the rim of the liquid
+      // outline (so the refraction follows a swell), and lifted, as through
+      // a bubble; the rim's inner light over them
+      vec3 frost = glassSurface(p, uScroll, dl, n);
       float inLiquid = 1.0 - smoothstep(-aa, aa, dl);
       // The swell's fill tucks 0.75px under the card: the DOM fill snaps to
       // device pixels on its own, and without the overlap a sliver of bare
@@ -154,7 +147,7 @@ void main() {
       float outCard = smoothstep(-aa, aa, dc + 0.75);
       // where the liquid reaches past the DOM card, paint the card's fill too
       vec3 swell = mix(frost, uFill, uFillA);
-      vec3 inside = mix(frost, swell, outCard);
+      vec3 inside = mix(mix(frost, swell, outCard), vec3(1.0), glassGlow(dl));
       col = mix(col, inside, inLiquid * ca);
       // The rim of the whole liquid outline, just outside it: along the swell,
       // and along the card's edge inside the hole opened in the card's own rim

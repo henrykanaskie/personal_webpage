@@ -126,6 +126,49 @@ export function useGlassLens(
   return { filter, style };
 }
 
+// ─── The glass, in GLSL ──────────────────────────────────────────────────────
+// One material for every glass surface the shaders draw: a card (DotField,
+// under the card's DOM fill), a card's swell toward the cursor, and a bubble
+// budding out of its card (LiquidBud). It is the settled bubble's glass,
+// modelled on what the browser does to it (.glass-bubble and useGlassLens):
+//   - the dots behind are blurred as by blur(1.6px): a Gaussian of sigma 1.6
+//     (a small disk convolved with it: peak r^2 / 2 sigma^2)
+//   - the lens: flat in the middle, a 22px bevel at the rim with a circular
+//     profile, sampling inward up to ~19px (lensMap at strength 38), each
+//     colour bent a little more than the last (1, 1.07, 1.14) for dispersion
+//   - saturate(1.25) and the brightness lift (--bubble-lift)
+//   - the rim's inner light (the inset glow in --bubble-edge), glassGlow
+// Needs uGap, uDotR, uDotA, uBg, uDot and uDark. `off` is the page position
+// of the canvas' top-left, so the dots land on the page grid.
+export const GLASS_GLSL = `
+float glassDot(vec2 p, vec2 off) {
+  vec2 c = (floor((p + off) / uGap) + 0.5) * uGap - off;
+  vec2 q = p - c;
+  const float S2 = 5.12; // 2 sigma^2, sigma 1.6
+  return min(1.0, uDotR * uDotR / S2) * exp(-dot(q, q) / S2);
+}
+// d: signed distance to the glass outline (negative inside); n: outward normal
+vec3 glassSurface(vec2 p, vec2 off, float d, vec2 n) {
+  float u = 1.0 - clamp(-d / 22.0, 0.0, 1.0);
+  float tilt = 1.0 - sqrt(max(0.0, 1.0 - u * u));
+  vec2 v = -n * tilt * 18.9;
+  // flat across the middle: one sample; only the bevel splits the colours
+  vec3 k = tilt < 1e-3
+    ? vec3(glassDot(p, off))
+    : vec3(glassDot(p + v, off), glassDot(p + v * 1.07, off), glassDot(p + v * 1.14, off));
+  k *= uDotA;
+  vec3 col = mix(uBg, uDot, k);
+  float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
+  col = mix(vec3(l), col, 1.25);
+  return col * mix(1.02, 1.12, uDark);
+}
+// how much white the rim's inner light adds, d inside the outline
+float glassGlow(float d) {
+  float x = max(-d, 0.0);
+  return mix(0.42 * exp(-x / 12.0), 0.11 * exp(-x / 14.0), uDark);
+}
+`;
+
 // ─── setRingHole ────────────────────────────────────────────────────────────
 // Open (or close, r <= 0) a hole in a panel's rim at x, y (panel-local px).
 // "s" is the cursor swell's hole ("b" is reserved for a second source).
@@ -205,13 +248,7 @@ float scene(vec2 p) {
   if (uDrop.z < 0.3) return c;
   return smin(c, drop(p), uK);
 }
-float frostDots(vec2 p) {
-  vec2 w = p + uPage;
-  vec2 c = (floor(w / uGap) + 0.5) * uGap - uPage;
-  float d = length(p - c);
-  float R = uDotR + 2.6;
-  return smoothstep(R, 0.0, d) * 0.6;
-}
+${GLASS_GLSL}
 
 void main() {
   vec2 p = vec2(gl_FragCoord.x, uRes.y * uDpr - gl_FragCoord.y) / uDpr;
@@ -248,11 +285,12 @@ void main() {
   vec3 film = (vec3(1.0, 0.59, 0.8) * wl + vec3(0.47, 0.8, 1.0) * wr + vec3(0.73, 0.63, 1.0) * wt + vec3(1.0, 0.86, 0.55) * wb) / (wl + wr + wt + wb + 1e-3);
 
   if (cover > 0.0) {
-    float rim = 1.0 - clamp(-d / 26.0, 0.0, 1.0);
-    rim *= rim;
-    // card material, exactly as the card is drawn (DotField's frost under the card fill)
-    vec3 col = mix(uBg, uDot, frostDots(p + n * rim * 11.0) * uDotA);
+    // the card's glass, exactly as the card is drawn (DotField's glass under
+    // the card fill), which is the settled bubble's glass: lensed at the rim
+    // of the growing shape, so the refraction follows the bulge as it forms
+    vec3 col = glassSurface(p, uPage, d, n);
     col = mix(col, uFill, uFillA);
+    col = mix(col, vec3(1.0), glassGlow(d));
     vec4 cardM = vec4(col, 1.0);
     // bubble material: a light see-through fill, the film glowing toward the rim
     float f = pow(1.0 - clamp(-d / 14.0, 0.0, 1.0), 2.0);
