@@ -4,12 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { getImageProps } from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { useIsDark } from "@/lib/glass";
+import { useIsDark } from "@/hooks/useIsDark";
 import type { Section, PhotoEntry } from "../data";
 import DevelopTile from "@/components/photo/DevelopTile";
 import FadeImage from "@/components/photo/FadeImage";
 import Lightbox, { LightboxItem } from "@/components/photo/Lightbox";
-import { EASE_OUT, aspect, photoTheme } from "@/components/photo/utils";
+import { MONO, EASE_OUT, aspect, photoTheme } from "@/components/photo/utils";
 
 export interface ChapterLink {
   id: string;
@@ -100,12 +100,6 @@ export default function CategoryPageClient({ section, next }: { section: Section
     [order, section.id, section.title],
   );
 
-  const mono: React.CSSProperties = {
-    fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-    letterSpacing: "0.22em",
-    textTransform: "uppercase",
-  };
-
   // Long titles get a smaller viewport-relative size so they fit on one line
   const titleSize = `clamp(1.9rem, ${Math.min(17, 150 / section.title.length).toFixed(1)}vw, 15rem)`;
 
@@ -117,7 +111,7 @@ export default function CategoryPageClient({ section, next }: { section: Section
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: EASE_OUT }}
-          style={{ ...mono, fontSize: 9, color: t.sub, display: "flex", justifyContent: "space-between", alignItems: "center" }}
+          style={{ ...MONO, fontSize: 9, color: t.sub, display: "flex", justifyContent: "space-between", alignItems: "center" }}
         >
           <Link href="/photography" style={{ color: t.sub, textDecoration: "none", display: "inline-flex", gap: 10, alignItems: "center" }}>
             <span style={{ letterSpacing: 0, fontSize: 12 }}>←</span> All chapters
@@ -231,7 +225,7 @@ export default function CategoryPageClient({ section, next }: { section: Section
           </div>
         ) : (
           <div style={{ textAlign: "center", padding: "12vh 0", color: t.sub }}>
-            <div style={{ ...mono, fontSize: 9.5 }}>This roll is still in the developer</div>
+            <div style={{ ...MONO, fontSize: 9.5 }}>This roll is still in the developer</div>
             <div
               style={{
                 fontFamily: "var(--font-elevated)",
@@ -301,7 +295,7 @@ export default function CategoryPageClient({ section, next }: { section: Section
               pointerEvents: "none",
             }}
           >
-            <span style={{ ...mono, fontSize: 9.5 }}>Next chapter · {next.num}</span>
+            <span style={{ ...MONO, fontSize: 9.5 }}>Next chapter · {next.num}</span>
             <span
               style={{
                 fontFamily: "var(--font-elevated)",

@@ -3,7 +3,8 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { paper } from "@/lib/tokens";
-import { GLASS_GLSL, setRingHole } from "@/lib/liquid";
+import { setRingHole } from "@/lib/liquid";
+import { GLSL_GLASS, fullscreenProgram, rgb, uniforms } from "@/lib/gl";
 
 // ─── DotField ───────────────────────────────────────────────────────────────
 // The page's dot grid, redrawn in WebGL as one fixed backdrop behind every CS
@@ -13,7 +14,7 @@ import { GLASS_GLSL, setRingHole } from "@/lib/liquid";
 //     wherever you clicked to get there
 //   - a click on bare paper sends a ripple through the dots
 //   - under every card ([data-liquid]) the dots are seen through the info
-//     bubbles' glass: blurred, lensed at the rim, lifted (GLASS_GLSL)
+//     bubbles' glass: blurred, lensed at the rim, lifted (glassSurface, lib/gl)
 //   - a card is liquid: as the cursor comes near, its edge swells and reaches
 //     toward it on a critically damped spring, and settles back when the cursor leaves
 //
@@ -25,11 +26,6 @@ import { GLASS_GLSL, setRingHole } from "@/lib/liquid";
 // dot can never leave its own cell, which is what makes a single evaluation
 // exact. Resolution steps down on its own if frames run long, and the loop
 // stops entirely once nothing is moving.
-
-const VERT = `
-attribute vec2 a;
-void main() { gl_Position = vec4(a, 0.0, 1.0); }
-`;
 
 const FRAG = `
 precision highp float;
@@ -52,15 +48,7 @@ uniform float uHoleR;     // radius of the hole opened in that card's rim (centr
 uniform vec3 uFill;
 uniform float uFillA;
 uniform float uDark;
-
-float sdBox(vec2 p, vec2 c, vec2 hs, float r) {
-  vec2 q = abs(p - c) - hs + r;
-  return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
-}
-float smin(float a, float b, float k) {
-  float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
-  return mix(b, a, h) - k * h * (1.0 - h);
-}
+${GLSL_GLASS}
 // The cards alone (what the DOM draws) and the liquid (cards plus the swell).
 float cards(vec2 p, out float alpha) {
   float d = 1e5;
@@ -77,9 +65,6 @@ float liquid(vec2 p, float dc) {
   if (uBlob.z < 0.5) return dc;
   return smin(dc, length(p - uBlob.xy) - uBlob.z, 38.0);
 }
-
-// The glass under every card and swell: the bubble's (lib/liquid GLASS_GLSL).
-${GLASS_GLSL}
 
 float dots(vec2 p) {
   vec2 w = p + uScroll;
@@ -168,12 +153,9 @@ void main() {
       // the glass edge (--edge-lip, --edge-film in globals.css): a white
       // hairline, brighter on top, with the thin film just inside it
       float line = (1.0 - smoothstep(0.0, 1.0, abs(dl - 0.4))) * lineW;
-      float lipA = mix(0.45 + 0.47 * max(-n.y, 0.0) + 0.22 * max(n.y, 0.0), 0.09 + 0.19 * max(-n.y, 0.0), uDark);
-      float wl = max(-n.x, 0.0), wr = max(n.x, 0.0), wt = max(-n.y, 0.0), wb = max(n.y, 0.0);
-      vec3 film = (vec3(1.0, 0.59, 0.8) * wl + vec3(0.47, 0.8, 1.0) * wr + vec3(0.73, 0.63, 1.0) * wt + vec3(1.0, 0.86, 0.55) * wb) / (wl + wr + wt + wb + 1e-3);
       float band = smoothstep(-6.0, -0.5, dl) * (1.0 - smoothstep(-0.5, 0.5, dl)) * lineW;
-      col = mix(col, film, band * ca * mix(0.3, 0.27, uDark));
-      col = mix(col, vec3(1.0), line * ca * lipA);
+      col = mix(col, edgeFilm(n), band * ca * edgeFilmA(uDark));
+      col = mix(col, vec3(1.0), line * ca * edgeLip(n, uDark));
     }
   }
   gl_FragColor = vec4(col, 1.0);
@@ -188,7 +170,7 @@ function springTo(pos: number, vel: number, target: number, omega: number, dt: n
 }
 
 // A click on any of these is a click on content, not on the paper: no ripple.
-const CONTENT = ".glass-panel, .glass-pill, .metal-surface, a, button, img, input, textarea, p, h1, h2, h3, h4, li";
+const CONTENT = ".glass-panel, .metal-surface, a, button, img, input, textarea, p, h1, h2, h3, h4, li";
 
 export default function DotField() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -212,37 +194,13 @@ export default function DotField() {
     const gl = canvas.getContext("webgl", { antialias: false, alpha: false, premultipliedAlpha: false, powerPreference: "low-power" });
     if (!gl) return;
 
-    const compile = (type: number, src: string) => {
-      const s = gl.createShader(type)!;
-      gl.shaderSource(s, src);
-      gl.compileShader(s);
-      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s) ?? "shader");
-      return s;
-    };
-    let prog: WebGLProgram;
-    try {
-      prog = gl.createProgram()!;
-      gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT));
-      gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FRAG));
-      gl.linkProgram(prog);
-      if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error("link");
-    } catch {
-      return; // the CSS dots stay
-    }
-    gl.useProgram(prog);
-    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-    const loc = gl.getAttribLocation(prog, "a");
-    gl.enableVertexAttribArray(loc);
-    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-    const U = (n: string) => gl.getUniformLocation(prog, n);
-    const u = {
-      res: U("uRes"), dpr: U("uDpr"), scroll: U("uScroll"), gap: U("uGap"), dotR: U("uDotR"),
-      bg: U("uBg"), dot: U("uDot"), dotA: U("uDotA"), mouse: U("uMouse"), mouseOn: U("uMouseOn"),
-      ripple: U("uRipple"), origin: U("uOrigin"), intro: U("uIntro"),
-      cards: U("uCards"), cardP: U("uCardP"), nCards: U("uNCards"), blob: U("uBlob"), holeR: U("uHoleR"),
-      fill: U("uFill"), fillA: U("uFillA"), dark: U("uDark"),
-    };
+    const prog = fullscreenProgram(gl, FRAG);
+    if (!prog) return; // the CSS dots stay
+    // prettier-ignore
+    const u = uniforms(gl, prog, [
+      "uRes", "uDpr", "uScroll", "uGap", "uDotR", "uBg", "uDot", "uDotA", "uMouse", "uMouseOn",
+      "uRipple", "uOrigin", "uIntro", "uCards", "uCardP", "uNCards", "uBlob", "uHoleR", "uFill", "uFillA", "uDark",
+    ]);
     const cardBuf = new Float32Array(32), cardPBuf = new Float32Array(16);
     let panels: HTMLElement[] = [];
     let panelsAt = -1e9;
@@ -461,27 +419,27 @@ export default function DotField() {
       if (ripple.t >= 0) { ripple.t += dt; if (ripple.t > 1.6) ripple.t = -1; }
 
       gl.viewport(0, 0, canvas.width, canvas.height);
-      gl.uniform2f(u.res, w, h);
-      gl.uniform1f(u.dpr, canvas.width / w);
-      gl.uniform2f(u.scroll, window.scrollX, scrollY);
-      gl.uniform1f(u.gap, paper.gap);
-      gl.uniform1f(u.dotR, paper.dotRadius);
-      gl.uniform3f(u.bg, pal.bg[0] / 255, pal.bg[1] / 255, pal.bg[2] / 255);
-      gl.uniform3f(u.dot, pal.dot[0] / 255, pal.dot[1] / 255, pal.dot[2] / 255);
-      gl.uniform1f(u.dotA, pal.dotAlpha);
-      gl.uniform2f(u.mouse, mouse.x, mouse.y);
-      gl.uniform1f(u.mouseOn, Math.max(0, mouse.on));
-      gl.uniform3f(u.ripple, ripple.x, ripple.y, ripple.t);
-      gl.uniform2f(u.origin, wave.x, wave.y);
-      gl.uniform1f(u.intro, introT);
-      gl.uniform4fv(u.cards, cardBuf);
-      gl.uniform2fv(u.cardP, cardPBuf);
-      gl.uniform1f(u.nCards, n);
-      gl.uniform3f(u.blob, blob.x, blob.y, Math.max(0, blob.r));
-      gl.uniform1f(u.holeR, holeR);
-      gl.uniform3f(u.fill, glass.fill[0] / 255, glass.fill[1] / 255, glass.fill[2] / 255);
-      gl.uniform1f(u.fillA, glass.alpha);
-      gl.uniform1f(u.dark, dark ? 1 : 0);
+      gl.uniform2f(u.uRes, w, h);
+      gl.uniform1f(u.uDpr, canvas.width / w);
+      gl.uniform2f(u.uScroll, window.scrollX, scrollY);
+      gl.uniform1f(u.uGap, paper.gap);
+      gl.uniform1f(u.uDotR, paper.dotRadius);
+      gl.uniform3f(u.uBg, ...rgb(pal.bg));
+      gl.uniform3f(u.uDot, ...rgb(pal.dot));
+      gl.uniform1f(u.uDotA, pal.dotAlpha);
+      gl.uniform2f(u.uMouse, mouse.x, mouse.y);
+      gl.uniform1f(u.uMouseOn, Math.max(0, mouse.on));
+      gl.uniform3f(u.uRipple, ripple.x, ripple.y, ripple.t);
+      gl.uniform2f(u.uOrigin, wave.x, wave.y);
+      gl.uniform1f(u.uIntro, introT);
+      gl.uniform4fv(u.uCards, cardBuf);
+      gl.uniform2fv(u.uCardP, cardPBuf);
+      gl.uniform1f(u.uNCards, n);
+      gl.uniform3f(u.uBlob, blob.x, blob.y, Math.max(0, blob.r));
+      gl.uniform1f(u.uHoleR, holeR);
+      gl.uniform3f(u.uFill, ...rgb(glass.fill));
+      gl.uniform1f(u.uFillA, glass.alpha);
+      gl.uniform1f(u.uDark, dark ? 1 : 0);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       canvas.style.opacity = "1";
 

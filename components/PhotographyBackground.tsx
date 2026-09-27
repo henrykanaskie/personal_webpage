@@ -2,7 +2,8 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { useIsDark } from "@/lib/glass";
+import { useIsDark } from "@/hooks/useIsDark";
+import { photo } from "@/lib/tokens";
 
 /**
  * Persistent photography background that lives OUTSIDE PageTransition.
@@ -37,7 +38,7 @@ export default function PhotographyBackground() {
   // navigation away: the overlay div fades out independently, preventing a
   // flash of the photography color on the transparent CS side of the home page.
   useEffect(() => {
-    const bgColor = isDark ? "#050507" : "#f8f5f0";
+    const bgColor = isDark ? photo.background.dark : photo.background.light;
     if (isPhoto) {
       document.documentElement.style.backgroundColor = bgColor;
       document.body.style.backgroundImage = "none";
@@ -63,7 +64,7 @@ export default function PhotographyBackground() {
         style={{
           position: "fixed",
           inset: 0,
-          background: isDark ? "#050507" : "#f8f5f0",
+          background: isDark ? photo.background.dark : photo.background.light,
           zIndex: 0,
           pointerEvents: "none",
           transition: "opacity 0.4s ease-out",

@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { useContext, useRef, useCallback, useLayoutEffect } from "react";
 import { LayoutRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
+import { settle } from "@/lib/motion";
 
 function FrozenRouter({ children }: { children: React.ReactNode }) {
   const context = useContext(LayoutRouterContext);
@@ -13,11 +14,6 @@ function FrozenRouter({ children }: { children: React.ReactNode }) {
       {children}
     </LayoutRouterContext.Provider>
   );
-}
-
-function isFullScreenPath(p: string | null | undefined): boolean {
-  if (!p) return false;
-  return p.startsWith("/photography");
 }
 
 export default function PageTransition({
@@ -44,7 +40,7 @@ export default function PageTransition({
   //     (a separate, persistent layer) stays put and replays its configure wave
   //     from the click, so the paper never blinks between pages. The new page
   //     then rises into place on a critically damped spring.
-  const photo = isFullScreenPath(pathname);
+  const photo = !!pathname?.startsWith("/photography");
   return (
     <AnimatePresence mode="wait" onExitComplete={onExitComplete}>
       <motion.div
@@ -55,7 +51,7 @@ export default function PageTransition({
           y: 0,
           transition: photo
             ? { duration: 0.3, ease: [0.22, 1, 0.36, 1] }
-            : { opacity: { duration: 0.35, ease: [0.22, 1, 0.36, 1] }, y: { type: "spring", stiffness: 140, damping: 24 } },
+            : { opacity: { duration: 0.35, ease: [0.22, 1, 0.36, 1] }, y: settle },
         }}
         exit={
           photo

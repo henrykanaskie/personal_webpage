@@ -1,18 +1,13 @@
 "use client";
 
-import React, { useState, Fragment, useEffect, useRef } from "react";
-import { motion, useMotionValue, animate } from "framer-motion";
+import { useState, Fragment, useEffect, useRef } from "react";
+import { motion, useMotionValue, animate, type MotionValue } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useIsDark } from "@/lib/glass";
+import { useIsDark } from "@/hooks/useIsDark";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import GlassTitle from "@/components/GlassTitle";
-
-const navLinks = [
-  { name: "About", href: "/cs", sectionId: "about" },
-  { name: "Experience", href: "/cs", sectionId: "experience" },
-  { name: "Projects", href: "/cs", sectionId: "projects" },
-  { name: "Education", href: "/cs", sectionId: "education" },
-];
+import { CS_SECTIONS, rememberCsSection, sectionLabel } from "@/lib/site";
 
 const BOKEH = [
   { id: 0, x: "20%", y: "22%", r: 160, blur: 55, v: "a" },
@@ -21,58 +16,21 @@ const BOKEH = [
   { id: 3, x: "18%", y: "76%", r: 110, blur: 48, v: "b" },
 ];
 
-// ─── Viewfinder corners ──────────────────────────────────────────────────────
+// ─── Corner brackets ─────────────────────────────────────────────────────────
+// Four L-shaped corners framing their container, like a viewfinder's.
 
-function ViewfinderCorners({ color }: { color: string }) {
-  const s = 24,
-    o = 24,
-    t = `1.5px solid ${color}`;
+function Brackets({ inset, size, border }: { inset: number; size: number; border: string }) {
+  const corners: React.CSSProperties[] = [
+    { top: inset, left: inset, borderTop: border, borderLeft: border },
+    { top: inset, right: inset, borderTop: border, borderRight: border },
+    { bottom: inset, left: inset, borderBottom: border, borderLeft: border },
+    { bottom: inset, right: inset, borderBottom: border, borderRight: border },
+  ];
   return (
     <>
-      <div
-        style={{
-          position: "absolute",
-          top: o,
-          left: o,
-          width: s,
-          height: s,
-          borderTop: t,
-          borderLeft: t,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          top: o,
-          right: o,
-          width: s,
-          height: s,
-          borderTop: t,
-          borderRight: t,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          bottom: o,
-          left: o,
-          width: s,
-          height: s,
-          borderBottom: t,
-          borderLeft: t,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          bottom: o,
-          right: o,
-          width: s,
-          height: s,
-          borderBottom: t,
-          borderRight: t,
-        }}
-      />
+      {corners.map((corner, i) => (
+        <div key={i} style={{ position: "absolute", width: size, height: size, ...corner }} />
+      ))}
     </>
   );
 }
@@ -84,10 +42,7 @@ function FloatingBokeh({ c, color }: { c: (typeof BOKEH)[0]; color: string }) {
   const y = useMotionValue(0);
 
   useEffect(() => {
-    function drift(
-      mv: ReturnType<typeof useMotionValue<number>>,
-      range: number,
-    ) {
+    function drift(mv: MotionValue<number>, range: number) {
       const target = (Math.random() - 0.5) * range;
       const duration = 1.5 + Math.random() * 2.5;
       animate(mv, target, {
@@ -98,7 +53,7 @@ function FloatingBokeh({ c, color }: { c: (typeof BOKEH)[0]; color: string }) {
     }
     drift(x, 200);
     drift(y, 200);
-  }, []);
+  }, [x, y]);
 
   return (
     <div
@@ -239,7 +194,7 @@ function PhotoSide({ active, isDark }: { active: boolean; isDark: boolean }) {
       </svg>
 
       {/* Viewfinder corners */}
-      <ViewfinderCorners color={cornerColor} />
+      <Brackets inset={24} size={24} border={`1.5px solid ${cornerColor}`} />
 
       {/* Name */}
       <div
@@ -338,50 +293,7 @@ function PhotoSide({ active, isDark }: { active: boolean; isDark: boolean }) {
           transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
           style={{ position: "relative", width: 34, height: 34 }}
         >
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: 8,
-              height: 8,
-              borderTop: `1px solid ${g(1)}`,
-              borderLeft: `1px solid ${g(1)}`,
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              right: 0,
-              width: 8,
-              height: 8,
-              borderTop: `1px solid ${g(1)}`,
-              borderRight: `1px solid ${g(1)}`,
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              width: 8,
-              height: 8,
-              borderBottom: `1px solid ${g(1)}`,
-              borderLeft: `1px solid ${g(1)}`,
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              bottom: 0,
-              right: 0,
-              width: 8,
-              height: 8,
-              borderBottom: `1px solid ${g(1)}`,
-              borderRight: `1px solid ${g(1)}`,
-            }}
-          />
+          <Brackets inset={0} size={8} border={`1px solid ${g(1)}`} />
           <div
             style={{
               position: "absolute",
@@ -469,7 +381,7 @@ function CSSide({
   active: boolean;
   isDark: boolean;
   isMobile: boolean;
-  onGo: (section?: string) => void;
+  onGo: (section: string) => void;
 }) {
   const divColor = isDark ? "rgba(180,200,255,0.15)" : "rgba(80,100,140,0.18)";
   const dotColor = isDark ? "rgba(180,200,255,0.2)" : "rgba(80,100,140,0.22)";
@@ -516,7 +428,6 @@ function CSSide({
       >
         <GlassTitle
           text="Computer Science"
-          variant="metal"
           fontSize={isMobile ? "clamp(1.6rem, 8vw, 3rem)" : "clamp(2.6rem, 4.7vw, 4.6rem)"}
           containerClassName="!pt-0 !pb-0"
           disableEntrance
@@ -551,22 +462,22 @@ function CSSide({
             whiteSpace: "nowrap",
           }}
         >
-          {navLinks.map((link, i) => (
-            <Fragment key={link.sectionId}>
+          {CS_SECTIONS.map((id, i) => (
+            <Fragment key={id}>
               <Link
-                href={link.href}
+                href="/cs"
                 scroll={false}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  onGo(link.sectionId);
+                  onGo(id);
                 }}
                 className="metal-surface px-4 py-1.5 rounded-full font-semibold tracking-wide transition-transform duration-200 hover:-translate-y-px"
                 style={{ fontSize: "15px" }}
               >
-                <span>{link.name}</span>
+                <span>{sectionLabel(id)}</span>
               </Link>
-              {i < navLinks.length - 1 && (
+              {i < CS_SECTIONS.length - 1 && (
                 <span
                   style={{
                     color: dotColor,
@@ -590,19 +501,12 @@ function CSSide({
 
 export default function HomePage() {
   const [hovered, setHovered] = useState<"left" | "right" | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
+  const isMobile = !!useIsMobile();
   const isDark = useIsDark();
   const router = useRouter();
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-  }, []);
-
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
   }, []);
 
   // Choosing a side expands it to fill the screen first, then navigates. The CS
@@ -611,13 +515,7 @@ export default function HomePage() {
   const [leaving, setLeaving] = useState<"left" | "right" | null>(null);
   const go = (side: "left" | "right", section?: string) => {
     if (leaving) return;
-    if (section) {
-      try {
-        sessionStorage.setItem("csScrollTo", section);
-      } catch {
-        // private mode: land at the top instead
-      }
-    }
+    if (section) rememberCsSection(section);
     setLeaving(side);
     window.setTimeout(() => router.push(side === "left" ? "/photography" : "/cs"), 420);
   };
@@ -631,13 +529,11 @@ export default function HomePage() {
     : { duration: 0.75, ease: [0.22, 1, 0.36, 1] as const };
 
   const inactiveDim = "brightness(0.62)";
-  const outerRef = useRef<HTMLDivElement>(null);
   const dividerRef = useRef<HTMLDivElement>(null);
   const hoveredRef = useRef<"left" | "right" | null>(null);
 
   return (
     <div
-      ref={outerRef}
       style={{
         position: "fixed",
         top: 0,
@@ -678,7 +574,6 @@ export default function HomePage() {
           cursor: "pointer",
         }}
         onClick={() => go("left")}
-       
       >
         <PhotoSide active={hovered === "left"} isDark={isDark} />
       </motion.div>

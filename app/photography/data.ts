@@ -1,7 +1,5 @@
 // ─── Shared photography section data ─────────────────────────────────────────
 
-export type RGB = [number, number, number];
-
 /** Camera settings read from the JPEG's EXIF block at build time. */
 export interface PhotoExif {
   camera?: string;
@@ -39,9 +37,6 @@ export interface Section {
   num: string;
   title: string;
   sub: string;
-  darkAccent: RGB;
-  lightAccent: RGB;
-  cols: number;
   /** Folder name under public/photography/. If absent, section shows no photos. */
   dir?: string;
   /** Populated at build time by getPhotos.ts */
@@ -56,9 +51,6 @@ export const SECTION_META: Omit<Section, "photos">[] = [
     num: "01",
     title: "Portraits",
     sub: "People & Light",
-    darkAccent: [110, 140, 255],
-    lightAccent: [210, 60, 110],
-    cols: 3,
     dir: "portraits",
   },
   {
@@ -66,9 +58,6 @@ export const SECTION_META: Omit<Section, "photos">[] = [
     num: "02",
     title: "Nature",
     sub: "Horizons & Earth",
-    darkAccent: [110, 140, 255],
-    lightAccent: [210, 60, 110],
-    cols: 3,
     dir: "nature",
   },
   {
@@ -76,9 +65,6 @@ export const SECTION_META: Omit<Section, "photos">[] = [
     num: "03",
     title: "Astrophotography",
     sub: "Night Sky & Stars",
-    darkAccent: [110, 140, 255],
-    lightAccent: [210, 60, 110],
-    cols: 3,
     dir: "astro",
   },
   {
@@ -86,9 +72,6 @@ export const SECTION_META: Omit<Section, "photos">[] = [
     num: "04",
     title: "Street",
     sub: "Urban & Moments",
-    darkAccent: [110, 140, 255],
-    lightAccent: [210, 60, 110],
-    cols: 3,
     dir: "street",
   },
   {
@@ -96,9 +79,6 @@ export const SECTION_META: Omit<Section, "photos">[] = [
     num: "05",
     title: "Automotive",
     sub: "Cars & Machines",
-    darkAccent: [110, 140, 255],
-    lightAccent: [210, 60, 110],
-    cols: 3,
     dir: "automotive",
   },
   {
@@ -106,9 +86,6 @@ export const SECTION_META: Omit<Section, "photos">[] = [
     num: "06",
     title: "Natl Parks",
     sub: "Parks & Wilderness",
-    darkAccent: [110, 140, 255],
-    lightAccent: [210, 60, 110],
-    cols: 3,
     dir: "natl-parks",
   },
 ];

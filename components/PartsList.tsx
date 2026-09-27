@@ -2,14 +2,13 @@
 
 import { motion } from "framer-motion";
 import { GlassLayers } from "@/lib/glass";
-import { glassBoxClassNames } from "@/lib/tokens";
 import { parts, STATUS, type Part, type PartStatus } from "@/lib/parts";
 
 // ─── DotMeter ───────────────────────────────────────────────────────────────
 // Completion as ten dots on the same grid language as the page: filled dots are
 // ink, the rest are empty rings. They fill left to right when the row arrives.
 
-export function DotMeter({ value, delay = 0 }: { value: number; delay?: number }) {
+function DotMeter({ value, delay = 0 }: { value: number; delay?: number }) {
   const filled = Math.round(value * 10);
   return (
     <span className="inline-flex items-center gap-[5px]" aria-label={`${Math.round(value * 100)}% complete`}>
@@ -93,7 +92,7 @@ export default function PartsList() {
       transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
       className="w-full max-w-[1280px] mx-auto px-3 md:px-0"
     >
-      <div data-liquid className={`${glassBoxClassNames} relative rounded-[24px] overflow-hidden`}>
+      <div data-liquid className="glass-panel relative rounded-[24px] overflow-hidden">
         <GlassLayers />
 
         {/* Title */}

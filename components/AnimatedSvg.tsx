@@ -1,17 +1,14 @@
 "use client";
 
-import { memo, useEffect, useId, useRef, useState } from "react";
-import { MotionValue, useMotionValueEvent } from "framer-motion";
-import { useIsDark } from "@/lib/glass";
+import { memo, useEffect, useId, useState } from "react";
+import { useIsDark } from "@/hooks/useIsDark";
 
 interface AnimatedSvgProps {
   paths: string[];
   size?: number | string;
-  color?: string;
   strokeWidth?: number;
-  /** Drawing starts the first time this moves above zero. */
-  scrollProgress: MotionValue<number>;
-  className?: string;
+  /** Drawing starts the first time this turns true, and never reverses. */
+  drawn: boolean;
   rotate?: number;
   /** Seconds the line drawing takes. */
   duration?: number;
@@ -94,35 +91,16 @@ function wireTexture(dark: boolean): string {
 // globals.css) started by a single class change: it used to be one JS-driven
 // motion value per path, which on the CS page meant ~1,200 style writes a
 // frame, repeated every time a drawing scrolled out and back in.
-function AnimatedSvg({
-  paths,
-  size = 240,
-  color,
-  strokeWidth = 2,
-  scrollProgress,
-  className = "",
-  rotate = 0,
-  duration = 3,
-}: AnimatedSvgProps) {
-  const [drawn, setDrawn] = useState(() => scrollProgress.get() > 0.001);
-  const drawnRef = useRef(drawn);
-  useMotionValueEvent(scrollProgress, "change", (v) => {
-    if (!drawnRef.current && v > 0.001) {
-      drawnRef.current = true;
-      setDrawn(true);
-    }
-  });
-
+function AnimatedSvg({ paths, size = 240, strokeWidth = 0.8, drawn, rotate = 0, duration = 3 }: AnimatedSvgProps) {
   const wireId = `wire-${useId().replace(/:/g, "")}`;
   const dark = useIsDark();
   const [tex, setTex] = useState<string | null>(null);
   useEffect(() => {
-    if (!color) setTex(wireTexture(dark));
-  }, [dark, color]);
+    setTex(wireTexture(dark));
+  }, [dark]);
 
   return (
     <div
-      className={className}
       style={{
         width: size,
         height: size,
@@ -131,7 +109,7 @@ function AnimatedSvg({
       }}
     >
       <svg viewBox="500 300 136 112" style={{ width: "100%", height: "100%", overflow: "visible" }}>
-        {!color && tex && (
+        {tex && (
           <defs>
             <pattern id={wireId} patternUnits="userSpaceOnUse" x={TEX.x} y={TEX.y} width={TEX.w} height={TEX.h}>
               <image href={tex} x={0} y={0} width={TEX.w} height={TEX.h} preserveAspectRatio="none" />
@@ -140,7 +118,7 @@ function AnimatedSvg({
         )}
         <g
           className={`line-draw${drawn ? " drawn" : ""}`}
-          stroke={color ?? (tex ? `url(#${wireId})` : "var(--wire-mid)")}
+          stroke={tex ? `url(#${wireId})` : "var(--wire-mid)"}
           strokeWidth={strokeWidth}
           fill="none"
           strokeLinecap="round"
