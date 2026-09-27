@@ -112,15 +112,3 @@ export const SECTION_META: Omit<Section, "photos">[] = [
     dir: "natl-parks",
   },
 ];
-
-/**
- * Hero rotation on the gallery landing page, as "<dir>/<filename>".
- * Chosen for strong colour and clear subjects, so the focus-pull reads well.
- */
-export const HERO_PHOTOS = [
-  "nature/DSC08791-2.jpg",
-  "astro/DSC08958-(1)-2.jpg",
-  "street/DSC02703-2.jpg",
-  "automotive/DSC01520-2.jpg",
-  "nature/HK0_0048-2.jpg",
-];

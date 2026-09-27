@@ -6,6 +6,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import type { PhotoEntry } from "@/app/photography/data";
 import { shutter } from "./feedback";
+import FadeImage from "./FadeImage";
 import {
   EASE_OUT,
   aspect,
@@ -299,14 +300,12 @@ export default function Lightbox({
               transition={{ duration: 0.55, ease: EASE_OUT }}
               style={{ position: "absolute", inset: 0, overflow: "hidden" }}
             >
-              <Image
+              <FadeImage
                 src={photo.src}
                 alt={photo.alt ?? `${item.sectionTitle} photograph ${index + 1}`}
                 fill
                 sizes="(min-width: 1024px) 75vw, 100vw"
                 quality={90}
-                placeholder={photo.blur ? "blur" : "empty"}
-                blurDataURL={photo.blur || undefined}
                 style={{ objectFit: "cover" }}
                 priority
               />

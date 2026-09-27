@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import Image, { getImageProps } from "next/image";
+import { getImageProps } from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { useIsDark } from "@/lib/glass";
 import type { Section, PhotoEntry } from "../data";
 import DevelopTile from "@/components/photo/DevelopTile";
+import FadeImage from "@/components/photo/FadeImage";
 import Lightbox, { LightboxItem } from "@/components/photo/Lightbox";
 import { EASE_OUT, aspect, photoTheme } from "@/components/photo/utils";
 
@@ -218,7 +219,6 @@ export default function CategoryPageClient({ section, next }: { section: Section
                     <DevelopTile
                       key={photo.src}
                       photo={photo}
-                      index={i}
                       alt={photo.alt ?? `${section.title} photograph ${i + 1}`}
                       isDark={isDark}
                       priority={i < 3}
@@ -274,7 +274,7 @@ export default function CategoryPageClient({ section, next }: { section: Section
               background: next.cover.color,
             }}
           >
-            <Image
+            <FadeImage
               src={next.cover.src}
               alt=""
               fill

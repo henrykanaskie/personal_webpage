@@ -1,35 +1,30 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Image from "next/image";
-import { motion, useInView, useMotionValue, useSpring, useTransform } from "framer-motion";
+import FadeImage from "./FadeImage";
+import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import type { PhotoEntry } from "@/app/photography/data";
 import { aspect } from "./utils";
 
 /**
- * A print that develops as it enters the viewport: a sheet of the photo's own
- * colour fades off while the image settles from a slight zoom, the way paper
- * comes up in a darkroom tray. On hover it tilts toward the pointer with a
- * moving highlight. Everything animated is transform or opacity, so the GPU
- * composites it without repainting the photo.
+ * A print in the chapter grid. It sits on its own dominant colour until the
+ * photo loads, then the photo fades in. On hover it tilts toward the pointer
+ * with a moving highlight. Everything animated is transform or opacity.
  */
 export default function DevelopTile({
   photo,
-  index,
   alt,
   isDark,
   priority,
   onOpen,
 }: {
   photo: PhotoEntry;
-  index: number;
   alt: string;
   isDark: boolean;
   priority?: boolean;
   onOpen: (rect: DOMRect) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "0px 0px -12% 0px" });
   const [hover, setHover] = useState(false);
 
   const px = useMotionValue(0.5);
@@ -41,8 +36,6 @@ export default function DevelopTile({
   const glareX = useTransform(px, [0, 1], ["-25%", "25%"]);
   const glareY = useTransform(py, [0, 1], ["-25%", "25%"]);
 
-  // Deterministic stagger so neighbouring prints don't develop in lockstep
-  const delay = ((index * 7) % 5) * 0.1;
   const open = () => ref.current && onOpen(ref.current.getBoundingClientRect());
 
   return (
@@ -72,9 +65,6 @@ export default function DevelopTile({
           px.set(0.5);
           py.set(0.5);
         }}
-        initial={{ opacity: 0, y: 36 }}
-        animate={inView ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.9, delay, ease: [0.22, 1, 0.36, 1] }}
         style={{
           position: "relative",
           aspectRatio: String(aspect(photo)),
@@ -83,17 +73,16 @@ export default function DevelopTile({
           cursor: "pointer",
           rotateX,
           rotateY,
-          background: photo.blur ? `center / cover no-repeat url(${photo.blur}), ${photo.color}` : photo.color,
+          background: photo.color,
           boxShadow: `0 10px 30px -14px rgba(0,0,0,${isDark ? 0.7 : 0.28}), 0 0 0 1px ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)"}`,
         }}
       >
         <motion.div
-          initial={{ scale: 1.1 }}
-          animate={inView ? { scale: hover ? 1.05 : 1 } : {}}
-          transition={{ duration: hover ? 0.8 : 1.8, delay: hover ? 0 : delay, ease: [0.22, 1, 0.36, 1] }}
+          animate={{ scale: hover ? 1.05 : 1 }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           style={{ position: "absolute", inset: 0 }}
         >
-          <Image
+          <FadeImage
             src={photo.src}
             alt={alt}
             fill
@@ -102,15 +91,6 @@ export default function DevelopTile({
             priority={priority}
           />
         </motion.div>
-
-        {/* Developer sheet: the photo's own colour, washing off */}
-        <motion.div
-          aria-hidden
-          initial={{ opacity: 0.92 }}
-          animate={inView ? { opacity: 0 } : {}}
-          transition={{ duration: 1.6, delay: delay + 0.15, ease: [0.3, 0.6, 0.2, 1] }}
-          style={{ position: "absolute", inset: 0, background: photo.color, pointerEvents: "none" }}
-        />
 
         {/* Moving highlight */}
         <motion.div

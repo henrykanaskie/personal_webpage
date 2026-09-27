@@ -151,31 +151,3 @@ export async function buildSection(id: string): Promise<Section | undefined> {
   const sections = await buildSections();
   return sections.find((s) => s.id === id);
 }
-
-/**
- * Out-of-focus background plates for the landing hero, keyed by photo src.
- * Blurred, desaturated and darkened here once, so the browser only has to
- * scale a tiny image instead of running a full-screen blur filter every frame.
- */
-export async function buildHeroPlates(keys: string[]): Promise<Record<string, string>> {
-  const plates: Record<string, string> = {};
-  await Promise.all(
-    keys.map(async (key) => {
-      const file = path.join(process.cwd(), "public", "photography", key);
-      if (!fs.existsSync(file)) return;
-      try {
-        const buf = await sharp(file)
-          .rotate()
-          .resize(120, 120, { fit: "inside" })
-          .blur(2.2)
-          .modulate({ saturation: 0.55, brightness: 0.55 })
-          .webp({ quality: 70 })
-          .toBuffer();
-        plates[`/photography/${key}`] = `data:image/webp;base64,${buf.toString("base64")}`;
-      } catch {
-        // Missing plate: the hero falls back to the photo's blur placeholder
-      }
-    }),
-  );
-  return plates;
-}
