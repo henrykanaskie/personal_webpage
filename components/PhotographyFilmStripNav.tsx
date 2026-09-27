@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { SECTION_META as SECTIONS } from "@/app/photography/data";
+import { photoTheme } from "@/components/photo/utils";
 
 const photoNavLinks: { name: string; href: string }[] = [
   { name: "About", href: "/photography/about" },
@@ -31,9 +32,7 @@ function buildStripItems(isDark: boolean) {
   return photoNavLinks.map((link) => {
     const sectionId = getSectionId(link.href);
     const section = sectionId ? SECTIONS.find((s) => s.id === sectionId) : null;
-    const accent = section
-      ? (isDark ? section.darkAccent : section.lightAccent)
-      : fallbackAccent;
+    const accent = section ? (isDark ? section.darkAccent : section.lightAccent) : fallbackAccent;
     return {
       ...link,
       sub: section?.sub ?? "",
@@ -109,18 +108,16 @@ export function PhotographyFilmStripNav({
   const stopDragging = () => {
     isDraggingRef.current = false;
     setIsDragging(false);
-    setTimeout(() => { hasMoved.current = false; }, 0);
+    setTimeout(() => {
+      hasMoved.current = false;
+    }, 0);
   };
 
-  // Align with the photography surface colors:
-  //   dark bg = #050507, light bg = #f8f5f0
-  //   accent palette = rose (255,100,155) ↔ periwinkle (110,140,255) in dark
-  //                     rose (158,68,112) ↔ periwinkle (85,100,162) in light
-  const labelColor = isDark ? "rgb(228, 208, 238)" : "rgb(95, 68, 112)";
-  const subColor = isDark ? "rgba(205,188,225,0.62)" : "rgba(110,80,138,0.62)";
-  const stripBg = isDark
-    ? "linear-gradient(180deg, rgba(5,5,7,0.84) 0%, rgba(7,6,12,0.92) 100%)"
-    : "linear-gradient(180deg, rgba(250,247,242,0.84) 0%, rgba(246,242,236,0.92) 100%)";
+  // Same tokens as the photography pages, so the nav sits in the page instead of on top of it
+  const t = photoTheme(isDark);
+  const labelColor = t.ink;
+  const subColor = t.sub;
+  const stripBg = isDark ? "rgba(5,5,7,0.88)" : "rgba(248,245,240,0.9)";
 
   return (
     <header
@@ -151,13 +148,9 @@ export function PhotographyFilmStripNav({
           left: 0,
           right: 0,
           bottom: 0,
-          height: 2,
+          height: 1,
           pointerEvents: "none",
-          background: isDark
-            ? "linear-gradient(90deg, transparent 0%, rgba(255,100,155,0.14) 20%, rgba(110,140,255,0.16) 50%, rgba(255,100,155,0.14) 80%, transparent 100%)"
-            : "linear-gradient(90deg, transparent 0%, rgba(158,68,112,0.10) 20%, rgba(85,100,162,0.12) 50%, rgba(158,68,112,0.10) 80%, transparent 100%)",
-          filter: "blur(0.2px)",
-          opacity: 0.9,
+          background: t.rule,
         }}
       />
 
@@ -189,7 +182,7 @@ export function PhotographyFilmStripNav({
             border: "none",
             cursor: "pointer",
             padding: "0 4px 0 8px",
-            color: isDark ? "rgba(200,182,220,0.45)" : "rgba(110,80,135,0.4)",
+            color: t.faint,
             fontSize: 16,
             lineHeight: 1,
             display: "flex",
@@ -238,18 +231,15 @@ export function PhotographyFilmStripNav({
         {stripItems.map((item, i) => {
           const active = isActive(item.href);
           const hovered = hoveredIndex === i;
-          const viewBoxColor = isDark
-            ? "rgba(215,185,240,0.32)"
-            : "rgba(120,72,138,0.24)";
-          const viewBoxShadow = isDark
-            ? "rgba(180,150,220,0.12)"
-            : "rgba(100,60,120,0.08)";
+          const viewBoxColor = t.faint;
 
           return (
             <Link
               key={item.href}
               href={item.href}
-              ref={(el) => { itemRefs.current[i] = el; }}
+              ref={(el) => {
+                itemRefs.current[i] = el;
+              }}
               scroll={false}
               onMouseEnter={() => setHoveredIndex(i)}
               onMouseLeave={() => setHoveredIndex(null)}
@@ -275,8 +265,7 @@ export function PhotographyFilmStripNav({
                     inset: -8,
                     borderRadius: 18,
                     pointerEvents: "none",
-                    border: `1px solid ${viewBoxColor}`,
-                    boxShadow: `0 0 18px ${viewBoxShadow}`,
+                    border: `1px solid ${t.rule}`,
                   }}
                 >
                   {[
@@ -306,7 +295,6 @@ export function PhotographyFilmStripNav({
                 </motion.div>
               )}
               <motion.div
-                layout
                 animate={{
                   scale: hovered ? HOVER_SCALE : active ? ACTIVE_SCALE : 1,
                 }}
@@ -349,7 +337,7 @@ export function PhotographyFilmStripNav({
             border: "none",
             cursor: "pointer",
             padding: "0 4px",
-            color: isDark ? "rgba(200,182,220,0.45)" : "rgba(110,80,135,0.4)",
+            color: t.faint,
             fontSize: 16,
             lineHeight: 1,
             display: "flex",

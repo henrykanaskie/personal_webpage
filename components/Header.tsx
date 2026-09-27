@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { PhotographyFilmStripNav } from "./PhotographyFilmStripNav";
 import FeedbackToggle from "./photo/FeedbackToggle";
+import { photoTheme } from "./photo/utils";
 import { glassStyle } from "../lib/glass";
 import { runThemeTransition } from "../lib/themeTransition";
 import { glassBubbleClassNames, metalClassNames, cs, photo } from "../lib/tokens";
@@ -383,9 +384,8 @@ export default function Header() {
 
   // ── Photography side: bottom film strip nav ──
   if (isPhotoSide) {
-    const photoBorder = isDark
-      ? "rgba(200,185,230,0.12)"
-      : "rgba(120,85,145,0.1)";
+    const pt = photoTheme(isDark);
+    const photoBorder = pt.rule;
     return (
       <PhotographyFilmStripNav
         isDark={isDark}
@@ -401,7 +401,7 @@ export default function Header() {
               width: 28,
               height: 28,
               borderRadius: "50%",
-              background: isDark ? "rgba(20,16,32,0.9)" : "rgba(248,245,240,0.95)",
+              background: pt.glass,
               border: `1px solid ${photoBorder}`,
               display: "flex",
               alignItems: "center",
@@ -416,7 +416,7 @@ export default function Header() {
                 width="7"
                 height="14"
                 rx="1.5"
-                fill={isDark ? "rgba(200,185,230,0.8)" : "rgba(120,85,145,0.7)"}
+                fill={pt.ink}
               />
               <rect
                 x="11"
@@ -424,9 +424,7 @@ export default function Header() {
                 width="7"
                 height="14"
                 rx="1.5"
-                fill={
-                  isDark ? "rgba(200,185,230,0.5)" : "rgba(120,85,145,0.45)"
-                }
+                fill={pt.faint}
               />
             </svg>
           </Link>

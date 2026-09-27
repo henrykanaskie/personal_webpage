@@ -22,5 +22,5 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
   };
   const next = live.length ? link(at === -1 ? 0 : at + 1) : null;
 
-  return <CategoryPageClient section={section} chapterIndex={at} chapterCount={live.length} next={next} />;
+  return <CategoryPageClient section={section} next={next} />;
 }

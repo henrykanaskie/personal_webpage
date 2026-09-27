@@ -74,26 +74,28 @@ export function rgbTriplet(hex: string): string {
 export function photoTheme(isDark: boolean) {
   return isDark
     ? {
+        // Neutral warm greys so the photos carry the colour; the accent is the site's periwinkle
         bg: "#050507",
-        ink: "rgb(236, 228, 244)",
-        title: "rgb(218, 198, 228)",
-        sub: "rgba(198, 178, 218, 0.72)",
-        faint: "rgba(198, 178, 218, 0.38)",
-        rule: "rgba(195, 175, 225, 0.14)",
+        ink: "rgb(236, 233, 228)",
+        title: "rgb(236, 233, 228)",
+        sub: "rgba(236, 233, 228, 0.6)",
+        faint: "rgba(236, 233, 228, 0.34)",
+        rule: "rgba(255, 255, 255, 0.1)",
         accent: "rgb(150, 165, 255)",
         accentSoft: "rgba(150, 165, 255, 0.22)",
-        glass: "rgba(12, 10, 18, 0.55)",
+        glass: "rgba(14, 14, 16, 0.62)",
       }
     : {
+        // Ink on paper; the accent is the site's rose
         bg: "#f8f5f0",
-        ink: "rgb(52, 38, 62)",
-        title: "rgb(100, 80, 115)",
-        sub: "rgba(110, 88, 128, 0.8)",
-        faint: "rgba(110, 88, 128, 0.42)",
-        rule: "rgba(128, 72, 138, 0.16)",
-        accent: "rgb(210, 60, 110)",
-        accentSoft: "rgba(210, 60, 110, 0.18)",
-        glass: "rgba(250, 247, 242, 0.62)",
+        ink: "rgb(30, 27, 25)",
+        title: "rgb(30, 27, 25)",
+        sub: "rgba(30, 27, 25, 0.62)",
+        faint: "rgba(30, 27, 25, 0.38)",
+        rule: "rgba(30, 27, 25, 0.12)",
+        accent: "rgb(196, 52, 98)",
+        accentSoft: "rgba(196, 52, 98, 0.16)",
+        glass: "rgba(250, 248, 244, 0.72)",
       };
 }
 

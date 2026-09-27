@@ -141,12 +141,12 @@ export const paper = {
 
 export const photo = {
   toggle: {
-    light: "rgb(100, 80, 115)",
-    dark: "rgb(218, 198, 228)",
+    light: "rgb(30, 27, 25)",
+    dark: "rgb(236, 233, 228)",
   },
   toggleHover: {
-    light: "rgba(128,72,138,0.06)",
-    dark: "rgba(195,175,225,0.06)",
+    light: "rgba(30,27,25,0.06)",
+    dark: "rgba(255,255,255,0.08)",
   },
   background: {
     light: "#f8f5f0",

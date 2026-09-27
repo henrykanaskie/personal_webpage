@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { useIsDark } from "@/lib/glass";
 import { feedbackEnabled, onFeedbackChange, setFeedbackEnabled } from "./feedback";
 import { photoTheme } from "./utils";
@@ -12,19 +11,10 @@ export default function FeedbackToggle({ isDark: isDarkProp }: { isDark?: boolea
   const isDark = isDarkProp ?? detected;
   const t = photoTheme(isDark);
   const [on, setOn] = useState(false);
-  const [hint, setHint] = useState(false);
 
   useEffect(() => {
     setOn(feedbackEnabled());
-    // A one-time nudge so visitors know the page can click back
-    const show = setTimeout(() => setHint(true), 4000);
-    const hide = setTimeout(() => setHint(false), 9000);
-    const off = onFeedbackChange(setOn);
-    return () => {
-      clearTimeout(show);
-      clearTimeout(hide);
-      off();
-    };
+    return onFeedbackChange(setOn);
   }, []);
 
   return (
@@ -33,10 +23,7 @@ export default function FeedbackToggle({ isDark: isDarkProp }: { isDark?: boolea
         type="button"
         aria-pressed={on}
         aria-label={on ? "Turn off shutter sounds" : "Turn on shutter sounds"}
-        onClick={() => {
-          setHint(false);
-          setFeedbackEnabled(!on);
-        }}
+        onClick={() => setFeedbackEnabled(!on)}
         style={{
           width: 28,
           height: 28,
@@ -73,35 +60,6 @@ export default function FeedbackToggle({ isDark: isDarkProp }: { isDark?: boolea
           )}
         </svg>
       </button>
-      <AnimatePresence>
-        {hint && !on && (
-          <motion.span
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            style={{
-              position: "absolute",
-              top: "calc(100% + 16px)",
-              right: 0,
-              fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-              fontSize: 9,
-              letterSpacing: "0.2em",
-              textTransform: "uppercase",
-              color: t.ink,
-              padding: "8px 12px",
-              borderRadius: 999,
-              background: t.glass,
-              border: `1px solid ${t.rule}`,
-              backdropFilter: "blur(14px)",
-              WebkitBackdropFilter: "blur(14px)",
-              whiteSpace: "nowrap",
-              pointerEvents: "none",
-            }}
-          >
-            Shutter sounds
-          </motion.span>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

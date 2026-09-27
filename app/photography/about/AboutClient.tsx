@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Image from "next/image";
+import FadeImage from "@/components/photo/FadeImage";
 import { motion } from "framer-motion";
 import { useIsDark } from "@/lib/glass";
 import { EASE_OUT, photoTheme } from "@/components/photo/utils";
@@ -175,13 +175,8 @@ export default function AboutClient() {
               background: isDark ? "#1a1620" : "#e6e0da",
             }}
           >
-            <motion.div
-              initial={{ filter: "sepia(0.9) brightness(2) contrast(0.4) blur(8px)", scale: 1.06 }}
-              animate={{ filter: "sepia(0) brightness(1) contrast(1) blur(0px)", scale: 1 }}
-              transition={{ duration: 2.4, delay: 0.2, ease: [0.3, 0.6, 0.2, 1] }}
-              style={{ position: "absolute", inset: 0 }}
-            >
-              <Image
+            <div style={{ position: "absolute", inset: 0 }}>
+              <FadeImage
                 src="/photography/photo_profile/IMG_8692.jpeg"
                 alt="Henry Kanaskie"
                 fill
@@ -189,7 +184,7 @@ export default function AboutClient() {
                 sizes="(min-width: 768px) 420px, 90vw"
                 style={{ objectFit: "cover" }}
               />
-            </motion.div>
+            </div>
           </div>
           <figcaption style={{ ...mono, fontSize: 8.5, color: t.faint, display: "flex", justifyContent: "space-between", marginTop: 14 }}>
             <span style={{ color: "rgb(90, 200, 130)" }}>● AF-C</span>
