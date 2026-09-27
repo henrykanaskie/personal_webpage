@@ -1,7 +1,8 @@
 "use client";
 
-import { memo, useEffect, useId, useState } from "react";
+import { memo, useEffect, useId, useRef, useState } from "react";
 import { useIsDark } from "@/hooks/useIsDark";
+import { type Drawing, rasterDrawing, registerDrawing, updatedDrawing } from "@/lib/drawings";
 
 interface AnimatedSvgProps {
   paths: string[];
@@ -94,10 +95,68 @@ function wireTexture(dark: boolean): string {
 function AnimatedSvg({ paths, size = 240, strokeWidth = 0.8, drawn, rotate = 0, duration = 3 }: AnimatedSvgProps) {
   const wireId = `wire-${useId().replace(/:/g, "")}`;
   const dark = useIsDark();
-  const [tex, setTex] = useState<string | null>(null);
+  // the stroke pattern, tagged with the theme it was built for
+  const [wire, setWire] = useState<{ dark: boolean; url: string } | null>(null);
   useEffect(() => {
-    setTex(wireTexture(dark));
+    setWire({ dark, url: wireTexture(dark) });
   }, [dark]);
+  const tex = wire?.url ?? null;
+
+  // Once it has finished drawing itself, the drawing is handed to the paper
+  // (lib/drawings): rasterised for this theme and then the other, so DotField's
+  // glass can frost and bend it and a theme switch never waits on a raster.
+  // The SVG stays until DotField is actually painting it.
+  const svgRef = useRef<SVGSVGElement>(null);
+  const gRef = useRef<SVGGElement>(null);
+  const entry = useRef<Drawing | null>(null);
+  const unregister = useRef<(() => void) | null>(null);
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    if (!drawn || settled) return;
+    const t = window.setTimeout(() => setSettled(true), duration * 1000 + 150);
+    return () => window.clearTimeout(t);
+  }, [drawn, settled, duration]);
+  useEffect(() => {
+    const svg = svgRef.current, g = gRef.current;
+    if (!settled || !svg || !g) return;
+    // this theme first, then the other, each when the page is idle
+    const order = dark ? (["dark", "light"] as const) : (["light", "dark"] as const);
+    let cancelled = false;
+    let idle = 0;
+    const next = (i: number) => {
+      if (cancelled || i >= order.length) return;
+      const theme = order[i];
+      if (entry.current?.images[theme]) return next(i + 1);
+      idle = window.requestIdleCallback ? window.requestIdleCallback(() => void run(i), { timeout: 1500 }) : window.setTimeout(() => void run(i), 300);
+    };
+    const run = async (i: number) => {
+      const theme = order[i];
+      if (!entry.current) {
+        const bb = g.getBBox();
+        // room past the last stroke for the glass's blur and lens to fade into
+        const pad = strokeWidth * 2 + 6;
+        entry.current = { svg, box: { x: bb.x - pad, y: bb.y - pad, w: bb.width + pad * 2, h: bb.height + pad * 2 }, images: {}, version: 0 };
+      }
+      const e = entry.current;
+      const m = svg.getScreenCTM();
+      const scale = m ? Math.hypot(m.a, m.b) : 3;
+      const img = await rasterDrawing(svg, e.box, scale * Math.min(window.devicePixelRatio || 1, 2), wireTexture(theme === "dark"));
+      if (cancelled) return;
+      if (img) {
+        e.images[theme] = img;
+        e.version++;
+        if (!unregister.current) unregister.current = registerDrawing(e);
+        else updatedDrawing();
+      }
+      next(i + 1);
+    };
+    next(0);
+    return () => {
+      cancelled = true;
+      if (idle) (window.cancelIdleCallback ?? window.clearTimeout)(idle);
+    };
+  }, [settled, dark, strokeWidth]);
+  useEffect(() => () => unregister.current?.(), []);
 
   return (
     <div
@@ -108,7 +167,7 @@ function AnimatedSvg({ paths, size = 240, strokeWidth = 0.8, drawn, rotate = 0, 
         transform: rotate ? `rotate(${rotate}deg)` : undefined,
       }}
     >
-      <svg viewBox="500 300 136 112" style={{ width: "100%", height: "100%", overflow: "visible" }}>
+      <svg ref={svgRef} viewBox="500 300 136 112" style={{ width: "100%", height: "100%", overflow: "visible" }}>
         {tex && (
           <defs>
             <pattern id={wireId} patternUnits="userSpaceOnUse" x={TEX.x} y={TEX.y} width={TEX.w} height={TEX.h}>
@@ -117,6 +176,7 @@ function AnimatedSvg({ paths, size = 240, strokeWidth = 0.8, drawn, rotate = 0, 
           </defs>
         )}
         <g
+          ref={gRef}
           className={`line-draw${drawn ? " drawn" : ""}`}
           stroke={tex ? `url(#${wireId})` : "var(--wire-mid)"}
           strokeWidth={strokeWidth}

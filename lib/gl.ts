@@ -66,8 +66,9 @@ float smin(float a, float b, float k) {
 // and a bubble budding out of its card (LiquidBud). It is the settled
 // bubble's glass, modelled on what the browser does to it (.glass-bubble and
 // useGlassLens in lib/liquid.tsx):
-//   - the dots behind are blurred as by blur(1.6px): a Gaussian of sigma 1.6
-//     (a small disk convolved with it: peak r^2 / 2 sigma^2)
+//   - what's behind (the dots and the line drawings) is blurred as by
+//     blur(1.6px): the dots analytically (a small disk convolved with a
+//     Gaussian of sigma 1.6: peak r^2 / 2 sigma^2), the drawings from their mipmaps
 //   - the lens: flat in the middle, a 22px bevel at the rim with a circular
 //     profile, sampling inward up to ~19px (lensMap at strength 38), each
 //     colour bent a little more than the last (1, 1.07, 1.14) for dispersion
@@ -81,17 +82,26 @@ float glassDot(vec2 p, vec2 off) {
   const float S2 = 5.12; // 2 sigma^2, sigma 1.6
   return min(1.0, uDotR * uDotR / S2) * exp(-dot(q, q) / S2);
 }
+// The line drawings on the paper (lib/drawings), premultiplied; blur softens
+// them (0 for sharp; DotField reads it as a mip bias). Each shader defines it: DotField paints the
+// drawings; LiquidBud has none.
+vec4 drawings(vec2 p, float blur);
+// The page as the glass sees it at p: the blurred dots, with the drawings
+// over them, blurred by the same 1.6px.
+vec3 glassPage(vec2 p, vec2 off) {
+  vec3 c = mix(uBg, uDot, glassDot(p, off) * uDotA);
+  vec4 dr = drawings(p, 1.6); // (as a mip bias: roughly the 1.6px blur)
+  return c * (1.0 - dr.a) + dr.rgb;
+}
 // d: signed distance to the glass outline (negative inside); n: outward normal
 vec3 glassSurface(vec2 p, vec2 off, float d, vec2 n) {
   float u = 1.0 - clamp(-d / 22.0, 0.0, 1.0);
   float tilt = 1.0 - sqrt(max(0.0, 1.0 - u * u));
   vec2 v = -n * tilt * 18.9;
   // flat across the middle: one sample; only the bevel splits the colours
-  vec3 k = tilt < 1e-3
-    ? vec3(glassDot(p, off))
-    : vec3(glassDot(p + v, off), glassDot(p + v * 1.07, off), glassDot(p + v * 1.14, off));
-  k *= uDotA;
-  vec3 col = mix(uBg, uDot, k);
+  vec3 col = tilt < 1e-3
+    ? glassPage(p, off)
+    : vec3(glassPage(p + v, off).r, glassPage(p + v * 1.07, off).g, glassPage(p + v * 1.14, off).b);
   float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
   col = mix(vec3(l), col, 1.25);
   return col * mix(1.02, 1.12, uDark);
