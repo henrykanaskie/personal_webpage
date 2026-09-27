@@ -2,27 +2,37 @@
 
 import { paper, photo } from "./tokens";
 
-// ─── Theme transition: the halftone curtain ─────────────────────────────────
+// ─── Theme transition: the halftone morph ───────────────────────────────────
 // Switching between light and dark is done with the page's own dot grid.
-// From the toggle, the dots swell outward in a wave, in the colour of the
-// sheet they're about to become, until they close up and cover the page
-// (a halftone going solid). Under that cover the theme swaps. Then the same
-// wave runs again: the dots shrink back down to ordinary dots, now in the new
-// ink, revealing the page in the other theme around them.
 //
-// It draws on a 2D canvas laid over everything, so it works in every browser
-// (Safari included), and the dots sit exactly on the page's grid (the `paper`
-// token), so the curtain is the paper itself rather than something over it.
+// Where the browser has View Transitions, it's one wave: the theme swaps at
+// once, the old page is held as a snapshot on top, and from the toggle the
+// grid's dots grow through that snapshot, each dot a window onto the page in
+// its new theme, until they close up and the old page is gone. The new theme
+// is always right behind the wave; nothing is ever covered by a blank sheet.
+// In Chromium the mask is a paint worklet drawing exactly that halftone (every
+// dot on the page's grid, growing on its own delay); elsewhere it's CSS masks:
+// a dotted wave front with the new page solid behind it.
+//
+// Without View Transitions it falls back to the curtain: the dots swell in the
+// new sheet's colour until they cover the page, the theme swaps under the
+// cover, and the same wave shrinks them back to dots in the new ink. That runs
+// on a 2D canvas over everything, so it works in every browser.
+//
+// Either way the dots sit exactly on the page's grid (the `paper` token), so
+// the transition is the paper itself rather than something over it.
 
 const GAP = paper.gap;
 const R_FULL = GAP * Math.SQRT1_2 + 0.75; // a dot this big covers its whole cell
-// Slow enough to watch (about 2.5s end to end): the wave visibly travels, each
-// dot visibly swells and closes up, so the page reads as morphing from one
-// sheet into the other rather than flashing between them.
+// Slow enough to watch: the wave visibly travels and each dot visibly swells
+// and closes up, so the page reads as morphing from one sheet into the other.
 const SPREAD = 0.75; // seconds for the wave to cross the screen
 const GROW = 0.45; // seconds each dot takes to close up
-const HOLD = 0.1; // a beat fully covered while the theme swaps
-const SHRINK = 0.5; // seconds each dot takes to shrink back
+const HOLD = 0.1; // curtain only: a beat fully covered while the theme swaps
+const SHRINK = 0.5; // curtain only: seconds each dot takes to shrink back
+// The morph is a single wave, so it gets a little more time per stage.
+const M_SPREAD = 1.0;
+const M_GROW = 0.6;
 
 let running = false;
 
@@ -42,7 +52,7 @@ export function runThemeTransition({
   y: number;
   toDark: boolean;
   photoSide: boolean;
-  /** Switches the theme; called once, while the page is fully covered. */
+  /** Switches the theme; called once (under the snapshot, or under the curtain). */
   apply: () => void;
 }) {
   if (running) return;
@@ -50,6 +60,14 @@ export function runThemeTransition({
     apply();
     return;
   }
+  if ("startViewTransition" in document) {
+    morph(x, y, apply);
+    return;
+  }
+  curtain(x, y, toDark, photoSide, apply);
+}
+
+function curtain(x: number, y: number, toDark: boolean, photoSide: boolean, apply: () => void) {
 
   // The sheet it becomes, and (on the CS side) the dot it ends as.
   const bg = photoSide ? hex(toDark ? photo.background.dark : photo.background.light) : [...(toDark ? paper.dark.bg : paper.light.bg)];
@@ -182,4 +200,107 @@ export function runThemeTransition({
       running = false;
     }
   }, (T_END + 1) * 1000);
+}
+
+// ─── The morph ──────────────────────────────────────────────────────────────
+
+// The paint worklet: the new page's mask. Every cell of the page's grid gets a
+// dot that starts growing when the wave reaches it and closes up its cell;
+// where every cell has closed, one solid disc stands in for them.
+const WORKLET = `
+registerPaint("halftone", class {
+  static get inputProperties() {
+    return ["--vt-t", "--vt-x", "--vt-y", "--vt-ox", "--vt-oy", "--vt-maxd", "--vt-spread", "--vt-grow", "--vt-gap"];
+  }
+  paint(ctx, size, props) {
+    const n = (k) => parseFloat(String(props.get(k))) || 0;
+    const t = n("--vt-t"), x = n("--vt-x"), y = n("--vt-y"), ox = n("--vt-ox"), oy = n("--vt-oy");
+    const maxd = n("--vt-maxd") || 1, spread = n("--vt-spread"), grow = n("--vt-grow"), gap = n("--vt-gap") || 24;
+    const rFull = gap * Math.SQRT1_2 + 0.75;
+    const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+    ctx.fillStyle = "#000";
+    // every cell nearer than this has closed up
+    const dIn = ((t - grow) / spread) * maxd - gap;
+    if (dIn > 0) { ctx.beginPath(); ctx.arc(x, y, dIn + gap * 0.5, 0, Math.PI * 2); ctx.fill(); }
+    const dOut = (t / spread) * maxd;
+    ctx.beginPath();
+    for (let cy = oy - gap; cy < size.height + gap; cy += gap) {
+      for (let cx = ox - gap; cx < size.width + gap; cx += gap) {
+        const d = Math.hypot(cx - x, cy - y);
+        if (d > dOut || d < dIn) continue;
+        const k = Math.min(1, Math.max(0, (t - (d / maxd) * spread) / grow));
+        if (k <= 0) continue;
+        const r = rFull * ease(k);
+        ctx.moveTo(cx + r, cy);
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      }
+    }
+    ctx.fill();
+  }
+});
+`;
+
+let setup: Promise<"paint" | "css"> | null = null;
+function prepare(): Promise<"paint" | "css"> {
+  if (setup) return setup;
+  const css = CSS as unknown as {
+    registerProperty?: (d: { name: string; syntax: string; inherits: boolean; initialValue: string }) => void;
+    paintWorklet?: { addModule: (url: string) => Promise<void> };
+  };
+  // --vt-t has to be a registered number so it can be animated
+  try {
+    css.registerProperty?.({ name: "--vt-t", syntax: "<number>", inherits: true, initialValue: "0" });
+  } catch {
+    // already registered (a hot reload)
+  }
+  setup = css.paintWorklet
+    ? css.paintWorklet
+        .addModule(URL.createObjectURL(new Blob([WORKLET], { type: "text/javascript" })))
+        .then(() => "paint" as const, () => "css" as const)
+    : Promise.resolve("css" as const);
+  return setup;
+}
+
+function morph(x: number, y: number, apply: () => void) {
+  running = true;
+  const root = document.documentElement;
+  const w = window.innerWidth, h = window.innerHeight;
+  const sx = window.scrollX, sy = window.scrollY;
+  const ox = GAP / 2 - (((sx % GAP) + GAP) % GAP), oy = GAP / 2 - (((sy % GAP) + GAP) % GAP);
+  const maxD = Math.max(Math.hypot(x, y), Math.hypot(w - x, y), Math.hypot(x, h - y), Math.hypot(w - x, h - y)) || 1;
+  const T_END = M_SPREAD + M_GROW;
+  const vars: Record<string, string> = {
+    "--vt-x": `${x}px`, "--vt-y": `${y}px`, "--vt-ox": `${ox}px`, "--vt-oy": `${oy}px`,
+    "--vt-maxd": `${maxD}`, "--vt-spread": `${M_SPREAD}`, "--vt-grow": `${M_GROW}`, "--vt-gap": `${GAP}`,
+  };
+  const done = () => {
+    root.classList.remove("vt-halftone", "vt-paint", "vt-css");
+    for (const k of Object.keys(vars)) root.style.removeProperty(k);
+    running = false;
+  };
+
+  prepare().then((mode) => {
+    for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
+    root.classList.add("vt-halftone", mode === "paint" ? "vt-paint" : "vt-css");
+    let vt: { ready: Promise<void>; finished: Promise<void> };
+    try {
+      vt = (document as Document & { startViewTransition: (cb: () => void) => typeof vt }).startViewTransition(apply);
+    } catch {
+      apply();
+      done();
+      return;
+    }
+    vt.ready
+      .then(() => {
+        // the wave: --vt-t runs from 0 to the end, in seconds, and the mask follows it
+        root.animate({ "--vt-t": [0, T_END] } as unknown as Keyframe[], {
+          duration: T_END * 1000,
+          easing: "linear",
+          fill: "forwards",
+          pseudoElement: "::view-transition-new(root)",
+        });
+      })
+      .catch(() => {});
+    vt.finished.then(done, done);
+  });
 }
