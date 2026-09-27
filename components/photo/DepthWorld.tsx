@@ -15,24 +15,6 @@ const PASS = 1500; // within this distance prints start swinging aside
 const ARRIVE = 760; // how far in front of a station the camera stops when you jump to it
 const SCROLL_PER_UNIT = 0.34; // page px of scroll per world unit travelled
 
-// Prototype: this chapter hangs its prints to dry on lines strung across the flight, instead of scattering them
-const HANGING = "portraits";
-const LINE_HALF = 1.6; // half a line's length, in viewport widths; its ends fade into the dark
-const LINE_TOP = -0.5; // the lines' drawing spans this band of the screen height (fractions from the centre)
-const LINE_BAND = 0.3;
-
-interface Wire {
-  y0: number; // height at the line's middle before it sags, in screen heights from the centre
-  tilt: number; // how much higher one end is than the other
-  sag: number;
-}
-
-/** Height of a line at `x` viewport widths from the centre: a parabola, which is what the SVG's quadratic draws. */
-function wireY(w: Wire, x: number) {
-  const s = x / LINE_HALF;
-  return w.y0 + w.tilt * s + w.sag * (1 - s * s);
-}
-
 type Plane =
   | { kind: "intro"; z: number }
   | { kind: "station"; z: number; stop: number; x: number; rz: number }
@@ -46,19 +28,6 @@ type Plane =
       size: number;
       rx: number;
       ry: number;
-      rz: number;
-      phase: number;
-    }
-  | { kind: "line"; z: number; wire: Wire }
-  | {
-      kind: "hang";
-      z: number;
-      item: LightboxItem;
-      archiveIndex: number;
-      wire: Wire;
-      x: number;
-      size: number;
-      clip: number; // where the clip holds the print, as an offset from its centre (fraction of its width)
       rz: number;
       phase: number;
     };
@@ -89,10 +58,12 @@ export default function DepthWorld({
   sections,
   perSection,
   isDark,
+  onOpen,
 }: {
   sections: Section[];
   perSection: number;
   isDark: boolean;
+  onOpen: (items: LightboxItem[], index: number, rect: DOMRect) => void;
 }) {
   const t = photoTheme(isDark);
   const router = useRouter();
@@ -105,15 +76,6 @@ export default function DepthWorld({
   const [near, setNear] = useState(0);
   const [active, setActive] = useState(-1);
   const [hoverStop, setHoverStop] = useState<number | null>(null);
-  const [hoverStation, setHoverStation] = useState<number | null>(null);
-  const [hoverPrint, setHoverPrint] = useState<number | null>(null);
-  // The camera's current depth, for click handlers that need to know how far away something is
-  const camRef = useRef(0);
-  const enteringRef = useRef(false);
-  // Each hanging print's swing: angle (degrees, positive is away from the camera) and angular velocity
-  const swingRef = useRef<{ a: number; v: number }[]>([]);
-  const shadeRefs = useRef<(HTMLSpanElement | null)[]>([]);
-  const stageRef = useRef<HTMLDivElement>(null);
   const isMobile = !!useIsMobile();
   const reduceMotion = !!useReducedMotion();
 
@@ -130,38 +92,6 @@ export default function DepthWorld({
       // Give each title room before its prints start, so they don't pile up behind the words
       z += 1000;
       const n = Math.min(perSection, section.photos.length);
-      if (section.id === HANGING) {
-        // Two lines, one behind the other, each with three prints clipped along it
-        const perLine = Math.ceil(n / 2);
-        for (let first = 0, line = 0; first < n; first += perLine, line++) {
-          const wire = { y0: -0.4 + rand() * 0.06, tilt: (rand() - 0.5) * 0.08, sag: 0.05 + rand() * 0.04 };
-          planes.push({ kind: "line", z, wire });
-          const count = Math.min(perLine, n - first);
-          for (let c = 0; c < count; c++) {
-            const photo = section.photos[Math.floor(((first + c) * section.photos.length) / n)];
-            const item = { photo, sectionId: section.id, sectionTitle: section.title };
-            // A print clipped off-centre hangs crooked: the far side drops
-            const clip = (rand() - 0.5) * 0.3;
-            planes.push({
-              kind: "hang",
-              z,
-              item,
-              archiveIndex: items.length,
-              wire,
-              // The line behind is shifted half a gap so its prints show between the ones in front
-              x: ((c + 0.5) / count - 0.5) * 0.9 + (line % 2 ? 0.16 : -0.04) + (rand() - 0.5) * 0.08,
-              size: 0.68 + rand() * 0.2,
-              clip,
-              rz: -clip * 26 + (rand() - 0.5) * 2,
-              phase: rand() * Math.PI * 2,
-            });
-            items.push(item);
-          }
-          z += 850 + rand() * 200;
-        }
-        z += 600;
-        continue;
-      }
       for (let k = 0; k < n; k++) {
         const photo = section.photos[Math.floor((k * section.photos.length) / n)];
         const item = { photo, sectionId: section.id, sectionTitle: section.title };
@@ -206,8 +136,10 @@ export default function DepthWorld({
     window.scrollTo({ top: scrollFor(stops[stop].z - ARRIVE), behavior: reduceMotion ? "auto" : "smooth" });
   };
 
-  // The camera surges forward through whatever is ahead, then the page changes
-  const surgeInto = (href: string) => {
+  // Entering a station: the camera surges forward through it, then the page changes
+  const enter = (href: string) => (e: React.MouseEvent) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    e.preventDefault();
     const fly = flyRef.current;
     if (fly && !reduceMotion) {
       fly.style.transition = "transform 0.75s cubic-bezier(0.55, 0, 0.9, 0.35), opacity 0.75s ease-in";
@@ -215,39 +147,6 @@ export default function DepthWorld({
       fly.style.opacity = "0";
     }
     setTimeout(() => router.push(href), reduceMotion ? 0 : 680);
-  };
-
-  // Plain clicks only: modifier clicks and middle clicks keep their normal new-tab behaviour
-  const plainClick = (e: React.MouseEvent) => !(e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0);
-
-  // A chapter title: from far away, fly to it first, then go through it
-  const enterStation = (i: number) => (e: React.MouseEvent) => {
-    if (!plainClick(e)) return;
-    e.preventDefault();
-    if (enteringRef.current) return;
-    enteringRef.current = true;
-    const target = stops[i].z - ARRIVE;
-    if (reduceMotion || Math.abs(target - camRef.current) < 1400) {
-      surgeInto(stops[i].href);
-      return;
-    }
-    flyTo(i);
-    const start = performance.now();
-    const waitForArrival = () => {
-      // Enter once the camera is nearly there; never wait forever
-      if (Math.abs(target - camRef.current) < 140 || performance.now() - start > 1800) surgeInto(stops[i].href);
-      else requestAnimationFrame(waitForArrival);
-    };
-    requestAnimationFrame(waitForArrival);
-  };
-
-  // A print: go straight into its chapter
-  const enterPrint = (href: string) => (e: React.MouseEvent) => {
-    if (!plainClick(e)) return;
-    e.preventDefault();
-    if (enteringRef.current) return;
-    enteringRef.current = true;
-    surgeInto(href);
   };
 
   // Camera loop, running only while the world is on screen
@@ -268,9 +167,7 @@ export default function DepthWorld({
     const lookTarget = { x: 0, y: 0 };
     let lastNear = -1;
     let lastActive = -2;
-    let lastSize = "";
     const clock = frameClock();
-    swingRef.current = planes.map(() => ({ a: 0, v: 0 }));
 
     const onMove = (e: PointerEvent) => {
       lookTarget.x = (e.clientX / window.innerWidth - 0.5) * 2;
@@ -285,7 +182,6 @@ export default function DepthWorld({
       const target = progress() * depth + introOffset;
       const prev = camZ;
       camZ += (target - camZ) * (reduceMotion ? 1 : smoothing(intro < 1 ? 0.2 : 0.075, dt));
-      camRef.current = camZ;
       velocity += ((camZ - prev) / Math.max(dt, 1)) * 1000 * 0.1 - velocity * 0.1;
       const kl = reduceMotion ? 0 : smoothing(0.05, dt);
       look.x += (lookTarget.x - look.x) * kl;
@@ -294,18 +190,6 @@ export default function DepthWorld({
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const mobile = vw < 768;
-      // On a tall phone screen the lines hang lower, or they'd leave the bottom half empty
-      const lineVh = mobile ? vh * 0.62 : vh;
-      // The lines are drawn in these units, so they match the positions below exactly
-      const size = `${vw}x${lineVh}`;
-      if (size !== lastSize && stageRef.current) {
-        lastSize = size;
-        stageRef.current.style.setProperty("--vw", `${vw}px`);
-        stageRef.current.style.setProperty("--vh", `${lineVh}px`);
-      }
-      // The flight's own speed is the wind on the drying lines: fly forward and the prints swing away
-      const wind = reduceMotion ? 0 : Math.max(-32, Math.min(32, velocity * 0.012));
-      const h = Math.min(dt, 50) / 1000;
       const time = reduceMotion ? 0 : now / 1000;
       const roll = Math.max(-4, Math.min(4, velocity * 0.0016));
       if (worldRef.current) {
@@ -337,36 +221,7 @@ export default function DepthWorld({
           const y = p.kind === "station" ? 0.07 * vh : mobile ? 0.22 * vh : 0.24 * vh;
           const rz = p.kind === "station" ? p.rz : 0;
           el.style.transform = `translate(-50%, -50%) translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, ${(-rel).toFixed(1)}px) rotateZ(${rz}deg)`;
-          // Titles stay clickable as long as you can see them, however far away
-          el.style.pointerEvents = p.kind === "station" && rel > 120 && rel < FAR * 0.9 ? "auto" : "none";
-          continue;
-        }
-
-        if (p.kind === "line") {
-          el.style.transform = `translateX(-50%) translate3d(0px, ${(LINE_TOP * lineVh).toFixed(1)}px, ${(-rel).toFixed(1)}px)`;
-          continue;
-        }
-
-        if (p.kind === "hang") {
-          // A pendulum on its clip, lightly damped so it sways and settles, pushed by the wind and a slow draught
-          const sw = swingRef.current[i];
-          const target = wind + Math.sin(time * 0.6 + p.phase) * 3 + Math.sin(time * 1.7 + p.phase * 1.7) * 1.2;
-          const w0 = 2 * Math.PI * 0.7;
-          sw.v += (-w0 * w0 * (sw.a - target) - 2 * 0.24 * w0 * sw.v) * h;
-          sw.a = Math.max(-75, Math.min(75, sw.a + sw.v * h));
-          const x = p.x * (mobile ? 1.2 : 1);
-          const twist = Math.sin(time * 0.4 + p.phase) * 5 + sw.v * 0.04;
-          // The clip sits exactly on the line; the print turns about it
-          el.style.transform = `translate(${(-50 - p.clip * 100).toFixed(1)}%, 0) translate3d(${(x * vw).toFixed(1)}px, ${(
-            wireY(p.wire, x) * lineVh
-          ).toFixed(1)}px, ${(-rel).toFixed(1)}px) rotateY(${twist.toFixed(2)}deg) rotateX(${(-sw.a).toFixed(2)}deg) rotateZ(${p.rz.toFixed(2)}deg)`;
-          const shade = shadeRefs.current[i];
-          if (shade) shade.style.opacity = Math.min(0.8, Math.abs(sw.a) / 45).toFixed(3);
-          el.style.pointerEvents = rel > 60 && rel < FAR * 0.75 ? "auto" : "none";
-          if (rel > 0 && rel < best) {
-            best = rel;
-            bestIdx = p.archiveIndex;
-          }
+          el.style.pointerEvents = p.kind === "station" && rel > 120 && rel < 3400 ? "auto" : "none";
           continue;
         }
 
@@ -382,7 +237,7 @@ export default function DepthWorld({
         el.style.transform = `translate(-50%, -50%) translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, ${(-rel).toFixed(1)}px) rotateX(${(
           p.rx * settle
         ).toFixed(2)}deg) rotateY(${(p.ry * settle).toFixed(2)}deg) rotateZ(${rz.toFixed(2)}deg)`;
-        el.style.pointerEvents = rel > 60 && rel < FAR * 0.75 ? "auto" : "none";
+        el.style.pointerEvents = rel > 60 && rel < 2400 ? "auto" : "none";
         if (rel > 0 && rel < best) {
           best = rel;
           bestIdx = p.archiveIndex;
@@ -445,7 +300,6 @@ export default function DepthWorld({
           perspectiveOrigin: "50% 50%",
           ["--print" as string]: isMobile ? "54vw" : "min(460px, 24vw)",
         }}
-        ref={stageRef}
       >
         {/* Room light takes the colour of the closest print */}
         <div
@@ -458,9 +312,8 @@ export default function DepthWorld({
           }}
         />
 
-        {/* These full-screen layers sit at depth 0, in front of every print, so they must let clicks through */}
-        <div ref={flyRef} style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d", pointerEvents: "none" }}>
-          <div ref={worldRef} style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d", pointerEvents: "none" }}>
+        <div ref={flyRef} style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d" }}>
+          <div ref={worldRef} style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d" }}>
             {planes.map((p, i) => {
               const ref = (el: HTMLDivElement | null) => {
                 planeRefs.current[i] = el;
@@ -506,12 +359,8 @@ export default function DepthWorld({
                     <Link
                       href={stop.href}
                       data-af=""
-                      onClick={enterStation(p.stop)}
-                      onMouseEnter={() => {
-                        router.prefetch(stop.href);
-                        setHoverStation(p.stop);
-                      }}
-                      onMouseLeave={() => setHoverStation(null)}
+                      onClick={enter(stop.href)}
+                      onMouseEnter={() => router.prefetch(stop.href)}
                       style={{
                         display: "flex",
                         flexDirection: "column",
@@ -540,10 +389,8 @@ export default function DepthWorld({
                           fontSize: 10,
                           padding: "10px 18px",
                           borderRadius: 999,
-                          border: `1px solid ${hoverStation === p.stop ? t.ink : t.rule}`,
-                          background: hoverStation === p.stop ? t.ink : "transparent",
-                          color: hoverStation === p.stop ? t.bg : t.sub,
-                          transition: "background 0.25s ease, color 0.25s ease, border-color 0.25s ease",
+                          border: `1px solid ${t.rule}`,
+                          color: t.sub,
                         }}
                       >
                         Enter →
@@ -553,47 +400,6 @@ export default function DepthWorld({
                 );
               }
 
-              if (p.kind === "line") {
-                const w = LINE_HALF * 200;
-                const y = (f: number) => ((f - LINE_TOP) * 100).toFixed(2);
-                const gid = `wire-${i}`;
-                return (
-                  <div
-                    key={`l-${i}`}
-                    ref={ref}
-                    aria-hidden
-                    style={{
-                      ...plane,
-                      top: "50%",
-                      width: `calc(var(--vw, 1vw) * ${w / 100})`,
-                      height: `calc(var(--vh, 1vh) * ${LINE_BAND})`,
-                      pointerEvents: "none",
-                    }}
-                  >
-                    {/* 1 unit is 1% of the screen width across and 1% of its height down */}
-                    <svg width="100%" height="100%" viewBox={`0 0 ${w} ${LINE_BAND * 100}`} preserveAspectRatio="none" style={{ display: "block", overflow: "visible" }}>
-                      <defs>
-                        <linearGradient id={gid} x1="0" x2="1" y1="0" y2="0">
-                          <stop offset="0" stopColor={t.ink} stopOpacity="0" />
-                          <stop offset="0.36" stopColor={t.ink} stopOpacity="0.5" />
-                          <stop offset="0.64" stopColor={t.ink} stopOpacity="0.5" />
-                          <stop offset="1" stopColor={t.ink} stopOpacity="0" />
-                        </linearGradient>
-                      </defs>
-                      <path
-                        d={`M0 ${y(p.wire.y0 - p.wire.tilt)} Q${w / 2} ${y(p.wire.y0 + 2 * p.wire.sag)} ${w} ${y(p.wire.y0 + p.wire.tilt)}`}
-                        fill="none"
-                        stroke={`url(#${gid})`}
-                        // Thicker than a hairline so it doesn't break into dashes far away
-                        strokeWidth={1.6}
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    </svg>
-                  </div>
-                );
-              }
-
-              const hanging = p.kind === "hang";
               return (
                 <div
                   key={`p-${p.item.photo.src}`}
@@ -602,22 +408,13 @@ export default function DepthWorld({
                     ...plane,
                     // Width is fixed in CSS so the per-frame loop never triggers layout
                     width: `calc(var(--print) * ${(p.size * (aspect(p.item.photo) < 1 ? 0.72 : 1)).toFixed(3)})`,
-                    ...(hanging ? { transformOrigin: `${50 + p.clip * 100}% 0` } : null),
                   }}
                 >
                   <button
                     type="button"
                     data-af=""
-                    aria-label={`Go to ${p.item.sectionTitle}`}
-                    onClick={enterPrint(`/photography/${p.item.sectionId}`)}
-                    onMouseEnter={() => {
-                      router.prefetch(`/photography/${p.item.sectionId}`);
-                      setHoverPrint(i);
-                      // Brushing a hanging print sets it swinging
-                      const sw = swingRef.current[i];
-                      if (hanging && sw && !reduceMotion) sw.v += 70;
-                    }}
-                    onMouseLeave={() => setHoverPrint(null)}
+                    aria-label={`Open ${p.item.sectionTitle} photograph`}
+                    onClick={(e) => onOpen(items, p.archiveIndex, e.currentTarget.getBoundingClientRect())}
                     style={{
                       display: "block",
                       width: "100%",
@@ -640,63 +437,7 @@ export default function DepthWorld({
                     >
                       <FadeImage src={p.item.photo.src} alt="" fill sizes="(min-width: 768px) 28vw, 56vw" style={{ objectFit: "cover" }} />
                     </span>
-                    {hanging && (
-                      // Tilting away from you or toward you, the print catches the light differently
-                      <span
-                        ref={(el) => {
-                          shadeRefs.current[i] = el;
-                        }}
-                        aria-hidden
-                        style={{
-                          position: "absolute",
-                          inset: 0,
-                          borderRadius: 2,
-                          background: "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.24))",
-                          opacity: 0,
-                          pointerEvents: "none",
-                        }}
-                      />
-                    )}
                   </button>
-                  {hanging && (
-                    // A steel film clip on the line
-                    <span
-                      aria-hidden
-                      style={{
-                        position: "absolute",
-                        left: `${50 + p.clip * 100}%`,
-                        top: 0,
-                        width: "6%",
-                        minWidth: 5,
-                        aspectRatio: "0.5",
-                        transform: "translate(-50%, -48%)",
-                        borderRadius: 1.5,
-                        background: "linear-gradient(90deg, #5d6166, #d9dde2 38%, #9a9fa5 62%, #55595e)",
-                        boxShadow: "0 1px 2px rgba(0,0,0,0.45)",
-                        pointerEvents: "none",
-                      }}
-                    />
-                  )}
-                  {/* Where a click on this print goes, written under it like a caption */}
-                  <span
-                    aria-hidden
-                    style={{
-                      ...mono,
-                      position: "absolute",
-                      left: 0,
-                      top: "100%",
-                      marginTop: 10,
-                      fontSize: 10,
-                      color: t.ink,
-                      whiteSpace: "nowrap",
-                      pointerEvents: "none",
-                      textShadow: halo,
-                      opacity: hoverPrint === i ? 1 : 0,
-                      transition: "opacity 0.25s ease",
-                    }}
-                  >
-                    {p.item.sectionTitle} →
-                  </span>
                 </div>
               );
             })}

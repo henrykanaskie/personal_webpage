@@ -1,18 +1,609 @@
-import { buildSections } from "./photography/getPhotos";
-import HomeClient from "./HomeClient";
-import type { MiniPrint } from "@/components/photo/MiniFlight";
+"use client";
 
-export const dynamic = "force-static";
+import { useState, Fragment, useEffect, useRef } from "react";
+import { motion, useMotionValue, animate, type MotionValue } from "framer-motion";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useIsDark } from "@/hooks/useIsDark";
+import { useIsMobile } from "@/hooks/useIsMobile";
+import GlassTitle from "@/components/GlassTitle";
+import { CS_SECTIONS, rememberCsSection, sectionLabel } from "@/lib/site";
 
-export default async function HomePage() {
-  const sections = (await buildSections()).filter((s) => s.photos.length > 0);
-  // Two prints from each chapter for the split screen's small flight
-  const prints: MiniPrint[] = sections.flatMap((s) =>
-    [0, Math.floor(s.photos.length / 2)].map((k) => {
-      const p = s.photos[k];
-      return { src: p.src, color: p.color, aspect: p.width / p.height };
-    }),
+const BOKEH = [
+  { id: 0, x: "20%", y: "22%", r: 160, blur: 55, v: "a" },
+  { id: 1, x: "78%", y: "18%", r: 100, blur: 46, v: "b" },
+  { id: 2, x: "74%", y: "74%", r: 180, blur: 60, v: "a" },
+  { id: 3, x: "18%", y: "76%", r: 110, blur: 48, v: "b" },
+];
+
+// ─── Corner brackets ─────────────────────────────────────────────────────────
+// Four L-shaped corners framing their container, like a viewfinder's.
+
+function Brackets({ inset, size, border }: { inset: number; size: number; border: string }) {
+  const corners: React.CSSProperties[] = [
+    { top: inset, left: inset, borderTop: border, borderLeft: border },
+    { top: inset, right: inset, borderTop: border, borderRight: border },
+    { bottom: inset, left: inset, borderBottom: border, borderLeft: border },
+    { bottom: inset, right: inset, borderBottom: border, borderRight: border },
+  ];
+  return (
+    <>
+      {corners.map((corner, i) => (
+        <div key={i} style={{ position: "absolute", width: size, height: size, ...corner }} />
+      ))}
+    </>
   );
-  const chapters = sections.map((s) => ({ id: s.id, title: s.title }));
-  return <HomeClient prints={prints} chapters={chapters} />;
+}
+
+// ─── Floating bokeh circle ───────────────────────────────────────────────────
+
+function FloatingBokeh({ c, color }: { c: (typeof BOKEH)[0]; color: string }) {
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  useEffect(() => {
+    function drift(mv: MotionValue<number>, range: number) {
+      const target = (Math.random() - 0.5) * range;
+      const duration = 1.5 + Math.random() * 2.5;
+      animate(mv, target, {
+        duration,
+        ease: "easeInOut",
+        onComplete: () => drift(mv, range),
+      });
+    }
+    drift(x, 200);
+    drift(y, 200);
+  }, [x, y]);
+
+  return (
+    <div
+      className="absolute pointer-events-none"
+      style={{ left: c.x, top: c.y, transform: "translate(-50%,-50%)" }}
+    >
+      <motion.div
+        style={{
+          x,
+          y,
+          width: c.r,
+          height: c.r,
+          borderRadius: "50%",
+          background: color,
+          filter: `blur(${c.blur}px)`,
+          willChange: "transform",
+        }}
+      />
+    </div>
+  );
+}
+
+// ─── Divider: slow breathing pulse on hover ─────────────────────────────────
+
+function AnimatedDivider({
+  hovered,
+  horizontal = false,
+  dividerRef,
+}: {
+  hovered: "left" | "right" | null;
+  horizontal?: boolean;
+  dividerRef?: React.RefObject<HTMLDivElement | null>;
+}) {
+  const active = hovered !== null;
+  const mid =
+    hovered === "left"
+      ? "rgba(200,185,155,0.65)"
+      : hovered === "right"
+        ? "rgba(165,185,220,0.6)"
+        : "rgba(180,175,160,0.5)";
+
+  return (
+    <div
+      ref={dividerRef}
+      style={{
+        position: "relative",
+        width: horizontal ? "100%" : 1,
+        height: horizontal ? 1 : undefined,
+        flexShrink: 0,
+        zIndex: 2,
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: `linear-gradient(${horizontal ? "to right" : "to bottom"}, transparent 3%, ${mid} 20%, ${mid} 80%, transparent 97%)`,
+          opacity: 0.4,
+          animation: active ? "dividerPulse 3s ease-in-out infinite" : "none",
+          transition: active ? "none" : "opacity 0.8s ease",
+        }}
+      />
+    </div>
+  );
+}
+
+// ─── Photography panel ───────────────────────────────────────────────────────
+
+function PhotoSide({ active, isDark }: { active: boolean; isDark: boolean }) {
+  // Neutral chrome for UI elements
+  const g = (a: number) =>
+    isDark ? `rgba(245,245,247,${a})` : `rgba(29,29,31,${a})`;
+
+  // Bokeh: soft rose + cool periwinkle
+  const bokehA = isDark ? "rgba(255,100,155,0.30)" : "rgba(210,60,110,0.22)";
+  const bokehB = isDark ? "rgba(110,140,255,0.24)" : "rgba(80,110,240,0.20)";
+
+  const bg = isDark
+    ? "linear-gradient(160deg, #08080e 0%, #0d0810 45%, #08080e 100%)"
+    : "linear-gradient(160deg, #f6f4f9 0%, #fefcff 50%, #f3f4f9 100%)";
+
+  const vignette = isDark
+    ? "radial-gradient(ellipse at 50% 45%, transparent 28%, rgba(0,0,0,0.68) 100%)"
+    : "radial-gradient(ellipse at 50% 45%, transparent 22%, rgba(15,5,30,0.18) 100%)";
+
+  // Pearlescent blue-red gradients for text (subtle)
+  const titleGrad = isDark
+    ? "linear-gradient(135deg, rgba(228,162,192,0.75) 0%, rgba(192,165,228,0.7) 25%, rgba(158,182,230,0.75) 50%, rgba(188,162,222,0.7) 75%, rgba(224,168,198,0.75) 100%)"
+    : "linear-gradient(135deg, rgb(158,68,112) 0%, rgb(132,78,140) 25%, rgb(85,100,162) 50%, rgb(128,75,135) 75%, rgb(152,70,110) 100%)";
+  const subGrad = isDark
+    ? "linear-gradient(135deg, rgba(222,168,198,0.38) 0%, rgba(182,168,228,0.35) 50%, rgba(162,182,228,0.38) 100%)"
+    : "linear-gradient(135deg, rgba(158,68,112,0.42) 0%, rgba(128,80,148,0.4) 50%, rgba(85,100,162,0.42) 100%)";
+  const mutedGrad = isDark
+    ? "linear-gradient(135deg, rgba(220,168,198,0.2) 0%, rgba(178,165,225,0.18) 50%, rgba(162,180,225,0.2) 100%)"
+    : "linear-gradient(135deg, rgba(158,68,112,0.26) 0%, rgba(128,80,148,0.24) 50%, rgba(85,100,162,0.26) 100%)";
+
+  const cornerColor = isDark
+    ? "rgba(200,180,228,0.15)"
+    : "rgba(120,72,135,0.15)";
+  const ruleColor = isDark ? "rgba(195,175,225,0.09)" : "rgba(128,72,138,0.1)";
+
+  return (
+    <motion.div
+      className="relative w-full h-full"
+      animate={{ scale: active ? 1.018 : 1 }}
+      transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+      style={{ userSelect: "none" }}
+    >
+      {/* Background */}
+      <div className="absolute inset-0" style={{ background: bg }} />
+
+      {/* Vignette */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: vignette }}
+      />
+
+      {/* Bokeh: each circle floats freely */}
+      {BOKEH.map((c) => (
+        <FloatingBokeh key={c.id} c={c} color={c.v === "a" ? bokehA : bokehB} />
+      ))}
+
+      {/* Film grain */}
+      <svg
+        className="absolute inset-0 w-full h-full pointer-events-none"
+        xmlns="http://www.w3.org/2000/svg"
+        style={{ opacity: isDark ? 0.09 : 0.07, mixBlendMode: "overlay" }}
+      >
+        <filter id="photo-grain">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.72"
+            numOctaves="4"
+            stitchTiles="stitch"
+          />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#photo-grain)" />
+      </svg>
+
+      {/* Viewfinder corners */}
+      <Brackets inset={24} size={24} border={`1.5px solid ${cornerColor}`} />
+
+      {/* Name */}
+      <div
+        style={{
+          position: "absolute",
+          top: "calc(50% - 70px)",
+          left: "50%",
+          transform: "translate(-50%,-50%)",
+          whiteSpace: "nowrap",
+        }}
+      >
+        <p
+          className="bg-clip-text text-transparent"
+          style={{
+            WebkitBackgroundClip: "text",
+            backgroundImage: subGrad,
+            fontSize: "clamp(1rem, 1.8vw, 1.4rem)",
+            letterSpacing: "0.55em",
+            textTransform: "uppercase",
+            margin: 0,
+          }}
+        >
+          Henry Kanaskie
+        </p>
+      </div>
+
+      {/* Upper rule */}
+      <div style={{ position: "absolute", top: "calc(50% - 38px)", left: "50%", transform: "translateX(-50%)", width: 36, height: "0.5px", background: ruleColor }} />
+
+      {/* Photography title */}
+      <div
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%,-50%)",
+          whiteSpace: "nowrap",
+        }}
+      >
+        <h1
+          className="bg-clip-text text-transparent"
+          style={{
+            WebkitBackgroundClip: "text",
+            backgroundImage: titleGrad,
+            fontSize: "clamp(2rem, 4vw, 3.5rem)",
+            fontWeight: 400,
+            letterSpacing: "0.4em",
+            textTransform: "uppercase",
+            margin: 0,
+          }}
+        >
+          Photography
+        </h1>
+      </div>
+
+      {/* Lower rule */}
+      <div style={{ position: "absolute", top: "calc(50% + 36px)", left: "50%", transform: "translateX(-50%)", width: 36, height: "0.5px", background: ruleColor }} />
+
+      {/* 35mm · Digital */}
+      <div
+        style={{
+          position: "absolute",
+          top: "calc(50% + 52px)",
+          left: "50%",
+          transform: "translate(-50%,-50%)",
+          whiteSpace: "nowrap",
+        }}
+      >
+        <p
+          className="bg-clip-text text-transparent"
+          style={{
+            WebkitBackgroundClip: "text",
+            backgroundImage: mutedGrad,
+            fontSize: "10px",
+            letterSpacing: "0.48em",
+            textTransform: "uppercase",
+            margin: 0,
+          }}
+        >
+          35mm · Digital
+        </p>
+      </div>
+
+
+      {/* AF focus square */}
+      <div
+        style={{
+          position: "absolute",
+          top: "calc(50% + 90px)",
+          left: "50%",
+          transform: "translateX(-50%)",
+        }}
+      >
+        <motion.div
+          animate={{ opacity: [0.28, 0.55, 0.28] }}
+          transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+          style={{ position: "relative", width: 34, height: 34 }}
+        >
+          <Brackets inset={0} size={8} border={`1px solid ${g(1)}`} />
+          <div
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%,-50%)",
+              width: 3,
+              height: 3,
+              borderRadius: "50%",
+              background: g(0.7),
+            }}
+          />
+        </motion.div>
+      </div>
+
+      {/* Camera metadata: bottom center */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 36,
+          left: "50%",
+          transform: "translateX(-50%)",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          whiteSpace: "nowrap",
+        }}
+      >
+        {["f / 1.8", "1/1000s", "ISO 400"].map((label, i) => (
+          <Fragment key={label}>
+            <span
+              className="bg-clip-text text-transparent"
+              style={{
+                WebkitBackgroundClip: "text",
+                backgroundImage: mutedGrad,
+                fontSize: "10px",
+                letterSpacing: "0.28em",
+                textTransform: "uppercase",
+              }}
+            >
+              {label}
+            </span>
+            {i < 2 && (
+              <div style={{ width: 1, height: 6, background: g(0.16) }} />
+            )}
+          </Fragment>
+        ))}
+      </div>
+
+      {/* Frame counter: bottom-right corner */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 30,
+          right: 30,
+          whiteSpace: "nowrap",
+        }}
+      >
+        <span
+          className="bg-clip-text text-transparent"
+          style={{
+            WebkitBackgroundClip: "text",
+            backgroundImage: mutedGrad,
+            fontSize: "10px",
+            letterSpacing: "0.22em",
+            fontVariantNumeric: "tabular-nums",
+            fontFamily: "monospace",
+          }}
+        >
+          0024
+        </span>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── CS / Tech panel ─────────────────────────────────────────────────────────
+
+function CSSide({
+  active,
+  isDark,
+  isMobile,
+  onGo,
+}: {
+  active: boolean;
+  isDark: boolean;
+  isMobile: boolean;
+  onGo: (section: string) => void;
+}) {
+  const divColor = isDark ? "rgba(180,200,255,0.15)" : "rgba(80,100,140,0.18)";
+  const dotColor = isDark ? "rgba(180,200,255,0.2)" : "rgba(80,100,140,0.22)";
+
+  return (
+    <motion.div
+      className="relative w-full h-full"
+      animate={{ scale: active ? 1.018 : 1 }}
+      transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+    >
+      {/* Name */}
+      <div
+        style={{
+          position: "absolute",
+          top: "calc(50% - 70px)",
+          left: "50%",
+          transform: "translate(-50%,-50%)",
+          whiteSpace: "nowrap",
+        }}
+      >
+        <p
+          style={{
+            color: "var(--ink-2)",
+            fontFamily: "var(--font-elevated)",
+            fontSize: "clamp(1rem, 1.8vw, 1.4rem)",
+            letterSpacing: "0.5em",
+            textTransform: "uppercase",
+            fontWeight: 500,
+            margin: 0,
+          }}
+        >
+          Henry Kanaskie
+        </p>
+      </div>
+
+      {/* Title: crystalline */}
+      <div
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%,-50%)",
+        }}
+      >
+        <GlassTitle
+          text="Computer Science"
+          fontSize={isMobile ? "clamp(1.6rem, 8vw, 3rem)" : "clamp(2.6rem, 4.7vw, 4.6rem)"}
+          containerClassName="!pt-0 !pb-0"
+          disableEntrance
+          noWrap
+        />
+      </div>
+
+      {/* Hairline divider */}
+      <div
+        style={{
+          position: "absolute",
+          top: "calc(50% + 48px)",
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: 32,
+          height: 1,
+          background: divColor,
+        }}
+      />
+
+      {/* Horizontal nav: hidden on mobile */}
+      {!isMobile && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(50% + 72px)",
+            left: "50%",
+            transform: "translate(-50%,-50%)",
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {CS_SECTIONS.map((id, i) => (
+            <Fragment key={id}>
+              <Link
+                href="/cs"
+                scroll={false}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onGo(id);
+                }}
+                className="metal-surface px-4 py-1.5 rounded-full font-semibold tracking-wide transition-transform duration-200 hover:-translate-y-px"
+                style={{ fontSize: "15px" }}
+              >
+                <span>{sectionLabel(id)}</span>
+              </Link>
+              {i < CS_SECTIONS.length - 1 && (
+                <span
+                  style={{
+                    color: dotColor,
+                    fontSize: "9px",
+                    lineHeight: 1,
+                    userSelect: "none",
+                  }}
+                >
+                  ·
+                </span>
+              )}
+            </Fragment>
+          ))}
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+// ─── Page ────────────────────────────────────────────────────────────────────
+
+export default function HomePage() {
+  const [hovered, setHovered] = useState<"left" | "right" | null>(null);
+  const isMobile = !!useIsMobile();
+  const isDark = useIsDark();
+  const router = useRouter();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, []);
+
+  // Choosing a side expands it to fill the screen first, then navigates. The CS
+  // half is already drawn on the dot paper the CS pages use, so its handoff has
+  // no seam at all; the photography half fills with its own darkroom first.
+  const [leaving, setLeaving] = useState<"left" | "right" | null>(null);
+  const go = (side: "left" | "right", section?: string) => {
+    if (leaving) return;
+    if (section) rememberCsSection(section);
+    setLeaving(side);
+    window.setTimeout(() => router.push(side === "left" ? "/photography" : "/cs"), 420);
+  };
+  const flexFor = (side: "left" | "right") => {
+    if (leaving) return leaving === side ? 1 : 0.0001;
+    if (isMobile || !hovered) return 1;
+    return hovered === side ? 1.6 : 0.5;
+  };
+  const panelTransition = leaving
+    ? { duration: 0.42, ease: [0.65, 0, 0.35, 1] as const }
+    : { duration: 0.75, ease: [0.22, 1, 0.36, 1] as const };
+
+  const inactiveDim = "brightness(0.62)";
+  const dividerRef = useRef<HTMLDivElement>(null);
+  const hoveredRef = useRef<"left" | "right" | null>(null);
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100vw",
+        height: "100vh",
+        zIndex: 0,
+        display: "flex",
+        flexDirection: isMobile ? "column" : "row",
+      }}
+      onMouseMove={(e) => {
+        if (isMobile) return;
+        const dividerEl = dividerRef.current;
+        if (!dividerEl) return;
+        const dividerRect = dividerEl.getBoundingClientRect();
+        const side: "left" | "right" = e.clientX < dividerRect.left ? "left" : "right";
+        if (side !== hoveredRef.current) {
+          hoveredRef.current = side;
+          setHovered(side);
+        }
+      }}
+      onMouseLeave={() => {
+        hoveredRef.current = null;
+        setHovered(null);
+      }}
+    >
+      {/* Photography */}
+      <motion.div
+        animate={{
+          flex: flexFor("left"),
+          filter: hovered === "right" && !leaving ? inactiveDim : "brightness(1)",
+        }}
+        transition={panelTransition}
+        style={{
+          minWidth: 0,
+          minHeight: 0,
+          overflow: "hidden",
+          cursor: "pointer",
+        }}
+        onClick={() => go("left")}
+      >
+        <PhotoSide active={hovered === "left"} isDark={isDark} />
+      </motion.div>
+
+      <motion.div animate={{ opacity: leaving ? 0 : 1 }} transition={{ duration: 0.2 }} style={{ display: "flex", width: isMobile ? "100%" : undefined }}>
+        <AnimatedDivider hovered={hovered} horizontal={isMobile} dividerRef={dividerRef} />
+      </motion.div>
+
+      {/* CS */}
+      <motion.div
+        animate={{
+          flex: flexFor("right"),
+          filter: hovered === "left" && !leaving ? inactiveDim : "brightness(1)",
+        }}
+        transition={panelTransition}
+        style={{
+          minWidth: 0,
+          minHeight: 0,
+          overflow: "hidden",
+          cursor: "pointer",
+        }}
+        onClick={() => go("right")}
+      >
+        <CSSide
+          active={hovered === "right"}
+          isDark={isDark}
+          isMobile={isMobile}
+          onGo={(section) => go("right", section)}
+        />
+      </motion.div>
+    </div>
+  );
 }

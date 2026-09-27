@@ -16,6 +16,9 @@ const photoNavLinks: { name: string; href: string }[] = [
   { name: "Natl Parks", href: "/photography/natl-parks" },
 ];
 
+const HOVER_SCALE = 1.04;
+const ACTIVE_SCALE = 1.02;
+
 export function PhotographyFilmStripNav({
   isDark,
   visible,
@@ -183,7 +186,8 @@ export function PhotographyFilmStripNav({
           display: "flex",
           flexDirection: "row",
           alignItems: "center",
-          gap: 0,
+          justifyContent: "space-evenly",
+          gap: 4,
           paddingLeft: 4,
           paddingRight: 4,
           flexWrap: "nowrap",
@@ -197,57 +201,99 @@ export function PhotographyFilmStripNav({
           userSelect: "none",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "clamp(2px, 1.2vw, 18px)", margin: "0 auto" }}>
-          {photoNavLinks.map((item, i) => {
-            const active = pathname === item.href;
-            const hovered = hoveredIndex === i;
+        {photoNavLinks.map((item, i) => {
+          const active = pathname === item.href;
+          const hovered = hoveredIndex === i;
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                ref={(el) => {
-                  itemRefs.current[i] = el;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              ref={(el) => {
+                itemRefs.current[i] = el;
+              }}
+              scroll={false}
+              onMouseEnter={() => setHoveredIndex(i)}
+              onMouseLeave={() => setHoveredIndex(null)}
+              aria-label={item.name}
+              style={{
+                flexShrink: 0,
+                scrollSnapAlign: "center",
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                position: "relative",
+                padding: "8px 10px 6px",
+                borderRadius: 14,
+              }}
+            >
+              {active && (
+                <motion.div
+                  layoutId="photo-nav-viewfinder"
+                  transition={{ type: "spring", stiffness: 420, damping: 36 }}
+                  style={{
+                    position: "absolute",
+                    inset: -8,
+                    borderRadius: 18,
+                    pointerEvents: "none",
+                    border: `1px solid ${t.rule}`,
+                  }}
+                >
+                  {[
+                    { left: 10, top: 10, rotate: 0 },
+                    { right: 10, top: 10, rotate: 90 },
+                    { right: 10, bottom: 10, rotate: 180 },
+                    { left: 10, bottom: 10, rotate: 270 },
+                  ].map((pos, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        position: "absolute",
+                        width: 12,
+                        height: 12,
+                        ...(pos.left != null ? { left: pos.left } : {}),
+                        ...(pos.right != null ? { right: pos.right } : {}),
+                        ...(pos.top != null ? { top: pos.top } : {}),
+                        ...(pos.bottom != null ? { bottom: pos.bottom } : {}),
+                        transform: `rotate(${pos.rotate}deg)`,
+                        borderTop: `1px solid ${t.faint}`,
+                        borderLeft: `1px solid ${t.faint}`,
+                        borderTopLeftRadius: 3,
+                        opacity: 0.95,
+                      }}
+                    />
+                  ))}
+                </motion.div>
+              )}
+              <motion.div
+                animate={{
+                  scale: hovered ? HOVER_SCALE : active ? ACTIVE_SCALE : 1,
                 }}
-                scroll={false}
-                onMouseEnter={() => setHoveredIndex(i)}
-                onMouseLeave={() => setHoveredIndex(null)}
-                aria-label={item.name}
+                transition={{ type: "spring", stiffness: 400, damping: 28 }}
                 style={{
-                  flexShrink: 0,
-                  scrollSnapAlign: "center",
-                  textDecoration: "none",
-                  display: "inline-flex",
+                  display: "flex",
                   alignItems: "center",
-                  position: "relative",
-                  padding: "8px 10px 9px",
+                  justifyContent: "center",
+                  color: active ? t.ink : t.sub,
+                  transformOrigin: "center center",
                 }}
               >
                 <span
                   style={{
-                    fontFamily: "var(--font-elevated)",
-                    fontSize: 14,
-                    fontWeight: active ? 500 : 400,
-                    letterSpacing: "0.005em",
+                    fontSize: "11px",
+                    letterSpacing: "0.08em",
+                    fontFamily: "monospace",
+                    textTransform: "uppercase",
+                    fontWeight: active ? 700 : 500,
                     whiteSpace: "nowrap",
-                    color: active || hovered ? t.ink : t.sub,
-                    transition: "color 0.25s ease",
                   }}
                 >
                   {item.name}
                 </span>
-                {/* One hairline that glides to whichever page you're on */}
-                {active && (
-                  <motion.span
-                    layoutId="photo-nav-underline"
-                    transition={{ type: "spring", stiffness: 420, damping: 38 }}
-                    style={{ position: "absolute", left: 10, right: 10, bottom: 2, height: 1, background: t.ink }}
-                  />
-                )}
-              </Link>
-            );
-          })}
-        </div>
+              </motion.div>
+            </Link>
+          );
+        })}
       </div>
 
       {/* Right scroll arrow: only shown when content overflows */}

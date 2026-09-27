@@ -120,9 +120,7 @@ export default function CategoryPageClient({ section, next }: { section: Section
 
         {/* Title filled with the chapter's own photograph */}
         <header style={{ marginTop: "clamp(40px, 9vh, 110px)", marginBottom: "clamp(28px, 5vh, 56px)" }}>
-          {/* The reveal mask and the photo fill both stop at the element's box, so the box is padded
-              out past the glyphs' ascenders and descenders; negative margins keep the spacing the same */}
-          <div style={{ overflow: "hidden", margin: "-0.14em 0 -0.18em" }}>
+          <div style={{ overflow: "hidden", paddingBottom: "0.2em", marginBottom: "-0.12em" }}>
             <motion.h1
               initial={{ y: "100%", opacity: 0 }}
               animate={{ y: "0%", opacity: 1 }}
@@ -133,7 +131,6 @@ export default function CategoryPageClient({ section, next }: { section: Section
                 fontWeight: 500,
                 fontSize: titleSize,
                 lineHeight: 0.86,
-                padding: "0.14em 0.06em 0.18em 0",
                 letterSpacing: "-0.045em",
                 color: "transparent",
                 backgroundImage: coverUrl ? `url("${coverUrl}")` : undefined,
