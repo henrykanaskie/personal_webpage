@@ -4,7 +4,7 @@
 // card). Both draw the same glass edge, so it's written once, here.
 
 /** Vertex shader for a single triangle that covers the viewport. */
-const FULLSCREEN_VERT = `attribute vec2 a; void main() { gl_Position = vec4(a, 0.0, 1.0); }`;
+export const FULLSCREEN_VERT = `attribute vec2 a; void main() { gl_Position = vec4(a, 0.0, 1.0); }`;
 
 /**
  * Compiles and links a program over FULLSCREEN_VERT, makes it current and

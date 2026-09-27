@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { paper } from "./tokens";
-import { GLSL_GLASS, fullscreenProgram, rgb, uniforms } from "./gl";
+import { FULLSCREEN_VERT, GLSL_GLASS, rgb } from "./gl";
 
 // ─── Liquid glass ───────────────────────────────────────────────────────────
 // Two pieces that make the info bubbles behave like glass droplets:
@@ -35,40 +35,55 @@ const supportsLens = () =>
 // start of the band and steep at the very edge, as through real glass. Samples
 // always come from inside the bubble, which is what keeps the rim clean (a map
 // that looked outward read the empty space past the element's box).
+// Built on the main thread, so it has to be cheap: one closed-form distance
+// and normal per pixel (no sampling), the flat middle filled in one pass, a
+// CPU-backed canvas (so encoding it doesn't stall on a GPU readback), and each
+// size built once.
+const lensCache = new Map<string, string>();
 function lensMap(w: number, h: number, radius: number, bevel: number): string {
+  const key = `${w}x${h}:${radius}:${bevel}`;
+  const hit = lensCache.get(key);
+  if (hit) return hit;
   const c = document.createElement("canvas");
   c.width = w;
   c.height = h;
-  const ctx = c.getContext("2d");
+  const ctx = c.getContext("2d", { willReadFrequently: true });
   if (!ctx) return "";
   const img = ctx.createImageData(w, h);
+  const data = img.data;
+  new Uint32Array(data.buffer).fill(0xff808080); // (128, 128, 128, 255): no displacement
   const r = Math.min(radius, w / 2, h / 2);
-  const sd = (px: number, py: number) => {
-    const qx = Math.abs(px - w / 2) - w / 2 + r;
-    const qy = Math.abs(py - h / 2) - h / 2 + r;
-    return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r;
-  };
+  const hw = w / 2, hh = h / 2;
   for (let j = 0; j < h; j++) {
+    const dy = j + 0.5 - hh;
+    const qy = Math.abs(dy) - hh + r;
     for (let i = 0; i < w; i++) {
-      const x = i + 0.5, y = j + 0.5;
-      const t = Math.min(1, Math.max(0, -sd(x, y) / bevel)); // 0 at the rim, 1 past the band
-      const u = 1 - t;
+      const dx = i + 0.5 - hw;
+      const qx = Math.abs(dx) - hw + r;
+      // signed distance to the rounded rectangle and its outward normal
+      let sd: number, nx: number, ny: number;
+      if (qx > 0 && qy > 0) {
+        const l = Math.sqrt(qx * qx + qy * qy);
+        sd = l - r; nx = qx / l; ny = qy / l;
+      } else if (qx > qy) {
+        sd = qx - r; nx = 1; ny = 0;
+      } else {
+        sd = qy - r; nx = 0; ny = 1;
+      }
+      const t = -sd / bevel; // 0 at the rim, 1 past the band
+      if (t >= 1) continue;
+      const u = 1 - Math.max(0, t);
       const tilt = 1 - Math.sqrt(Math.max(0, 1 - u * u)); // circular profile
-      const gx = sd(x + 1, y) - sd(x - 1, y);
-      const gy = sd(x, y + 1) - sd(x, y - 1);
-      const g = Math.hypot(gx, gy) || 1;
-      // outward normal is (gx, gy); sample inward, against it
-      const vx = -(gx / g) * tilt;
-      const vy = -(gy / g) * tilt;
+      // sample inward, against the outward normal
       const o = (j * w + i) * 4;
-      img.data[o] = 128 + 127 * Math.max(-1, Math.min(1, vx));
-      img.data[o + 1] = 128 + 127 * Math.max(-1, Math.min(1, vy));
-      img.data[o + 2] = 128;
-      img.data[o + 3] = 255;
+      data[o] = 128 - 127 * Math.sign(dx) * nx * tilt;
+      data[o + 1] = 128 - 127 * Math.sign(dy) * ny * tilt;
     }
   }
   ctx.putImageData(img, 0, 0);
-  return c.toDataURL();
+  const url = c.toDataURL();
+  lensCache.set(key, url);
+  return url;
 }
 
 export function useGlassLens(
@@ -85,6 +100,7 @@ export function useGlassLens(
     const el = ref.current;
     if (!el || !supportsLens()) return;
     let last = "";
+    let idle = 0;
     const build = () => {
       // offsetWidth/Height ignore transforms, so the scale-in animation doesn't
       // make us rebuild the map every frame.
@@ -94,10 +110,20 @@ export function useGlassLens(
       last = key;
       setMap({ href: lensMap(w, h, radius, Math.min(22, Math.min(w, h) / 4)), w, h });
     };
-    build();
-    const ro = new ResizeObserver(build);
+    // The lens is only seen once the bubble has budded off, so it's built when
+    // the page is idle rather than in the middle of a scroll.
+    const schedule = () => {
+      if (idle) return;
+      const run = () => { idle = 0; build(); };
+      idle = window.requestIdleCallback ? window.requestIdleCallback(run, { timeout: 600 }) : window.setTimeout(run, 200);
+    };
+    schedule();
+    const ro = new ResizeObserver(schedule);
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      ro.disconnect();
+      if (idle) (window.cancelIdleCallback ?? window.clearTimeout)(idle);
+    };
   }, [ref, radius]);
 
   const filter = map ? (
@@ -279,6 +305,103 @@ const smooth = (t: number) => t * t * (3 - 2 * t);
 const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
 
 // Timeline (ms): the side swells, then stretches and necks, then breaks.
+// Bud canvases are pooled. Creating a WebGL context is slow (on some drivers
+// it takes a large part of a second, blocking the page), and each bud used to
+// make its own the moment its card scrolled into view: that was the stutter
+// while scrolling. A pooled canvas keeps its context and compiled shader and is
+// simply moved into whichever card is budding (a canvas keeps its context when
+// it moves in the DOM). The first one is made while the page is idle, and the
+// shader compiles in the background where the browser can
+// (KHR_parallel_shader_compile). Buds drawing at the same moment each take
+// their own; only a few are kept.
+type BudGL = {
+  gl: WebGLRenderingContext;
+  canvas: HTMLCanvasElement;
+  prog: WebGLProgram;
+  par: { COMPLETION_STATUS_KHR: number } | null;
+  state: "compiling" | "ready" | "failed";
+  U: (n: string) => WebGLUniformLocation | null;
+};
+const budPool: BudGL[] = [];
+const BUD_POOL_MAX = 2;
+
+function makeBudGL(): BudGL | null {
+  const canvas = document.createElement("canvas");
+  canvas.setAttribute("aria-hidden", "true");
+  canvas.width = canvas.height = 1;
+  Object.assign(canvas.style, { position: "absolute", inset: "0", width: "100%", height: "100%", pointerEvents: "none" });
+  const gl = canvas.getContext("webgl", { premultipliedAlpha: true, alpha: true, antialias: false });
+  if (!gl) return null;
+  const sh = (type: number, src: string) => {
+    const x = gl.createShader(type)!;
+    gl.shaderSource(x, src);
+    gl.compileShader(x);
+    return x;
+  };
+  const prog = gl.createProgram()!;
+  gl.attachShader(prog, sh(gl.VERTEX_SHADER, FULLSCREEN_VERT));
+  gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, BUD_FRAG));
+  gl.linkProgram(prog);
+  const locs = new Map<string, WebGLUniformLocation | null>();
+  return {
+    gl,
+    canvas,
+    prog,
+    par: gl.getExtension("KHR_parallel_shader_compile"),
+    state: "compiling",
+    U: (n) => {
+      let l = locs.get(n);
+      if (l === undefined) { l = gl.getUniformLocation(prog, n); locs.set(n, l); }
+      return l;
+    },
+  };
+}
+
+function takeBudGL(): BudGL | null {
+  while (budPool.length) {
+    const b = budPool.pop()!;
+    if (!b.gl.isContextLost() && b.state !== "failed") return b;
+  }
+  return makeBudGL();
+}
+
+function returnBudGL(b: BudGL) {
+  b.canvas.remove();
+  b.canvas.width = b.canvas.height = 1; // give the memory back while it waits
+  if (budPool.length < BUD_POOL_MAX && !b.gl.isContextLost() && b.state !== "failed") budPool.push(b);
+  else b.gl.getExtension("WEBGL_lose_context")?.loseContext();
+}
+
+// Asking whether a program linked blocks until it has; with the extension we
+// can first ask, without blocking, whether it's finished compiling.
+function budState(b: BudGL): BudGL["state"] {
+  if (b.state !== "compiling") return b.state;
+  const { gl, prog, par } = b;
+  if (par && !gl.getProgramParameter(prog, par.COMPLETION_STATUS_KHR)) return "compiling";
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+    // a broken shader would otherwise just skip the animation silently
+    if (process.env.NODE_ENV !== "production") console.error("LiquidBud shader:", gl.getProgramInfoLog(prog));
+    return (b.state = "failed");
+  }
+  gl.useProgram(prog);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  return (b.state = "ready");
+}
+
+// Make the first one before any bud needs it, while the page is idle.
+if (typeof window !== "undefined") {
+  const warm = () => {
+    if (budPool.length || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const b = makeBudGL();
+    if (b) budPool.push(b);
+  };
+  if (window.requestIdleCallback) window.requestIdleCallback(warm, { timeout: 3000 });
+  else window.setTimeout(warm, 1500);
+}
+
 const SWELL_MS = 560;
 const NECK_MS = 330;
 
@@ -296,7 +419,7 @@ export function LiquidBud({
   /** Called when the bubble has settled onto its box. */
   onDone: () => void;
 }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const holderRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef(onDone);
   doneRef.current = onDone;
   const [box, setBox] = useState<{ left: number; top: number; w: number; h: number } | null>(null);
@@ -319,24 +442,16 @@ export function LiquidBud({
   }, [bubbleRef]);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
+    const holder = holderRef.current;
     const bubble = bubbleRef.current;
     const host = bubble?.offsetParent as HTMLElement | null;
-    if (!box || !canvas || !bubble || !host) return;
+    if (!box || !holder || !bubble || !host) return;
     const finish = () => { doneRef.current(); setGone(true); };
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { finish(); return; }
-    const gl = canvas.getContext("webgl", { premultipliedAlpha: true, alpha: true, antialias: false });
-    if (!gl) { finish(); return; }
-    const prog = fullscreenProgram(gl, BUD_FRAG);
-    if (!prog) {
-      finish();
-      return;
-    }
-    // prettier-ignore
-    const u = uniforms(gl, prog, [
-      "uRes", "uDpr", "uPage", "uCard", "uCardR", "uDrop", "uDropR", "uK", "uStub", "uHole", "uBubble", "uBubA",
-      "uRim", "uAlpha", "uDark", "uGap", "uDotR", "uDotA", "uBg", "uDot", "uFill", "uFillA",
-    ]);
+    const b = takeBudGL();
+    if (!b) { finish(); return; }
+    const { gl, U, canvas } = b;
+    holder.appendChild(canvas);
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.round(box.w * dpr);
@@ -391,10 +506,15 @@ export function LiquidBud({
     const stub: Spring = { x: 0, v: 0 };
     let broken = false;
     let brokeAt = 0;
-    const t0 = performance.now();
+    let t0 = performance.now();
     let last = t0, raf = 0, fade = 1, fading = false, fadeAt = 0;
 
+    let started = false;
     const frame = (now: number) => {
+      const st = budState(b);
+      if (st === "failed" || gl.isContextLost()) { finish(); return; }
+      if (st === "compiling") { raf = requestAnimationFrame(frame); return; }
+      if (!started) { started = true; t0 = last = now; } // the bud's clock starts once it can draw
       const dt = Math.min(0.034, (now - last) / 1000);
       last = now;
       const t = now - t0;
@@ -482,30 +602,30 @@ export function LiquidBud({
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.uniform2f(u.uRes, box.w, box.h);
-      gl.uniform1f(u.uDpr, dpr);
-      gl.uniform2f(u.uPage, cr.left + window.scrollX, cr.top + window.scrollY);
-      gl.uniform4f(u.uCard, card.x, card.y, card.w, card.h);
-      gl.uniform1f(u.uCardR, cardRadius);
-      gl.uniform4f(u.uDrop, cx, cy, hw, hh);
-      gl.uniform1f(u.uDropR, dropR);
-      gl.uniform1f(u.uK, k);
-      gl.uniform3f(u.uStub, ex, ey, Math.max(0, stub.x));
-      gl.uniform3f(u.uHole, hole.x, hole.y, hole.r);
-      gl.uniform1f(u.uBubble, broken ? clamp01((t - brokeAt) / 220) : 0);
-      gl.uniform1f(u.uBubA, bubA);
-      gl.uniform1f(u.uRim, Math.min(1, t / 120));
+      gl.uniform2f(U("uRes"), box.w, box.h);
+      gl.uniform1f(U("uDpr"), dpr);
+      gl.uniform2f(U("uPage"), cr.left + window.scrollX, cr.top + window.scrollY);
+      gl.uniform4f(U("uCard"), card.x, card.y, card.w, card.h);
+      gl.uniform1f(U("uCardR"), cardRadius);
+      gl.uniform4f(U("uDrop"), cx, cy, hw, hh);
+      gl.uniform1f(U("uDropR"), dropR);
+      gl.uniform1f(U("uK"), k);
+      gl.uniform3f(U("uStub"), ex, ey, Math.max(0, stub.x));
+      gl.uniform3f(U("uHole"), hole.x, hole.y, hole.r);
+      gl.uniform1f(U("uBubble"), broken ? clamp01((t - brokeAt) / 220) : 0);
+      gl.uniform1f(U("uBubA"), bubA);
+      gl.uniform1f(U("uRim"), Math.min(1, t / 120));
       // the card's rim opens round the bud, and closes again as the canvas fades
       if (panel) setRingHole(panel, "b", hole.x - card.x, hole.y - card.y, hole.r * fade);
-      gl.uniform1f(u.uAlpha, fade);
-      gl.uniform1f(u.uDark, dark ? 1 : 0);
-      gl.uniform1f(u.uGap, paper.gap);
-      gl.uniform1f(u.uDotR, paper.dotRadius);
-      gl.uniform1f(u.uDotA, pal.dotAlpha);
-      gl.uniform3f(u.uBg, ...rgb(pal.bg));
-      gl.uniform3f(u.uDot, ...rgb(pal.dot));
-      gl.uniform3f(u.uFill, ...rgb(glass.fill));
-      gl.uniform1f(u.uFillA, glass.alpha);
+      gl.uniform1f(U("uAlpha"), fade);
+      gl.uniform1f(U("uDark"), dark ? 1 : 0);
+      gl.uniform1f(U("uGap"), paper.gap);
+      gl.uniform1f(U("uDotR"), paper.dotRadius);
+      gl.uniform1f(U("uDotA"), pal.dotAlpha);
+      gl.uniform3f(U("uBg"), ...rgb(pal.bg));
+      gl.uniform3f(U("uDot"), ...rgb(pal.dot));
+      gl.uniform3f(U("uFill"), ...rgb(glass.fill));
+      gl.uniform1f(U("uFillA"), glass.alpha);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
 
       if (fade > 0) raf = requestAnimationFrame(frame);
@@ -515,14 +635,14 @@ export function LiquidBud({
     return () => {
       cancelAnimationFrame(raf);
       if (panel) setRingHole(panel as HTMLElement, "b", 0, 0, 0);
-      gl.getExtension("WEBGL_lose_context")?.loseContext();
+      returnBudGL(b);
     };
   }, [box, bubbleRef, cardRadius, bubbleRadius]);
 
   if (gone) return null;
   return (
-    <canvas
-      ref={canvasRef}
+    <div
+      ref={holderRef}
       aria-hidden
       style={{
         position: "absolute",

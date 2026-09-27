@@ -107,11 +107,20 @@ float dots(vec2 p) {
 
 void main() {
   vec2 p = vec2(gl_FragCoord.x, uRes.y * uDpr - gl_FragCoord.y) / uDpr;
+  // Cost matters: this runs for every pixel on screen, every frame anything
+  // moves. So the card work is tiered. Deep inside a card (well past the rim
+  // band) the page is just frosted dots: no rim normal, no edge, and none of
+  // the cursor/ripple dot work underneath, since the card covers it.
+  float ca = 0.0;
+  float dc = 1e5;
+  if (uNCards > 0.5) dc = cards(p, ca);
+  if (dc < -30.0 && ca > 0.99 && (uBlob.z < 0.5 || length(p - uBlob.xy) > uBlob.z + 70.0)) {
+    gl_FragColor = vec4(mix(uBg, uDot, frostDots(p, uScroll, uGap, uDotR) * uDotA), 1.0);
+    return;
+  }
   vec3 col = mix(uBg, uDot, dots(p) * uDotA);
 
   if (uNCards > 0.5) {
-    float ca;
-    float dc = cards(p, ca);
     float dl = liquid(p, dc);
     if (dl < 2.5 && ca > 0.01) {
       float aa = 0.7 / uDpr;
