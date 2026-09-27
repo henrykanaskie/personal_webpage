@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { AnimatePresence } from "framer-motion";
-import { useIsDark } from "@/lib/glass";
+import { useIsDark } from "@/hooks/useIsDark";
 import type { Section } from "@/app/photography/data";
 import DepthWorld from "@/components/photo/DepthWorld";
 import Lightbox, { LightboxItem } from "@/components/photo/Lightbox";

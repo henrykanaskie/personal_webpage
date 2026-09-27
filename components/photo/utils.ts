@@ -1,6 +1,14 @@
 import type { PhotoEntry, PhotoExif } from "@/app/photography/data";
+import { photo as photoTokens } from "@/lib/tokens";
 
 export const EASE_OUT: [number, number, number, number] = [0.22, 1, 0.36, 1];
+
+/** Small uppercase monospace labels, the photography side's captions and rails. */
+export const MONO: React.CSSProperties = {
+  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+  letterSpacing: "0.22em",
+  textTransform: "uppercase",
+};
 
 /** Width / height as a number, from the snapped "w/h" ratio string. */
 export function aspect(photo: PhotoEntry): number {
@@ -57,13 +65,6 @@ export function formatFocal(mm?: number): string | undefined {
   return mm ? `${Math.round(mm)}mm` : undefined;
 }
 
-/** "56mm · ƒ/2.8 · 1/800 · ISO 1250", skipping anything missing. */
-export function exposureLine(exif: PhotoExif): string {
-  return [formatFocal(exif.focal), formatAperture(exif.aperture), formatShutter(exif.shutter), exif.iso ? `ISO ${exif.iso}` : undefined]
-    .filter(Boolean)
-    .join("  ·  ");
-}
-
 /** "#rrggbb" to "r,g,b" for use inside rgba(). */
 export function rgbTriplet(hex: string): string {
   const n = parseInt(hex.slice(1), 16);
@@ -75,9 +76,8 @@ export function photoTheme(isDark: boolean) {
   return isDark
     ? {
         // Neutral warm greys so the photos carry the colour; the accent is the site's periwinkle
-        bg: "#050507",
-        ink: "rgb(236, 233, 228)",
-        title: "rgb(236, 233, 228)",
+        bg: photoTokens.background.dark,
+        ink: photoTokens.ink.dark,
         sub: "rgba(236, 233, 228, 0.6)",
         faint: "rgba(236, 233, 228, 0.34)",
         rule: "rgba(255, 255, 255, 0.1)",
@@ -87,9 +87,8 @@ export function photoTheme(isDark: boolean) {
       }
     : {
         // Ink on paper; the accent is the site's rose
-        bg: "#f8f5f0",
-        ink: "rgb(30, 27, 25)",
-        title: "rgb(30, 27, 25)",
+        bg: photoTokens.background.light,
+        ink: photoTokens.ink.light,
         sub: "rgba(30, 27, 25, 0.62)",
         faint: "rgba(30, 27, 25, 0.38)",
         rule: "rgba(30, 27, 25, 0.12)",
@@ -103,4 +102,3 @@ export function photoTheme(isDark: boolean) {
 export function signalLightbox(open: boolean) {
   window.dispatchEvent(new CustomEvent("photoLightbox", { detail: { open } }));
 }
-export type PhotoTheme = ReturnType<typeof photoTheme>;

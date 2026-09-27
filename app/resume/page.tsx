@@ -2,46 +2,24 @@
 
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
-import Link from "next/link";
 import GlassTitle from "@/components/GlassTitle";
 import EducationCard from "@/components/EducationCard";
-import { cs, themed, glassBoxClassNames } from "@/lib/tokens";
-import { GlassLayers, glassStyle, FuzzyText, useIsDark } from "@/lib/glass";
+import { GlassCard } from "@/lib/glass";
+import { useIsDark } from "@/hooks/useIsDark";
 import { rise, settle, leave } from "@/lib/motion";
-
-// ─── Glass card shell ─────────────────────────────────────────────────────────
-
-function GlassCard({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div
-      style={{ position: "relative", borderRadius: "24px", ...glassStyle }}
-      data-liquid
-      className={`${glassBoxClassNames} ${className}`}
-    >
-      <GlassLayers />
-      {/* Content */}
-      <div style={{ position: "relative", zIndex: 1 }}>{children}</div>
-    </div>
-  );
-}
+import { EDUCATION, LINKS } from "@/lib/site";
 
 // ─── Section label with divider line ─────────────────────────────────────────
 
 function SectionLabel({ label, isDark }: { label: string; isDark: boolean }) {
   return (
     <div className="flex items-center gap-4 px-4 md:px-12 lg:px-20">
-      <FuzzyText>
+      <span className="relative inline-block">
         <span
           className="bg-clip-text text-transparent"
           style={{
             WebkitBackgroundClip: "text",
-            backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
+            backgroundImage: "var(--title-fill)",
             fontSize: "clamp(0.62rem, 0.85vw, 0.75rem)",
             fontWeight: 700,
             textTransform: "uppercase",
@@ -51,7 +29,7 @@ function SectionLabel({ label, isDark }: { label: string; isDark: boolean }) {
         >
           {label}
         </span>
-      </FuzzyText>
+      </span>
       <div
         style={{
           flex: 1,
@@ -96,8 +74,7 @@ function ExperienceCard({
   location,
   techStack,
   bullets,
-  isDark,
-}: ExperienceData & { isDark: boolean }) {
+}: ExperienceData) {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: false, amount: 0.1 });
 
@@ -113,25 +90,25 @@ function ExperienceCard({
         {/* Header: title + dates */}
         <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 mb-2">
           <div>
-            <FuzzyText>
+            <span className="relative inline-block">
               <span
                 className="bg-clip-text text-transparent"
                 style={{
                   WebkitBackgroundClip: "text",
-                  backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
+                  backgroundImage: "var(--title-fill)",
                   fontSize: "clamp(1rem, 1.5vw, 1.2rem)",
                   fontWeight: 700,
                 }}
               >
                 {title}
               </span>
-            </FuzzyText>
+            </span>
             <div style={{ marginTop: 2 }}>
               <span
                 style={{
                   fontSize: "clamp(0.82rem, 1.1vw, 0.95rem)",
                   fontWeight: 500,
-                  color: themed(isDark, cs.bodyColor.dark, cs.bodyColor.light),
+                  color: "var(--body-ink)",
                 }}
               >
                 {company}
@@ -183,7 +160,7 @@ function ExperienceCard({
                   lineHeight: 1.55,
                 }}
               >
-                <FuzzyText>{bullet}</FuzzyText>
+                <span className="relative inline-block">{bullet}</span>
               </span>
             </li>
           ))}
@@ -195,7 +172,7 @@ function ExperienceCard({
 
 // ─── Project thumbnails ───────────────────────────────────────────────────────
 
-type ThumbnailType = "matrix" | "confusion" | "terminal";
+type ThumbnailType = "matrix" | "confusion";
 
 function Thumbnail({ type, isDark }: { type: ThumbnailType; isDark: boolean }) {
   const accentFill = isDark ? "rgba(180,200,255,0.75)" : "rgba(100,115,145,0.7)";
@@ -247,76 +224,44 @@ function Thumbnail({ type, isDark }: { type: ThumbnailType; isDark: boolean }) {
     );
   }
 
-  if (type === "confusion") {
-    // 4×4 confusion matrix: diagonal = correct predictions (bright), off-diag = dim
-    const n = 4;
-    const cSize = 17;
-    const totalW = n * cSize;
-    const startX = (160 - totalW) / 2;
-    const startY = 8;
-    const gradId = "cm-iri";
-    return (
-      <div style={containerStyle}>
-        <svg width="100%" height="90" viewBox="0 0 160 90" preserveAspectRatio="xMidYMid meet">
-          <defs>
-            <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor={themed(isDark, cs.color.dark, cs.color.light)} />
-              <stop offset="100%" stopColor={themed(isDark, "#8f8b85", "#6b6760")} />
-            </linearGradient>
-          </defs>
-          {Array.from({ length: n }, (_, r) =>
-            Array.from({ length: n }, (_, c) => {
-              const onDiag = r === c;
-              const nearDiag = Math.abs(r - c) === 1;
-              return (
-                <rect
-                  key={`${r}-${c}`}
-                  x={startX + c * cSize + 1}
-                  y={startY + r * cSize + 1}
-                  width={cSize - 2}
-                  height={cSize - 2}
-                  rx={2}
-                  fill={onDiag ? `url(#${gradId})` : dimFill}
-                  opacity={onDiag ? 0.82 : nearDiag ? 0.6 : 1}
-                />
-              );
-            })
-          )}
-          <text x="80" y="84" textAnchor="middle" fontSize="6.5" fill={labelColor} fontFamily="monospace" letterSpacing="0.8">
-            CONFUSION MATRIX · 85% ACCURACY
-          </text>
-        </svg>
-      </div>
-    );
-  }
-
-  // terminal: represents POSIX shell / systems programming
-  const lines = [
-    { text: "$ ./smallsh", color: isDark ? "rgba(180,200,255,0.85)" : "rgba(100,115,145,0.85)" },
-    { text: "> ls -la /proc", color: isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.5)" },
-    { text: "> echo $$  → 4821", color: isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.4)" },
-    { text: "> ^C  (SIGINT caught)", color: isDark ? "rgba(255,160,160,0.6)" : "rgba(180,60,60,0.55)" },
-    { text: "$ _", color: isDark ? "rgba(180,200,255,0.6)" : "rgba(100,115,145,0.6)" },
-  ];
+  // confusion: 4×4 confusion matrix, diagonal = correct predictions (bright), off-diag = dim
+  const n = 4;
+  const cSize = 17;
+  const totalW = n * cSize;
+  const startX = (160 - totalW) / 2;
+  const startY = 8;
+  const gradId = "cm-iri";
   return (
-    <div
-      style={{
-        ...containerStyle,
-        padding: "10px 14px",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        gap: 3,
-      }}
-    >
-      {lines.map((line, i) => (
-        <div
-          key={i}
-          style={{ fontFamily: "monospace", fontSize: "0.6rem", color: line.color, letterSpacing: "0.02em" }}
-        >
-          {line.text}
-        </div>
-      ))}
+    <div style={containerStyle}>
+      <svg width="100%" height="90" viewBox="0 0 160 90" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor={isDark ? "#d6d4cf" : "#3a3834"} />
+            <stop offset="100%" stopColor={isDark ? "#8f8b85" : "#6b6760"} />
+          </linearGradient>
+        </defs>
+        {Array.from({ length: n }, (_, r) =>
+          Array.from({ length: n }, (_, c) => {
+            const onDiag = r === c;
+            const nearDiag = Math.abs(r - c) === 1;
+            return (
+              <rect
+                key={`${r}-${c}`}
+                x={startX + c * cSize + 1}
+                y={startY + r * cSize + 1}
+                width={cSize - 2}
+                height={cSize - 2}
+                rx={2}
+                fill={onDiag ? `url(#${gradId})` : dimFill}
+                opacity={onDiag ? 0.82 : nearDiag ? 0.6 : 1}
+              />
+            );
+          })
+        )}
+        <text x="80" y="84" textAnchor="middle" fontSize="6.5" fill={labelColor} fontFamily="monospace" letterSpacing="0.8">
+          CONFUSION MATRIX · 85% ACCURACY
+        </text>
+      </svg>
     </div>
   );
 }
@@ -360,19 +305,19 @@ function ResumeProjectCard({
 
         {/* Title */}
         <div style={{ textAlign: "center", marginBottom: 6 }}>
-          <FuzzyText>
+          <span className="relative inline-block">
             <span
               className="bg-clip-text text-transparent"
               style={{
                 WebkitBackgroundClip: "text",
-                backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
+                backgroundImage: "var(--title-fill)",
                 fontSize: "clamp(0.88rem, 1.3vw, 1.05rem)",
                 fontWeight: 700,
               }}
             >
               {title}
             </span>
-          </FuzzyText>
+          </span>
         </div>
 
         {/* Tech tags */}
@@ -392,50 +337,39 @@ function ResumeProjectCard({
             fontWeight: 400,
             lineHeight: 1.55,
             display: "block",
-            color: themed(isDark, cs.bodyColor.dark, cs.bodyColor.light),
+            color: "var(--body-ink)",
           }}
         >
-          <FuzzyText>{description}</FuzzyText>
+          <span className="relative inline-block">{description}</span>
         </span>
 
         {/* Links */}
         {hasLinks && (
           <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: "auto", paddingTop: 10 }}>
-            {githubUrl && (
-              <a
-                href={githubUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:opacity-80 transition-opacity"
-                style={{
-                  fontSize: "0.72rem",
-                  fontFamily: "var(--font-elevated)",
-                  letterSpacing: "0.04em",
-                  textDecoration: "underline",
-                  textUnderlineOffset: 3,
-                  color: isDark ? "rgba(180,200,255,0.75)" : "rgba(80,95,130,0.8)",
-                }}
-              >
-                GitHub
-              </a>
-            )}
-            {siteUrl && (
-              <a
-                href={siteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:opacity-80 transition-opacity"
-                style={{
-                  fontSize: "0.72rem",
-                  fontFamily: "var(--font-elevated)",
-                  letterSpacing: "0.04em",
-                  textDecoration: "underline",
-                  textUnderlineOffset: 3,
-                  color: isDark ? "rgba(180,200,255,0.75)" : "rgba(80,95,130,0.8)",
-                }}
-              >
-                Live Site
-              </a>
+            {[
+              { url: githubUrl, label: "GitHub" },
+              { url: siteUrl, label: "Live Site" },
+            ].map(
+              ({ url, label }) =>
+                url && (
+                  <a
+                    key={label}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:opacity-80 transition-opacity"
+                    style={{
+                      fontSize: "0.72rem",
+                      fontFamily: "var(--font-elevated)",
+                      letterSpacing: "0.04em",
+                      textDecoration: "underline",
+                      textUnderlineOffset: 3,
+                      color: isDark ? "rgba(180,200,255,0.75)" : "rgba(80,95,130,0.8)",
+                    }}
+                  >
+                    {label}
+                  </a>
+                ),
             )}
           </div>
         )}
@@ -533,64 +467,45 @@ export default function ResumePage() {
         className="-mt-4 md:-mt-20 flex flex-col items-center gap-4"
       >
         {/* Tagline */}
-        <FuzzyText>
+        <span className="relative inline-block">
           <span
             className="bg-clip-text text-transparent text-center block"
             style={{
               WebkitBackgroundClip: "text",
-              backgroundImage: themed(isDark, cs.bodyShort.dark, cs.bodyShort.light),
+              backgroundImage: "var(--body-fill)",
               fontSize: "clamp(0.88rem, 1.3vw, 1.05rem)",
               fontWeight: 500,
             }}
           >
             CS master&apos;s student at Oregon State · Applied ML &amp; Systems Programming
           </span>
-        </FuzzyText>
+        </span>
 
         {/* Contact links */}
         <div className="flex items-center">
           {[
-            { label: "LinkedIn", href: "https://linkedin.com/in/henry-kanaskie", external: true },
-            { label: "GitHub", href: "https://github.com/henrykanaskie", external: true },
-            { label: "Email", href: "mailto:kanaskiehenry@gmail.com", external: true },
+            { label: "LinkedIn", href: LINKS.linkedin },
+            { label: "GitHub", href: LINKS.github },
+            { label: "Email", href: LINKS.email },
           ].map((item, i, arr) => (
             <span key={item.label} className="flex items-center">
-              {item.external ? (
-                <a
-                  href={item.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:opacity-70 transition-opacity"
-                  style={{ fontSize: "clamp(1rem, 1.6vw, 1.3rem)", fontWeight: 600 }}
+              <a
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:opacity-70 transition-opacity"
+                style={{ fontSize: "clamp(1rem, 1.6vw, 1.3rem)", fontWeight: 600 }}
+              >
+                <span
+                  className="bg-clip-text text-transparent"
+                  style={{
+                    WebkitBackgroundClip: "text",
+                    backgroundImage: "var(--title-fill)",
+                  }}
                 >
-                  <span
-                    className="bg-clip-text text-transparent"
-                    style={{
-                      WebkitBackgroundClip: "text",
-                      backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
-                    }}
-                  >
-                    {item.label}
-                  </span>
-                </a>
-              ) : (
-                <Link
-                  href={item.href}
-                  scroll={false}
-                  className="hover:opacity-70 transition-opacity"
-                  style={{ fontSize: "clamp(1rem, 1.6vw, 1.3rem)", fontWeight: 600 }}
-                >
-                  <span
-                    className="bg-clip-text text-transparent"
-                    style={{
-                      WebkitBackgroundClip: "text",
-                      backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
-                    }}
-                  >
-                    {item.label}
-                  </span>
-                </Link>
-              )}
+                  {item.label}
+                </span>
+              </a>
               {i < arr.length - 1 && (
                 <span
                   className="mx-5 inline-block"
@@ -613,7 +528,7 @@ export default function ResumePage() {
         <SectionLabel label="Experience" isDark={isDark} />
         <div className="flex flex-col gap-4 px-4 md:px-12 lg:px-20">
           {experiences.map((exp) => (
-            <ExperienceCard key={exp.company + exp.dates} {...exp} isDark={isDark} />
+            <ExperienceCard key={exp.company + exp.dates} {...exp} />
           ))}
         </div>
       </div>
@@ -631,21 +546,7 @@ export default function ResumePage() {
       {/* ── Education ── */}
       <div className="flex flex-col gap-4 md:gap-5">
         <SectionLabel label="Education" isDark={isDark} />
-        <EducationCard
-          school="Oregon State University"
-          degree="M.S. Computer Science"
-          timeline="2026 - Present"
-          earlier={{ degree: "Honors B.S. Computer Science", timeline: "Sep 2022 - Jun 2026" }}
-          gpa="3.95 / 4.0"
-          coursework={[
-            "Data Structures & Algorithms",
-            "Databases",
-            "Software Engineering",
-            "Artificial Intelligence",
-            "Machine Learning",
-            "Deep Learning",
-          ]}
-        />
+        <EducationCard {...EDUCATION} />
       </div>
 
       <div style={{ height: 60 }} />

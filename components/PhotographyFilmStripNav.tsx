@@ -3,7 +3,6 @@
 import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { SECTION_META as SECTIONS } from "@/app/photography/data";
 import { photoTheme } from "@/components/photo/utils";
 
 const photoNavLinks: { name: string; href: string }[] = [
@@ -20,42 +19,19 @@ const photoNavLinks: { name: string; href: string }[] = [
 const HOVER_SCALE = 1.04;
 const ACTIVE_SCALE = 1.02;
 
-function getSectionId(href: string): string | null {
-  if (href === "/photography" || href === "/photography/about") return null;
-  const id = href.replace("/photography/", "").replace("/photography", "") || null;
-  return id;
-}
-
-function buildStripItems(isDark: boolean) {
-  const fallbackAccent: [number, number, number] = [128, 72, 138];
-
-  return photoNavLinks.map((link) => {
-    const sectionId = getSectionId(link.href);
-    const section = sectionId ? SECTIONS.find((s) => s.id === sectionId) : null;
-    const accent = section ? (isDark ? section.darkAccent : section.lightAccent) : fallbackAccent;
-    return {
-      ...link,
-      sub: section?.sub ?? "",
-      accent,
-    };
-  });
-}
-
 export function PhotographyFilmStripNav({
   isDark,
   visible,
   pathname,
-  bottomControls,
   leftControls,
+  rightControls,
 }: {
   isDark: boolean;
   visible: boolean;
   pathname: string | null;
-  bottomControls?: React.ReactNode;
   leftControls?: React.ReactNode;
+  rightControls?: React.ReactNode;
 }) {
-  const stripItems = buildStripItems(isDark);
-  const isActive = (href: string) => pathname === href;
   const scrollRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -67,7 +43,7 @@ export function PhotographyFilmStripNav({
   const dragScrollLeft = useRef(0);
 
   useEffect(() => {
-    const activeIndex = stripItems.findIndex((item) => item.href === pathname);
+    const activeIndex = photoNavLinks.findIndex((item) => item.href === pathname);
     if (activeIndex !== -1 && itemRefs.current[activeIndex]) {
       itemRefs.current[activeIndex]?.scrollIntoView({
         inline: "center",
@@ -115,8 +91,6 @@ export function PhotographyFilmStripNav({
 
   // Same tokens as the photography pages, so the nav sits in the page instead of on top of it
   const t = photoTheme(isDark);
-  const labelColor = t.ink;
-  const subColor = t.sub;
   const stripBg = isDark ? "rgba(5,5,7,0.88)" : "rgba(248,245,240,0.9)";
 
   return (
@@ -196,7 +170,6 @@ export function PhotographyFilmStripNav({
       {/* Scrollable nav items: takes all available space */}
       <div
         ref={scrollRef}
-        className="scrollbar-hide"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={stopDragging}
@@ -228,10 +201,9 @@ export function PhotographyFilmStripNav({
           userSelect: "none",
         }}
       >
-        {stripItems.map((item, i) => {
-          const active = isActive(item.href);
+        {photoNavLinks.map((item, i) => {
+          const active = pathname === item.href;
           const hovered = hoveredIndex === i;
-          const viewBoxColor = t.faint;
 
           return (
             <Link
@@ -243,7 +215,6 @@ export function PhotographyFilmStripNav({
               scroll={false}
               onMouseEnter={() => setHoveredIndex(i)}
               onMouseLeave={() => setHoveredIndex(null)}
-              onClick={() => sessionStorage.setItem("lastBranch", "photo")}
               aria-label={item.name}
               style={{
                 flexShrink: 0,
@@ -285,8 +256,8 @@ export function PhotographyFilmStripNav({
                         ...(pos.top != null ? { top: pos.top } : {}),
                         ...(pos.bottom != null ? { bottom: pos.bottom } : {}),
                         transform: `rotate(${pos.rotate}deg)`,
-                        borderTop: `1px solid ${viewBoxColor}`,
-                        borderLeft: `1px solid ${viewBoxColor}`,
+                        borderTop: `1px solid ${t.faint}`,
+                        borderLeft: `1px solid ${t.faint}`,
                         borderTopLeftRadius: 3,
                         opacity: 0.95,
                       }}
@@ -303,7 +274,7 @@ export function PhotographyFilmStripNav({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  color: active ? labelColor : subColor,
+                  color: active ? t.ink : t.sub,
                   transformOrigin: "center center",
                 }}
               >
@@ -349,7 +320,7 @@ export function PhotographyFilmStripNav({
       )}
 
       {/* Controls: pinned to the right, never scrolls away */}
-      {bottomControls && (
+      {rightControls && (
         <div
           style={{
             flexShrink: 0,
@@ -360,7 +331,7 @@ export function PhotographyFilmStripNav({
             paddingRight: 14,
           }}
         >
-          {bottomControls}
+          {rightControls}
         </div>
       )}
     </header>

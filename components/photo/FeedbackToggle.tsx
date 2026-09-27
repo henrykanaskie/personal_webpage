@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useIsDark } from "@/lib/glass";
+import { useIsDark } from "@/hooks/useIsDark";
 import { feedbackEnabled, onFeedbackChange, setFeedbackEnabled } from "./feedback";
 import { photoTheme } from "./utils";
 

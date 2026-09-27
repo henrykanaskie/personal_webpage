@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import PageTransition from "@/components/PageTransition";
 import PhotographyBackground from "@/components/PhotographyBackground";
 import DotField from "@/components/DotField";
+import { photo } from "@/lib/tokens";
 
 const dmSans = DM_Sans({ subsets: ["latin"], weight: ["400", "500", "700"] });
 const spaceGrotesk = Space_Grotesk({
@@ -37,7 +38,7 @@ export default function RootLayout({
                 try {
                   var path = window.location.pathname || "";
                   if (path.indexOf("/photography") === 0) {
-                    var bg = prefersDark ? "#050507" : "#f8f5f0";
+                    var bg = prefersDark ? "${photo.background.dark}" : "${photo.background.light}";
                     document.documentElement.classList.add('photography-boot');
                     document.documentElement.style.backgroundColor = bg;
                     document.body.style.backgroundColor = bg;

@@ -1,39 +1,32 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  motion,
-  AnimatePresence,
-} from "framer-motion";
-import { useInViewFromBelow } from "../hooks/useInViewFromBelow";
+import { motion, AnimatePresence } from "framer-motion";
+import { useInViewFromBelow } from "@/hooks/useInViewFromBelow";
+import { useIsMobile } from "@/hooks/useIsMobile";
+import { useDrawOnView } from "@/hooks/useDrawOnView";
 import AnimatedSvg from "./AnimatedSvg";
-import {
-  InfoBubble,
-  VaporCloud,
-  useInfoBubble,
-  type BubbleInfo,
-} from "./InfoBubble";
-import { glassStyle, GlassLayers, FuzzyText, useIsMobile, useIsDark } from "../lib/glass";
-import { glassBoxClassNames, cs, themed } from "../lib/tokens";
-import { useSvgDrawAnimation } from "../hooks/useSvgDrawAnimation";
-import { rise, settle, leave } from "../lib/motion";
+import CardHeader from "./CardHeader";
+import { InfoBubble, VaporCloud, BubbleLayer, useInfoBubble, type BubbleInfo } from "./InfoBubble";
+import { GlassCard } from "@/lib/glass";
+import { rise, settle, leave } from "@/lib/motion";
 
-interface InfoBoxProps {
+export interface InfoBoxProps {
   side: "left" | "right";
   title: string;
   company: string;
   role: string;
-  description: string | string[];
+  description: string;
   svgPaths: string[];
   svgSize?: number;
   svgDrawDuration?: number;
   extraInfo?: BubbleInfo;
   svgRotate?: number;
-  svgFlipX?: boolean;
-  svgFlipY?: boolean;
   svgOffset?: { x?: number; y?: number };
 }
 
+/** An experience entry: a glass card with a line drawing beside it and, when
+    there is `extraInfo`, a "More Info" bubble that buds off its far side. */
 export default function InfoBox({
   side,
   title,
@@ -45,26 +38,14 @@ export default function InfoBox({
   svgDrawDuration = 3,
   extraInfo,
   svgRotate = 0,
-  svgFlipX = false,
-  svgFlipY = false,
   svgOffset = { x: 0, y: 0 },
 }: InfoBoxProps) {
   const isLeft = side === "left";
   const boxRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile(1000);
-  const isDark = useIsDark();
   const isInView = useInViewFromBelow(boxRef, isMobile ? 0.15 : 0.1);
-  const {
-    isBubbleOpen,
-    popRequested,
-    vaporOrigin,
-    handlePop,
-    handleVaporDone,
-    openBubble,
-    requestPop,
-  } = useInfoBubble();
-
-  const { svgProgress, onViewportEnter, onViewportLeave } = useSvgDrawAnimation(svgDrawDuration);
+  const bubble = useInfoBubble();
+  const { drawn, onViewportEnter, onViewportLeave } = useDrawOnView();
 
   // The bubble is part of the box's resting composition, but it only buds off
   // once the box has been seen and has mostly settled, so the separation is
@@ -78,15 +59,7 @@ export default function InfoBox({
 
   return (
     <>
-      {vaporOrigin && (
-        <VaporCloud
-          originX={vaporOrigin.x}
-          originY={vaporOrigin.y}
-          bubbleWidth={vaporOrigin.w}
-          bubbleHeight={vaporOrigin.h}
-          onComplete={handleVaporDone}
-        />
-      )}
+      {bubble.vaporOrigin && <VaporCloud origin={bubble.vaporOrigin} onComplete={bubble.handleVaporDone} />}
 
       <motion.div
         ref={boxRef}
@@ -104,7 +77,7 @@ export default function InfoBox({
         }}
         className={`mx-auto md:mx-0 ${isLeft ? "md:ml-[5%]" : "md:self-end md:mr-[5%]"} w-[calc(100%-2rem)] md:w-auto`}
       >
-        {/* SVG positioned outside the glass box so backdrop-filter blurs it */}
+        {/* The drawing sits outside the glass, behind the card's outer edge */}
         <motion.div
           className="hidden md:block"
           initial={{ opacity: 0 }}
@@ -116,152 +89,64 @@ export default function InfoBox({
             top: `${35 + (svgOffset.y ?? 0)}px`,
             [isLeft ? "right" : "left"]: `${(isLeft ? -25 : 25) + (svgOffset.x ?? 0)}px`,
             transformOrigin: isLeft ? "top right" : "top left",
-            transform:
-              `${svgFlipX ? "scaleX(-1)" : ""} ${svgFlipY ? "scaleY(-1)" : ""}`.trim() ||
-              undefined,
             pointerEvents: "none",
             zIndex: 0,
           }}
         >
-          <AnimatedSvg
-            paths={svgPaths}
-            size={svgSize}
-            strokeWidth={0.8}
-            scrollProgress={svgProgress}
-            rotate={svgRotate}
-            duration={svgDrawDuration}
-          />
+          <AnimatedSvg paths={svgPaths} size={svgSize} drawn={drawn} rotate={svgRotate} duration={svgDrawDuration} />
         </motion.div>
 
-        {/* Glass box */}
-        <motion.div
-          style={{
-            position: "relative",
-            borderRadius: "24px",
-            ...glassStyle,
-          }}
-          data-liquid
-          className={`${glassBoxClassNames} p-5 md:p-10 lg:p-12`}
-        >
-          <GlassLayers refractionSide={isLeft ? "left" : "right"} />
+        <GlassCard refractionSide={isLeft ? "left" : "right"} className="p-5 md:p-10 lg:p-12">
+          <CardHeader title={title} subtitle={company} meta={role} />
+          <p
+            className="font-[family-name:var(--font-elevated)]"
+            style={{
+              marginTop: 0,
+              marginBottom: 0,
+              fontSize: "clamp(0.875rem, 1.2vw, 1.125rem)",
+              fontWeight: 400,
+              letterSpacing: "-0.005em",
+              lineHeight: 1.7,
+              color: "var(--body-ink)",
+            }}
+          >
+            <span className="relative inline-block">{description}</span>
+          </p>
 
-          {/* Content */}
-          <div style={{ position: "relative", zIndex: 1 }}>
-            <h2
-              style={{
-                marginTop: 0,
-                marginBottom: "8px",
-                fontSize: "clamp(1.375rem, 2.2vw, 1.875rem)",
-                fontWeight: 700,
-                textAlign: "center",
-              }}
-            >
-              <FuzzyText>
-                <span
-                  className="bg-clip-text text-transparent metal-text"
-                  style={{
-                    WebkitBackgroundClip: "text",
-                    backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
-                  }}
-                >
-                  {title}
-                </span>
-              </FuzzyText>
-            </h2>
-            <h3
-              className="font-[family-name:var(--font-elevated)]"
-              style={{
-                marginTop: 0,
-                marginBottom: "4px",
-                fontSize: "clamp(0.95rem, 1.3vw, 1.125rem)",
-                fontWeight: 500,
-                textAlign: "center",
-                letterSpacing: "-0.01em",
-                color: themed(isDark, cs.bodyColor.dark, cs.bodyColor.light),
-              }}
-            >
-              {company}
-            </h3>
-            <h4
-              className="font-[family-name:var(--font-elevated)]"
-              style={{
-                marginTop: 0,
-                marginBottom: "16px",
-                fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)",
-                fontWeight: 500,
-                textAlign: "center",
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                color: themed(isDark, cs.bodyColor.dark, cs.bodyColor.light),
-              }}
-            >
-              {role}
-            </h4>
-            <p
-              className="font-[family-name:var(--font-elevated)]"
-              style={{
-                marginTop: 0,
-                marginBottom: 0,
-                fontSize: "clamp(0.875rem, 1.2vw, 1.125rem)",
-                fontWeight: 400,
-                letterSpacing: "-0.005em",
-                lineHeight: 1.7,
-                color: themed(isDark, cs.bodyColor.dark, cs.bodyColor.light),
-              }}
-            >
-              <FuzzyText>{description}</FuzzyText>
-            </p>
+          {extraInfo && (
+            <div className="mt-6 flex justify-center">
+              <button
+                onClick={bubble.isBubbleOpen ? bubble.requestPop : bubble.openBubble}
+                className="metal-surface group relative px-4 py-2 rounded-full text-sm font-semibold hover:-translate-y-px"
+              >
+                <span className="relative z-10">{bubble.isBubbleOpen ? "Close" : "More Info"}</span>
+              </button>
+            </div>
+          )}
+        </GlassCard>
 
-            {/* Toggle Button */}
-            {extraInfo && (
-              <div className="mt-6 flex justify-center">
-                <button
-                  onClick={isBubbleOpen ? requestPop : openBubble}
-                  className="metal-surface group relative px-4 py-2 rounded-full text-sm font-semibold hover:-translate-y-px"
-                >
-                  <span className="relative z-10">
-                    {isBubbleOpen ? "Close" : "More Info"}
-                  </span>
-                </button>
-              </div>
-            )}
-          </div>
-        </motion.div>
-
-        {/* ── Info Bubble ── */}
-        <motion.div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 9999999,
-            pointerEvents: "none",
-            overflow: "visible",
-          }}
-        >
+        <BubbleLayer>
           <AnimatePresence>
-            {isBubbleOpen && extraInfo && budReady && (
+            {bubble.isBubbleOpen && extraInfo && budReady && (
               <InfoBubble
                 extraInfo={extraInfo}
                 side={isLeft ? "right" : "left"}
-                onPop={handlePop}
+                onPop={bubble.handlePop}
                 isMobile={isMobile}
-                popRequested={popRequested}
+                popRequested={bubble.popRequested}
                 parentInView={isInView}
               />
             )}
           </AnimatePresence>
-        </motion.div>
+        </BubbleLayer>
       </motion.div>
 
       {/* Mobile spacer: only needed for absolute-positioned mobile bubble */}
       {isMobile && (
         <motion.div
-          animate={{ height: isBubbleOpen ? 340 : 0 }}
+          animate={{ height: bubble.isBubbleOpen ? 340 : 0 }}
           transition={
-            isBubbleOpen
+            bubble.isBubbleOpen
               ? { duration: 0.6, ease: [0.25, 1, 0.5, 1] }
               : { duration: 0.9, ease: [0.25, 0.1, 0.25, 1] }
           }

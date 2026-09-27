@@ -7,51 +7,42 @@ import { motion } from "framer-motion";
 import { PhotographyFilmStripNav } from "./PhotographyFilmStripNav";
 import FeedbackToggle from "./photo/FeedbackToggle";
 import { photoTheme } from "./photo/utils";
-import { glassStyle } from "../lib/glass";
-import { runThemeTransition } from "../lib/themeTransition";
-import { glassBubbleClassNames, metalClassNames, cs, photo } from "../lib/tokens";
+import { runThemeTransition } from "@/lib/themeTransition";
+import { photo } from "@/lib/tokens";
+import { CS_SECTIONS, rememberCsSection, sectionLabel, type CsSection } from "@/lib/site";
 
 // ─── Navigation links ─────────────────────────────────────────────────────────
 
-const csNavLinks = [
-  { name: "About", href: "/cs", sectionId: "about" },
-  { name: "Experience", href: "/cs", sectionId: "experience" },
-  { name: "Projects", href: "/cs", sectionId: "projects" },
-  { name: "Education", href: "/cs", sectionId: "education" },
+const csNavLinks: { name: string; href: string; sectionId: CsSection | null }[] = [
+  ...CS_SECTIONS.map((id) => ({ name: sectionLabel(id), href: "/cs", sectionId: id })),
   { name: "Resume", href: "/resume", sectionId: null },
 ];
 
-// ─── Crystalline text (CS nav) ────────────────────────────────────────────────
+// ─── Split view icon ──────────────────────────────────────────────────────────
+// Two panes side by side: the home page's split between photography and CS.
 
-export function CrystallineText({
-  children,
-  active = false,
+function SplitIcon({
+  size = 20,
+  fill = ["currentColor", "currentColor"],
+  opacity,
 }: {
-  children: React.ReactNode;
-  active?: boolean;
-  isDark?: boolean;
+  size?: number;
+  fill?: [string, string];
+  opacity?: [number, number];
 }) {
-  // Nav and pill labels: plain ink. The active item sits on chrome, which
-  // carries its own ink colour, so it only needs to inherit.
   return (
-    <span
-      className="relative inline-block"
-      style={{ color: active ? "inherit" : undefined, letterSpacing: "-0.01em" }}
-    >
-      {children}
-    </span>
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none">
+      <rect x="2" y="3" width="7" height="14" rx="1.5" fill={fill[0]} opacity={opacity?.[0]} />
+      <rect x="11" y="3" width="7" height="14" rx="1.5" fill={fill[1]} opacity={opacity?.[1]} />
+    </svg>
   );
 }
 
 // ─── Theme toggle ─────────────────────────────────────────────────────────────
 
-// Photography palette for toggle
-const photoToggleLight = photo.toggle.light;
-const photoToggleDark = photo.toggle.dark;
-
-// CS palette for toggle (matches IridescentText / glass nav)
-const csToggleLight = cs.toggle.light;
-const csToggleDark = cs.toggle.dark;
+// On the CS side the toggle sits on chrome, so it takes the chrome's ink (--metal-ink).
+const CS_TOGGLE_INK = "#1b1a17";
+const PHOTO_TOGGLE_HOVER = { light: "rgba(30,27,25,0.06)", dark: "rgba(255,255,255,0.08)" };
 
 function ThemeToggleButton({
   isDark,
@@ -68,32 +59,16 @@ function ThemeToggleButton({
 }) {
   if (!mounted) return null;
 
-  const buttonStyle = photoMode
-    ? {
-        background: "transparent",
-        color: isDark ? photoToggleDark : photoToggleLight,
-      }
-    : {
-        background: "transparent",
-        color: isDark ? csToggleDark : csToggleLight,
-      };
+  const ink = photoMode ? (isDark ? photo.ink.dark : photo.ink.light) : CS_TOGGLE_INK;
 
   return (
     <button
       onClick={onToggle}
       className="w-8 h-8 flex items-center justify-center rounded-full transition-all duration-300"
-      style={buttonStyle}
+      style={{ background: "transparent", color: ink }}
       aria-label="Toggle dark mode"
       onMouseEnter={(e) => {
-        if (photoMode) {
-          e.currentTarget.style.background = isDark
-            ? photo.toggleHover.dark
-            : photo.toggleHover.light;
-        } else {
-          e.currentTarget.style.background = isDark
-            ? cs.toggleHover.dark
-            : cs.toggleHover.light;
-        }
+        if (photoMode) e.currentTarget.style.background = isDark ? PHOTO_TOGGLE_HOVER.dark : PHOTO_TOGGLE_HOVER.light;
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = "transparent";
@@ -140,28 +115,14 @@ function ThemeToggleButton({
         <motion.circle
           cx="12"
           cy="12"
-          fill={
-            isDark
-              ? `url(#${maskId}-grad)`
-              : photoMode
-                ? photoToggleLight
-                : csToggleLight
-          }
+          fill={isDark ? `url(#${maskId}-grad)` : ink}
           mask={`url(#${maskId})`}
           initial={false}
           animate={{ r: isDark ? 5 : 9 }}
           transition={{ duration: 0.5, ease: "easeInOut" }}
         />
         <motion.g
-          stroke={
-            isDark
-              ? photoMode
-                ? photoToggleDark
-                : csToggleDark
-              : photoMode
-                ? photoToggleLight
-                : csToggleLight
-          }
+          stroke={ink}
           strokeWidth="2"
           strokeLinecap="round"
           initial={false}
@@ -190,7 +151,6 @@ export default function Header() {
   const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(true);
-  const navRef = useRef<HTMLElement>(null);
   const lastScrollY = useRef(0);
   const maskId = useId();
   const maskIdMobile = useId();
@@ -200,27 +160,21 @@ export default function Header() {
   const isCSPage = pathname === "/cs";
 
   // Track which section is in view when on the single-page CS view
-  const [activeSection, setActiveSection] = useState<string | null>(null);
-
-
-  // Track active section by scroll position when on the single-page CS view
+  const [activeSection, setActiveSection] = useState<CsSection | null>(null);
   useEffect(() => {
     if (!isCSPage) {
       setActiveSection(null);
       return;
     }
-    const sectionIds = ["about", "experience", "projects", "education"];
     let rafId: number | null = null;
     const handleScroll = () => {
       if (rafId !== null) return;
       rafId = requestAnimationFrame(() => {
         rafId = null;
-        let current = sectionIds[0];
-        for (const id of sectionIds) {
+        let current: CsSection = CS_SECTIONS[0];
+        for (const id of CS_SECTIONS) {
           const el = document.getElementById(id);
-          if (el && el.getBoundingClientRect().top <= 100) {
-            current = id;
-          }
+          if (el && el.getBoundingClientRect().top <= 100) current = id;
         }
         setActiveSection(current);
       });
@@ -233,24 +187,19 @@ export default function Header() {
     };
   }, [isCSPage]);
 
-  // Hide nav when a photo lightbox is open
-  useEffect(() => {
-    const onLightbox = (e: Event) => {
-      const open = (e as CustomEvent<{ open: boolean }>).detail.open;
-      setVisible(!open);
-    };
-    window.addEventListener("photoLightbox", onLightbox);
-    return () => window.removeEventListener("photoLightbox", onLightbox);
-  }, []);
-
-  // Hide nav links when a CS modal (resume / email) is open
+  // Hide the nav while a photo lightbox is open, and the CS nav links while a
+  // CS modal (resume / email) is open
   const [csModalOpen, setCsModalOpen] = useState(false);
   useEffect(() => {
-    const onCsModal = (e: Event) => {
-      setCsModalOpen((e as CustomEvent<{ open: boolean }>).detail.open);
-    };
+    const isOpen = (e: Event) => (e as CustomEvent<{ open: boolean }>).detail.open;
+    const onLightbox = (e: Event) => setVisible(!isOpen(e));
+    const onCsModal = (e: Event) => setCsModalOpen(isOpen(e));
+    window.addEventListener("photoLightbox", onLightbox);
     window.addEventListener("csModal", onCsModal);
-    return () => window.removeEventListener("csModal", onCsModal);
+    return () => {
+      window.removeEventListener("photoLightbox", onLightbox);
+      window.removeEventListener("csModal", onCsModal);
+    };
   }, []);
 
   // Smart navbar: show on scroll up, hide on scroll down
@@ -259,9 +208,7 @@ export default function Header() {
       // Ignore scroll events while body is frozen during page transitions
       if (document.body.style.position === "fixed") return;
       const currentY = window.scrollY;
-      if (currentY < 50) {
-        setVisible(true);
-      } else if (currentY < lastScrollY.current) {
+      if (currentY < 50 || currentY < lastScrollY.current) {
         setVisible(true);
       } else if (currentY > lastScrollY.current + 5) {
         setVisible(false);
@@ -272,15 +219,12 @@ export default function Header() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Follow the system theme (the boot script in app/layout.tsx applied it before paint)
   useEffect(() => {
     setMounted(true);
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     setIsDark(mediaQuery.matches);
-    if (mediaQuery.matches) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    document.documentElement.classList.toggle("dark", mediaQuery.matches);
     const handleChange = (e: MediaQueryListEvent) => {
       setIsDark(e.matches);
       document.documentElement.classList.toggle("dark", e.matches);
@@ -291,12 +235,12 @@ export default function Header() {
 
   // The switch itself happens under the halftone curtain (lib/themeTransition),
   // which starts from the toggle that was pressed.
-  const toggleDarkMode = (e?: React.MouseEvent<HTMLElement>) => {
+  const toggleDarkMode = (e: React.MouseEvent<HTMLElement>) => {
     const newDark = !isDark;
-    const r = e?.currentTarget.getBoundingClientRect();
+    const r = e.currentTarget.getBoundingClientRect();
     runThemeTransition({
-      x: r ? r.left + r.width / 2 : window.innerWidth - 44,
-      y: r ? r.top + r.height / 2 : 44,
+      x: r.left + r.width / 2,
+      y: r.top + r.height / 2,
       toDark: newDark,
       photoSide: !!isPhotoSide,
       apply: () => {
@@ -320,72 +264,9 @@ export default function Header() {
     );
   }
 
-  const mobileControls = (
-    <div
-      className="md:hidden fixed top-3 left-3 right-3"
-      style={{
-        zIndex: 9999,
-        pointerEvents: "none",
-      }}
-    >
-      <div className="flex items-center justify-between">
-        <Link
-          href="/"
-          scroll={false}
-          aria-label="Return to split view"
-          title="Return to split view"
-          className={`${glassBubbleClassNames} flex items-center justify-center w-12 h-12 rounded-full shrink-0`}
-          style={{ ...glassStyle, pointerEvents: "auto" }}
-        >
-          {/* Reuse the CS home icon: it matches the split motif */}
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 20 20"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <rect
-              x="2"
-              y="3"
-              width="7"
-              height="14"
-              rx="1.5"
-              fill="currentColor"
-              opacity={0.9}
-            />
-            <rect
-              x="11"
-              y="3"
-              width="7"
-              height="14"
-              rx="1.5"
-              fill="currentColor"
-              opacity={0.55}
-            />
-          </svg>
-        </Link>
-
-        <div
-          className={`${glassBubbleClassNames} flex items-center justify-center w-12 h-12 rounded-full shrink-0`}
-          style={{ ...glassStyle, pointerEvents: "auto" }}
-        >
-          <ThemeToggleButton
-            isDark={isDark}
-            mounted={mounted}
-            maskId={maskIdMobile}
-            onToggle={toggleDarkMode}
-            photoMode={isPhotoSide}
-          />
-        </div>
-      </div>
-    </div>
-  );
-
-  // ── Photography side: bottom film strip nav ──
+  // ── Photography side: the film strip nav ──
   if (isPhotoSide) {
     const pt = photoTheme(isDark);
-    const photoBorder = pt.rule;
     return (
       <PhotographyFilmStripNav
         isDark={isDark}
@@ -402,144 +283,108 @@ export default function Header() {
               height: 28,
               borderRadius: "50%",
               background: pt.glass,
-              border: `1px solid ${photoBorder}`,
+              border: `1px solid ${pt.rule}`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               textDecoration: "none",
             }}
           >
-            <svg width="12" height="12" viewBox="0 0 20 20" fill="none">
-              <rect
-                x="2"
-                y="3"
-                width="7"
-                height="14"
-                rx="1.5"
-                fill={pt.ink}
-              />
-              <rect
-                x="11"
-                y="3"
-                width="7"
-                height="14"
-                rx="1.5"
-                fill={pt.faint}
-              />
-            </svg>
+            <SplitIcon size={12} fill={[pt.ink, pt.faint]} />
           </Link>
         }
-        bottomControls={
+        rightControls={
           <>
             <FeedbackToggle isDark={isDark} />
-            <ThemeToggleButton
-              isDark={isDark}
-              mounted={mounted}
-              maskId={maskId}
-              onToggle={toggleDarkMode}
-              photoMode
-            />
+            <ThemeToggleButton isDark={isDark} mounted={mounted} maskId={maskId} onToggle={toggleDarkMode} photoMode />
           </>
         }
       />
     );
   }
 
-  // ── CS side: individual glass bubble nav ──
-  const homeSvg = (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="2" y="3" width="7" height="14" rx="1.5"
-        fill="currentColor" opacity={0.85} />
-      <rect x="11" y="3" width="7" height="14" rx="1.5"
-        fill="currentColor" opacity={0.55} />
-    </svg>
-  );
-
-  const header = (
-    <header
-      ref={navRef}
-      className="sticky top-2 mx-2 mt-2 p-3 hidden md:block"
-      style={{ zIndex: 9999 }}
-    >
-      <nav className="flex items-center gap-2">
-        {/* Home bubble */}
-        <Link
-          href="/"
-          scroll={false}
-          aria-label="Home"
-          title="Home"
-          className={`${glassBubbleClassNames} flex items-center justify-center w-12 h-12 rounded-full shrink-0 transition-all duration-200`}
-          style={glassStyle}
-        >
-          {homeSvg}
-        </Link>
-
-        {/* ── Desktop nav bubbles: evenly spaced ── */}
-        <div
-          className="hidden md:flex flex-1 items-center justify-evenly"
-          style={{
-            opacity: visible && !csModalOpen ? 1 : 0,
-            transform: visible && !csModalOpen ? "translateY(0)" : "translateY(-8px)",
-            transition: "opacity 0.3s ease, transform 0.3s ease",
-            pointerEvents: visible && !csModalOpen ? "auto" : "none",
-          }}
-        >
-          {csNavLinks.map((link) => {
-            const active = link.sectionId
-              ? isCSPage && activeSection === link.sectionId
-              : pathname === link.href;
-            return (
-              <Link
-                key={link.name}
-                href={link.href}
-                scroll={false}
-                onClick={(e) => {
-                  if (link.sectionId && isCSPage) {
-                    e.preventDefault();
-                    document
-                      .getElementById(link.sectionId)
-                      ?.scrollIntoView({ behavior: "smooth" });
-                  } else if (link.sectionId) {
-                    // Navigating into /cs (e.g. from /resume): remember target section
-                    try {
-                      sessionStorage.setItem("csScrollTo", link.sectionId);
-                    } catch {
-                      // ignore (private mode, etc.)
-                    }
-                  }
-                }}
-                className={`${metalClassNames}${active ? " is-current" : ""} px-7 py-3 rounded-full font-semibold text-lg transition-all duration-200`}
-                aria-current={active ? "page" : undefined}
-                style={glassStyle}
-              >
-                <CrystallineText active={active} isDark={isDark}>
-                  {link.name}
-                </CrystallineText>
-              </Link>
-            );
-          })}
-        </div>
-
-        {/* Theme toggle bubble (desktop) */}
-        <div
-          className={`${glassBubbleClassNames} hidden md:flex items-center justify-center w-12 h-12 rounded-full shrink-0`}
-          style={glassStyle}
-        >
-          <ThemeToggleButton
-            isDark={isDark}
-            mounted={mounted}
-            maskId={maskId}
-            onToggle={toggleDarkMode}
-          />
-        </div>
-      </nav>
-    </header>
-  );
-
+  // ── CS side: individual chrome bubbles ──
+  const navShown = visible && !csModalOpen;
   return (
     <>
-      {mobileControls}
-      {header}
+      {/* Mobile: just home and the theme toggle, pinned to the top corners */}
+      <div className="md:hidden fixed top-3 left-3 right-3" style={{ zIndex: 9999, pointerEvents: "none" }}>
+        <div className="flex items-center justify-between">
+          <Link
+            href="/"
+            scroll={false}
+            aria-label="Return to split view"
+            title="Return to split view"
+            className="metal-surface flex items-center justify-center w-12 h-12 rounded-full shrink-0"
+            style={{ pointerEvents: "auto" }}
+          >
+            <SplitIcon opacity={[0.9, 0.55]} />
+          </Link>
+
+          <div
+            className="metal-surface flex items-center justify-center w-12 h-12 rounded-full shrink-0"
+            style={{ pointerEvents: "auto" }}
+          >
+            <ThemeToggleButton isDark={isDark} mounted={mounted} maskId={maskIdMobile} onToggle={toggleDarkMode} />
+          </div>
+        </div>
+      </div>
+
+      <header className="sticky top-2 mx-2 mt-2 p-3 hidden md:block" style={{ zIndex: 9999 }}>
+        <nav className="flex items-center gap-2">
+          <Link
+            href="/"
+            scroll={false}
+            aria-label="Home"
+            title="Home"
+            className="metal-surface flex items-center justify-center w-12 h-12 rounded-full shrink-0 transition-all duration-200"
+          >
+            <SplitIcon opacity={[0.85, 0.55]} />
+          </Link>
+
+          {/* Section links, evenly spaced */}
+          <div
+            className="hidden md:flex flex-1 items-center justify-evenly"
+            style={{
+              opacity: navShown ? 1 : 0,
+              transform: navShown ? "translateY(0)" : "translateY(-8px)",
+              transition: "opacity 0.3s ease, transform 0.3s ease",
+              pointerEvents: navShown ? "auto" : "none",
+            }}
+          >
+            {csNavLinks.map((link) => {
+              const active = link.sectionId ? isCSPage && activeSection === link.sectionId : pathname === link.href;
+              return (
+                <Link
+                  key={link.name}
+                  href={link.href}
+                  scroll={false}
+                  onClick={(e) => {
+                    if (!link.sectionId) return;
+                    if (isCSPage) {
+                      e.preventDefault();
+                      document.getElementById(link.sectionId)?.scrollIntoView({ behavior: "smooth" });
+                    } else {
+                      // Navigating into /cs (e.g. from /resume): remember the target section
+                      rememberCsSection(link.sectionId);
+                    }
+                  }}
+                  className={`metal-surface${active ? " is-current" : ""} px-7 py-3 rounded-full font-semibold text-lg transition-all duration-200`}
+                  aria-current={active ? "page" : undefined}
+                >
+                  <span className="relative inline-block" style={{ letterSpacing: "-0.01em" }}>
+                    {link.name}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+
+          <div className="metal-surface hidden md:flex items-center justify-center w-12 h-12 rounded-full shrink-0">
+            <ThemeToggleButton isDark={isDark} mounted={mounted} maskId={maskId} onToggle={toggleDarkMode} />
+          </div>
+        </nav>
+      </header>
     </>
   );
 }

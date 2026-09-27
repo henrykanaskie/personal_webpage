@@ -5,9 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useReducedMotion } from "framer-motion";
 import type { Section } from "@/app/photography/data";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import type { LightboxItem } from "./Lightbox";
 import FadeImage from "./FadeImage";
-import { aspect, frameClock, photoTheme, rgbTriplet, smoothing } from "./utils";
+import { MONO, aspect, frameClock, photoTheme, rgbTriplet, smoothing } from "./utils";
 
 const FAR = 5600; // anything further than this is lost in the dark
 const PASS = 1500; // within this distance prints start swinging aside
@@ -75,15 +76,8 @@ export default function DepthWorld({
   const [near, setNear] = useState(0);
   const [active, setActive] = useState(-1);
   const [hoverStop, setHoverStop] = useState<number | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
+  const isMobile = !!useIsMobile();
   const reduceMotion = !!useReducedMotion();
-
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
 
   const { planes, items, stops, depth } = useMemo(() => {
     const rand = rng(20240518);
@@ -283,11 +277,7 @@ export default function DepthWorld({
   const printBorder = isDark ? "#ebe7e0" : "#fffdf9";
   // A soft glow of the page colour behind titles keeps them readable over prints further back
   const halo = `0 0 28px ${t.bg}, 0 0 10px ${t.bg}`;
-  const mono: React.CSSProperties = {
-    fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-    letterSpacing: "0.2em",
-    textTransform: "uppercase",
-  };
+  const mono = { ...MONO, letterSpacing: "0.2em" };
 
   return (
     <section

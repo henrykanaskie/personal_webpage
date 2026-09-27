@@ -8,6 +8,7 @@ import type { PhotoEntry } from "@/app/photography/data";
 import { shutter } from "./feedback";
 import FadeImage from "./FadeImage";
 import {
+  MONO,
   EASE_OUT,
   aspect,
   cameraName,
@@ -179,12 +180,6 @@ export default function Lightbox({
     ["ISO", exif.iso ? String(exif.iso) : undefined],
   ];
 
-  const mono: React.CSSProperties = {
-    fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-    letterSpacing: "0.22em",
-    textTransform: "uppercase",
-  };
-
   const roundBtn: React.CSSProperties = {
     width: 44,
     height: 44,
@@ -350,7 +345,7 @@ export default function Lightbox({
                 </svg>
                 <span
                   style={{
-                    ...mono,
+                    ...MONO,
                     position: "absolute",
                     bottom: 16,
                     left: "50%",
@@ -402,7 +397,7 @@ export default function Lightbox({
       >
         <div
           style={{
-            ...mono,
+            ...MONO,
             fontSize: 9,
             color: t.sub,
             display: "flex",
@@ -530,7 +525,7 @@ export default function Lightbox({
             }}
           >
             <div>
-              <div style={{ ...mono, fontSize: 8.5, color: t.faint, marginBottom: 8 }}>Capture</div>
+              <div style={{ ...MONO, fontSize: 8.5, color: t.faint, marginBottom: 8 }}>Capture</div>
               <div style={{ fontFamily: "var(--font-elevated)", fontSize: 19, fontWeight: 400, letterSpacing: "0.01em" }}>
                 {cameraName(exif) ?? "Unknown body"}
               </div>
@@ -549,7 +544,7 @@ export default function Lightbox({
             >
               {stats.map(([label, value]) => (
                 <div key={label} style={{ background: isDark ? "rgba(10,9,15,0.82)" : "rgba(252,250,246,0.9)", padding: "12px 14px" }}>
-                  <div style={{ ...mono, fontSize: 7.5, color: t.faint }}>{label}</div>
+                  <div style={{ ...MONO, fontSize: 7.5, color: t.faint }}>{label}</div>
                   <AnimatePresence mode="wait" initial={false}>
                     <motion.div
                       key={value ?? "none"}
@@ -568,7 +563,7 @@ export default function Lightbox({
 
             {photo.palette.length > 0 && (
               <div>
-                <div style={{ ...mono, fontSize: 8.5, color: t.faint, marginBottom: 10 }}>Palette</div>
+                <div style={{ ...MONO, fontSize: 8.5, color: t.faint, marginBottom: 10 }}>Palette</div>
                 <div style={{ display: "flex", gap: 6 }}>
                   {photo.palette.map((c, i) => (
                     <motion.button
@@ -593,20 +588,20 @@ export default function Lightbox({
                     />
                   ))}
                 </div>
-                <div style={{ ...mono, fontSize: 8, color: t.sub, marginTop: 8, height: 12 }}>
+                <div style={{ ...MONO, fontSize: 8, color: t.sub, marginTop: 8, height: 12 }}>
                   {copied ? `Copied ${copied}` : "Click a swatch to copy"}
                 </div>
               </div>
             )}
 
-            <div style={{ ...mono, fontSize: 8, color: t.faint, display: "flex", justifyContent: "space-between", marginTop: "auto" }}>
+            <div style={{ ...MONO, fontSize: 8, color: t.faint, display: "flex", justifyContent: "space-between", marginTop: "auto" }}>
               <span>{exif.date ?? ""}</span>
               <span>
                 {photo.width} × {photo.height}
               </span>
             </div>
             {isDesktop && (
-              <div style={{ ...mono, fontSize: 7.5, color: t.faint, lineHeight: 1.9 }}>← → browse · Z loupe · I info · Esc close</div>
+              <div style={{ ...MONO, fontSize: 7.5, color: t.faint, lineHeight: 1.9 }}>← → browse · Z loupe · I info · Esc close</div>
             )}
           </motion.aside>
         )}

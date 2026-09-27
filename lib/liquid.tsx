@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { paper } from "./tokens";
+import { GLSL_GLASS, fullscreenProgram, rgb, uniforms } from "./gl";
 
 // ─── Liquid glass ───────────────────────────────────────────────────────────
 // Two pieces that make the info bubbles behave like glass droplets:
@@ -165,7 +166,6 @@ export function setRingHole(panel: HTMLElement, which: "s" | "b", x: number, y: 
 // thin band inside its edge near the bud so the frost bends continuously.
 // When it settles, the real frosted bubble fades in.
 
-const BUD_VERT = `attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }`;
 const BUD_FRAG = `
 precision highp float;
 uniform vec2 uRes;
@@ -180,19 +180,11 @@ uniform vec3 uHole;   // the hole opened in the card's rim: x, y, radius
 uniform float uBubble; // 0 card material, 1 see-through bubble
 uniform float uBubA;
 uniform float uRim;   // the canvas's rim round the whole shape, in as the card's own rim hides
-uniform float uAlpha, uDark, uTime;
+uniform float uAlpha, uDark;
 uniform float uGap, uDotR, uDotA;
 uniform vec3 uBg, uDot, uFill;
 uniform float uFillA;
-
-float sdBox(vec2 p, vec2 c, vec2 hs, float r) {
-  vec2 q = abs(p - c) - hs + r;
-  return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
-}
-float smin(float a, float b, float k) {
-  float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
-  return mix(b, a, h) - k * h * (1.0 - h);
-}
+${GLSL_GLASS}
 float card(vec2 p) { return sdBox(p, uCard.xy + uCard.zw * 0.5, uCard.zw * 0.5, uCardR); }
 float cardStub(vec2 p) {
   float c = card(p);
@@ -204,13 +196,6 @@ float scene(vec2 p) {
   float c = cardStub(p);
   if (uDrop.z < 0.3) return c;
   return smin(c, drop(p), uK);
-}
-float frostDots(vec2 p) {
-  vec2 w = p + uPage;
-  vec2 c = (floor(w / uGap) + 0.5) * uGap - uPage;
-  float d = length(p - c);
-  float R = uDotR + 2.6;
-  return smoothstep(R, 0.0, d) * 0.6;
 }
 
 void main() {
@@ -242,16 +227,14 @@ void main() {
   // clear, iridescent one.
   float isDrop = uBubble * smoothstep(1.0, -1.0, drop(p) - cardStub(p));
   float stretch = max(smoothstep(2.0, 38.0, dc), isDrop);
-  // thin film colour, the same as the settled bubble's (.glass-bubble::after):
-  // pink on the left edge, cyan on the right, violet on top, gold below
-  float wl = max(-n.x, 0.0), wr = max(n.x, 0.0), wt = max(-n.y, 0.0), wb = max(n.y, 0.0);
-  vec3 film = (vec3(1.0, 0.59, 0.8) * wl + vec3(0.47, 0.8, 1.0) * wr + vec3(0.73, 0.63, 1.0) * wt + vec3(1.0, 0.86, 0.55) * wb) / (wl + wr + wt + wb + 1e-3);
+  // thin film colour, the same as the settled bubble's (.glass-bubble::after)
+  vec3 film = edgeFilm(n);
 
   if (cover > 0.0) {
     float rim = 1.0 - clamp(-d / 26.0, 0.0, 1.0);
     rim *= rim;
     // card material, exactly as the card is drawn (DotField's frost under the card fill)
-    vec3 col = mix(uBg, uDot, frostDots(p + n * rim * 11.0) * uDotA);
+    vec3 col = mix(uBg, uDot, frostDots(p + n * rim * 11.0, uPage, uGap, uDotR) * uDotA);
     col = mix(col, uFill, uFillA);
     vec4 cardM = vec4(col, 1.0);
     // bubble material: a light see-through fill, the film glowing toward the rim
@@ -268,14 +251,14 @@ void main() {
   float glow = smoothstep(-6.0, -0.5, d) * (1.0 - smoothstep(-0.5, 0.5, d));
   // the glass edge (--edge-lip, --edge-film): a hairline all round, brighter
   // on top, a little on the bottom, and the film band just inside it
-  float lipA = mix(0.45 + 0.47 * max(-n.y, 0.0) + 0.22 * max(n.y, 0.0), 0.09 + 0.19 * max(-n.y, 0.0), uDark);
+  float lipA = edgeLip(n, uDark);
   vec3 rimCol = vec3(1.0);
   // only near the bud: elsewhere the card's own (DOM) edge is still there,
   // and the two hand over across the same 40px falloff the rim's hole uses
   float own = uHole.z > 0.5 ? 1.0 - clamp((length(p - uHole.xy) - uHole.z) / 40.0, 0.0, 1.0) : 0.0;
   float reach = uRim * max(own, smoothstep(0.5, 1.5, dc));
   float rimA = line * lipA * reach;
-  float filmA = glow * mix(0.3, 0.27, uDark) * reach;
+  float filmA = glow * edgeFilmA(uDark) * reach;
   outc = vec4(film, 1.0) * filmA + outc * (1.0 - filmA);
   outc = vec4(rimCol, 1.0) * rimA + outc * (1.0 - rimA);
   gl_FragColor = outc * uAlpha;
@@ -344,28 +327,16 @@ export function LiquidBud({
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { finish(); return; }
     const gl = canvas.getContext("webgl", { premultipliedAlpha: true, alpha: true, antialias: false });
     if (!gl) { finish(); return; }
-    const sh = (type: number, src: string) => {
-      const x = gl.createShader(type)!;
-      gl.shaderSource(x, src);
-      gl.compileShader(x);
-      return x;
-    };
-    const prog = gl.createProgram()!;
-    gl.attachShader(prog, sh(gl.VERTEX_SHADER, BUD_VERT));
-    gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, BUD_FRAG));
-    gl.linkProgram(prog);
-    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-      // a broken shader would otherwise just skip the animation silently
-      if (process.env.NODE_ENV !== "production") console.error("LiquidBud shader:", gl.getProgramInfoLog(prog));
+    const prog = fullscreenProgram(gl, BUD_FRAG);
+    if (!prog) {
       finish();
       return;
     }
-    gl.useProgram(prog);
-    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-    const U = (n: string) => gl.getUniformLocation(prog, n);
+    // prettier-ignore
+    const u = uniforms(gl, prog, [
+      "uRes", "uDpr", "uPage", "uCard", "uCardR", "uDrop", "uDropR", "uK", "uStub", "uHole", "uBubble", "uBubA",
+      "uRim", "uAlpha", "uDark", "uGap", "uDotR", "uDotA", "uBg", "uDot", "uFill", "uFillA",
+    ]);
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.round(box.w * dpr);
@@ -511,31 +482,30 @@ export function LiquidBud({
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.uniform2f(U("uRes"), box.w, box.h);
-      gl.uniform1f(U("uDpr"), dpr);
-      gl.uniform2f(U("uPage"), cr.left + window.scrollX, cr.top + window.scrollY);
-      gl.uniform4f(U("uCard"), card.x, card.y, card.w, card.h);
-      gl.uniform1f(U("uCardR"), cardRadius);
-      gl.uniform4f(U("uDrop"), cx, cy, hw, hh);
-      gl.uniform1f(U("uDropR"), dropR);
-      gl.uniform1f(U("uK"), k);
-      gl.uniform3f(U("uStub"), ex, ey, Math.max(0, stub.x));
-      gl.uniform3f(U("uHole"), hole.x, hole.y, hole.r);
-      gl.uniform1f(U("uBubble"), broken ? clamp01((t - brokeAt) / 220) : 0);
-      gl.uniform1f(U("uBubA"), bubA);
-      gl.uniform1f(U("uRim"), Math.min(1, t / 120));
+      gl.uniform2f(u.uRes, box.w, box.h);
+      gl.uniform1f(u.uDpr, dpr);
+      gl.uniform2f(u.uPage, cr.left + window.scrollX, cr.top + window.scrollY);
+      gl.uniform4f(u.uCard, card.x, card.y, card.w, card.h);
+      gl.uniform1f(u.uCardR, cardRadius);
+      gl.uniform4f(u.uDrop, cx, cy, hw, hh);
+      gl.uniform1f(u.uDropR, dropR);
+      gl.uniform1f(u.uK, k);
+      gl.uniform3f(u.uStub, ex, ey, Math.max(0, stub.x));
+      gl.uniform3f(u.uHole, hole.x, hole.y, hole.r);
+      gl.uniform1f(u.uBubble, broken ? clamp01((t - brokeAt) / 220) : 0);
+      gl.uniform1f(u.uBubA, bubA);
+      gl.uniform1f(u.uRim, Math.min(1, t / 120));
       // the card's rim opens round the bud, and closes again as the canvas fades
-      if (panel) setRingHole(panel as HTMLElement, "b", hole.x - card.x, hole.y - card.y, hole.r * fade);
-      gl.uniform1f(U("uTime"), t / 1000);
-      gl.uniform1f(U("uAlpha"), fade);
-      gl.uniform1f(U("uDark"), dark ? 1 : 0);
-      gl.uniform1f(U("uGap"), paper.gap);
-      gl.uniform1f(U("uDotR"), paper.dotRadius);
-      gl.uniform1f(U("uDotA"), pal.dotAlpha);
-      gl.uniform3f(U("uBg"), pal.bg[0] / 255, pal.bg[1] / 255, pal.bg[2] / 255);
-      gl.uniform3f(U("uDot"), pal.dot[0] / 255, pal.dot[1] / 255, pal.dot[2] / 255);
-      gl.uniform3f(U("uFill"), glass.fill[0] / 255, glass.fill[1] / 255, glass.fill[2] / 255);
-      gl.uniform1f(U("uFillA"), glass.alpha);
+      if (panel) setRingHole(panel, "b", hole.x - card.x, hole.y - card.y, hole.r * fade);
+      gl.uniform1f(u.uAlpha, fade);
+      gl.uniform1f(u.uDark, dark ? 1 : 0);
+      gl.uniform1f(u.uGap, paper.gap);
+      gl.uniform1f(u.uDotR, paper.dotRadius);
+      gl.uniform1f(u.uDotA, pal.dotAlpha);
+      gl.uniform3f(u.uBg, ...rgb(pal.bg));
+      gl.uniform3f(u.uDot, ...rgb(pal.dot));
+      gl.uniform3f(u.uFill, ...rgb(glass.fill));
+      gl.uniform1f(u.uFillA, glass.alpha);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
 
       if (fade > 0) raf = requestAnimationFrame(frame);

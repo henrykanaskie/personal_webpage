@@ -1,9 +1,8 @@
 "use client";
 
 import { useRef, useCallback, useState, useEffect, memo } from "react";
-import { motion } from "framer-motion";
-import { FuzzyText, glassStyle } from "../lib/glass";
-import { useGlassLens, LiquidBud } from "../lib/liquid";
+import { motion, type TargetAndTransition, type Transition } from "framer-motion";
+import { useGlassLens, LiquidBud } from "@/lib/liquid";
 
 // ─── Border Vapor Particle ───
 interface BorderParticle {
@@ -145,26 +144,25 @@ function generateBorderParticles(
 
 // ─── Border Vapor Cloud ───
 // Particles originate from the bubble's border and drift outward like mist escaping
+
+export interface VaporOrigin {
+  /** Centre of the popped bubble, viewport px */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export const VaporCloud = memo(function VaporCloud({
-  originX,
-  originY,
-  bubbleWidth,
-  bubbleHeight,
+  origin,
   onComplete,
 }: {
-  originX: number;
-  originY: number;
-  bubbleWidth: number;
-  bubbleHeight: number;
+  origin: VaporOrigin;
   onComplete: () => void;
 }) {
   const [particles] = useState(() => {
     const mobile = typeof window !== "undefined" && window.innerWidth < 768;
-    return generateBorderParticles(
-      mobile ? 120 : 320,
-      bubbleWidth,
-      bubbleHeight,
-    );
+    return generateBorderParticles(mobile ? 120 : 320, origin.w, origin.h);
   });
   const completedRef = useRef(0);
 
@@ -177,8 +175,8 @@ export const VaporCloud = memo(function VaporCloud({
     <div
       style={{
         position: "fixed",
-        left: originX,
-        top: originY,
+        left: origin.x,
+        top: origin.y,
         pointerEvents: "none",
         zIndex: 1,
       }}
@@ -219,6 +217,97 @@ export const VaporCloud = memo(function VaporCloud({
   );
 });
 
+// ─── Shared bubble behaviour ───
+// The experience card's bubble (InfoBubble, below) and the project cards'
+// bubbles (ProjectCard) are the same glass: they share how they frost, move,
+// press and pop.
+
+/** The bubble's backdrop, appended after the refracting lens. */
+export const BUBBLE_FROST = "blur(1.6px) saturate(1.25) brightness(var(--bubble-lift))";
+
+const SETTLE_SPRING = { type: "spring", stiffness: 170, damping: 26 } as const;
+const PRESS_SPRING = { type: "spring", stiffness: 170, damping: 14 } as const;
+
+const POP_TRANSITION: Transition = {
+  scale: { duration: 0.08, ease: "easeOut" },
+  opacity: { duration: 0.08 },
+};
+const SETTLE_TRANSITION: Transition = {
+  // The droplet itself is drawn by LiquidBud; this element only
+  // fades in once the droplet has settled onto its box.
+  x: SETTLE_SPRING,
+  y: SETTLE_SPRING,
+  top: SETTLE_SPRING,
+  scaleX: PRESS_SPRING,
+  scaleY: PRESS_SPRING,
+  // the clear bubble frosts over: a slower crossfade with the droplet
+  opacity: { duration: 0.32, ease: "easeInOut" },
+};
+const BUBBLE_EXIT: TargetAndTransition = { opacity: 0, transition: { duration: 0.001 } };
+const BUBBLE_HOVER: TargetAndTransition = { scale: 1.03, transition: { duration: 0.2 } };
+
+/** Motion props for a bubble; spread onto its motion.div alongside its own position. */
+export function bubbleMotion(pressedOrPopping: boolean, isPopping: boolean) {
+  const scale = pressedOrPopping ? 1.08 : 1;
+  return {
+    scale: { scaleX: scale, scaleY: scale },
+    transition: isPopping ? POP_TRANSITION : SETTLE_TRANSITION,
+    exit: BUBBLE_EXIT,
+    whileHover: isPopping ? {} : BUBBLE_HOVER,
+  };
+}
+
+/**
+ * Popping: measures the bubble and hands its box to `onPop` (which starts the
+ * vapor), once. A parent can also ask for a pop through `popRequested`.
+ */
+export function useBubblePop(
+  bubbleRef: React.RefObject<HTMLElement | null>,
+  onPop: (origin: VaporOrigin) => void,
+  popRequested?: boolean,
+) {
+  const [isPopping, setIsPopping] = useState(false);
+
+  const pop = useCallback(() => {
+    if (isPopping) return;
+    setIsPopping(true);
+    if (!bubbleRef.current) return;
+    const rect = bubbleRef.current.getBoundingClientRect();
+    onPop({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, w: rect.width, h: rect.height });
+  }, [isPopping, onPop, bubbleRef]);
+
+  useEffect(() => {
+    if (popRequested) pop();
+  }, [popRequested, pop]);
+
+  return { isPopping, pop };
+}
+
+/** Whether a touch ended close enough to where it started to count as a tap, not a scroll. */
+export function isTap(start: { x: number; y: number }, end: { clientX: number; clientY: number }) {
+  return Math.abs(end.clientX - start.x) < 10 && Math.abs(end.clientY - start.y) < 10;
+}
+
+/** The overlay over a card that its bubbles are positioned in. */
+export function BubbleLayer({ children }: { children: React.ReactNode }) {
+  return (
+    <motion.div
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 9999999,
+        pointerEvents: "none",
+        overflow: "visible",
+      }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 // ─── Bubble Info Type ───
 export interface BubbleInfo {
   startDate: string; // e.g. "Jan 2023"
@@ -228,46 +317,38 @@ export interface BubbleInfo {
   industry: string; // e.g. "Aerospace"
 }
 
-const MONTH_MAP: Record<string, number> = {
-  jan: 0,
-  feb: 1,
-  mar: 2,
-  apr: 3,
-  may: 4,
-  jun: 5,
-  jul: 6,
-  aug: 7,
-  sep: 8,
-  oct: 9,
-  nov: 10,
-  dec: 11,
-};
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
 
 function parseDateStr(s: string): Date {
   if (s.toLowerCase() === "present") return new Date();
   const parts = s.trim().split(/\s+/);
-  const month = MONTH_MAP[parts[0].toLowerCase().slice(0, 3)] ?? 0;
+  const month = Math.max(0, MONTHS.indexOf(parts[0].toLowerCase().slice(0, 3)));
   const year = parseInt(parts[1], 10);
   return new Date(year, month);
 }
 
+const plural = (n: number, unit: string) => `${n} ${unit}${n !== 1 ? "s" : ""}`;
+
 function calcDuration(start: string, end: string): string {
   const s = parseDateStr(start);
   const e = parseDateStr(end);
-  let months =
-    (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth());
-  if (months < 0) months = 0;
+  const months = Math.max(0, (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth()));
   const yrs = Math.floor(months / 12);
   const mo = months % 12;
-  if (yrs === 0) return `${mo} month${mo !== 1 ? "s" : ""}`;
-  if (mo === 0) return `${yrs} yr${yrs !== 1 ? "s" : ""}`;
-  return `${yrs} yr${yrs !== 1 ? "s" : ""} ${mo} mo`;
+  if (yrs === 0) return plural(mo, "month");
+  if (mo === 0) return plural(yrs, "yr");
+  return `${plural(yrs, "yr")} ${mo} mo`;
 }
 
 // ─── Mitosis Bubble ───
-// `side`: "right" means bubble pops out to the right (for LeftInfoBox)
-//         "left"  means bubble pops out to the left  (for RightInfoBox)
-const BUBBLE_REST_OFFSET = 300;
+// `side`: "right" means the bubble pops out to the right (for a left-hand card),
+//         "left"  means it pops out to the left  (for a right-hand card).
+
+/** Gap between the card's side and the bubble, desktop */
+const BUBBLE_GAP = 100;
+
+const smallCaps = { fontSize: 8, textTransform: "uppercase", letterSpacing: "0.1em" } as const;
+const divider = (margin: string) => <div className="bg-black/[0.22] dark:bg-white/[0.15]" style={{ height: 1, margin }} />;
 
 export function InfoBubble({
   extraInfo,
@@ -276,53 +357,35 @@ export function InfoBubble({
   isMobile,
   popRequested,
   parentInView,
-  desktopX,
 }: {
   extraInfo: BubbleInfo;
   side: "left" | "right";
-  onPop: (x: number, y: number, w: number, h: number) => void;
+  onPop: (origin: VaporOrigin) => void;
   isMobile: boolean | null;
   popRequested?: boolean;
   parentInView?: boolean;
-  desktopX?: number;
 }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
-  const lens = useGlassLens(bubbleRef, { radius: 32, frost: "blur(1.6px) saturate(1.25) brightness(var(--bubble-lift))" });
+  const lens = useGlassLens(bubbleRef, { radius: 32, frost: BUBBLE_FROST });
   // Hidden at its resting spot until LiquidBud has grown the droplet onto it.
   const [budDone, setBudDone] = useState(false);
   const showBelow = isMobile;
-  const [isPopping, setIsPopping] = useState(false);
   const isRight = side === "right";
   const [isPressed, setIsPressed] = useState(false);
+  const { isPopping, pop } = useBubblePop(bubbleRef, onPop, popRequested);
+  const motionProps = bubbleMotion(isPopping || isPressed, isPopping);
 
   // Track touch start position to distinguish scroll from tap
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
-
-  const handleClick = useCallback(() => {
-    if (isPopping) return;
-    setIsPopping(true);
-    if (!bubbleRef.current) return;
-    const rect = bubbleRef.current.getBoundingClientRect();
-    onPop(
-      rect.left + rect.width / 2,
-      rect.top + rect.height / 2,
-      rect.width,
-      rect.height,
-    );
-  }, [isPopping, onPop]);
-
-  useEffect(() => {
-    if (popRequested) handleClick();
-  }, [popRequested, handleClick]);
+  const onLink = (e: React.SyntheticEvent) => !!(e.target as HTMLElement).closest("a");
 
   // NOTE: We intentionally do not auto-scroll the page on mobile.
   // Auto-centering caused unexpected jumps on initial page load (especially on /cs).
 
-  const sideAnchor = showBelow
-    ? { left: "50%" }
-    : isRight
-      ? { right: 0 }
-      : { left: 0 };
+  const sideAnchor = showBelow ? { left: "50%" } : isRight ? { right: 0 } : { left: 0 };
+  const rest = showBelow
+    ? { x: "-50%", y: "16px" }
+    : { y: "-50%", x: isRight ? `calc(100% + ${BUBBLE_GAP}px)` : `calc(-100% - ${BUBBLE_GAP}px)` };
 
   return (
     <>
@@ -340,109 +403,44 @@ export function InfoBubble({
           borderRadius: 32,
           cursor: "pointer",
           pointerEvents: "auto",
-          transformOrigin: showBelow
-            ? "center top"
-            : isRight
-              ? "left center"
-              : "right center",
+          transformOrigin: showBelow ? "center top" : isRight ? "left center" : "right center",
           zIndex: 9999999,
           willChange: "auto",
-          ...glassStyle,
           ...lens.style,
         }}
         className="glass-bubble"
         onClick={(e) => {
-          if ((e.target as HTMLElement).closest("a")) return;
-          handleClick();
+          if (onLink(e)) return;
+          pop();
         }}
-        initial={
-          showBelow
-            ? { x: "-50%", y: "16px", opacity: 0 }
-            : {
-                y: "-50%",
-                x:
-                  desktopX !== undefined
-                    ? desktopX
-                    : isRight
-                      ? `calc(100% + ${BUBBLE_REST_OFFSET - 200}px)`
-                      : `calc(-100% - ${BUBBLE_REST_OFFSET - 200}px)`,
-                opacity: 0,
-              }
-        }
+        initial={{ ...rest, opacity: 0 }}
         onMouseDown={(e) => {
-          if ((e.target as HTMLElement).closest("a")) return;
+          if (onLink(e)) return;
           setIsPressed(true);
         }}
         onMouseUp={(e) => {
-          if ((e.target as HTMLElement).closest("a")) return;
-          handleClick();
+          if (onLink(e)) return;
+          pop();
         }}
         onMouseLeave={() => setIsPressed(false)}
         onTouchStart={(e) => {
-          if ((e.target as HTMLElement).closest("a")) return;
+          if (onLink(e)) return;
           setIsPressed(true);
           const t = e.touches[0];
           touchStartRef.current = { x: t.clientX, y: t.clientY };
         }}
         onTouchEnd={(e) => {
           setIsPressed(false);
-          if ((e.target as HTMLElement).closest("a")) return;
+          if (onLink(e)) return;
           if (!touchStartRef.current) return;
-          const t = e.changedTouches[0];
-          const dx = t.clientX - touchStartRef.current.x;
-          const dy = t.clientY - touchStartRef.current.y;
-          // Only treat as tap if finger moved less than 10px
-          if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
-            handleClick();
-          }
+          if (isTap(touchStartRef.current, e.changedTouches[0])) pop();
           touchStartRef.current = null;
         }}
-        animate={
-          showBelow
-            ? {
-                x: "-50%",
-                y: "16px",
-                scaleX: isPopping || isPressed ? 1.08 : 1,
-                scaleY: isPopping || isPressed ? 1.08 : 1,
-                opacity: budDone && parentInView ? 1 : 0,
-              }
-            : {
-                y: "-50%",
-                x:
-                  desktopX !== undefined
-                    ? desktopX
-                    : isRight
-                      ? `calc(100% + ${BUBBLE_REST_OFFSET - 200}px)`
-                      : `calc(-100% - ${BUBBLE_REST_OFFSET - 200}px)`,
-                scaleX: isPopping || isPressed ? 1.08 : 1,
-                scaleY: isPopping || isPressed ? 1.08 : 1,
-                opacity: budDone && parentInView ? 1 : 0,
-              }
-        }
-        transition={
-          isPopping
-            ? {
-                scale: { duration: 0.08, ease: "easeOut" },
-                opacity: { duration: 0.08 },
-              }
-            : {
-                // The droplet itself is drawn by LiquidBud; this element only
-                // fades in once the droplet has settled onto its box.
-                x: { type: "spring", stiffness: 170, damping: 26 },
-                y: { type: "spring", stiffness: 170, damping: 26 },
-                top: { type: "spring", stiffness: 170, damping: 26 },
-                scaleX: { type: "spring", stiffness: 170, damping: 14 },
-                scaleY: { type: "spring", stiffness: 170, damping: 14 },
-                // the clear bubble frosts over: a slower crossfade with the droplet
-                opacity: { duration: 0.32, ease: "easeInOut" },
-              }
-        }
-        exit={{ opacity: 0, transition: { duration: 0.001 } }}
-        whileHover={
-          isPopping ? {} : { scale: 1.03, transition: { duration: 0.2 } }
-        }
+        animate={{ ...rest, ...motionProps.scale, opacity: budDone && parentInView ? 1 : 0 }}
+        transition={motionProps.transition}
+        exit={motionProps.exit}
+        whileHover={motionProps.whileHover}
       >
-        {/* Content */}
         <div
           style={{
             position: "relative",
@@ -453,48 +451,28 @@ export function InfoBubble({
         >
           {/* Duration */}
           <div>
-            <FuzzyText style={{ margin: 0 }}>
-              <span
-                className="text-black dark:text-white"
-                style={{
-                  fontSize: 15,
-                  fontWeight: 700,
-                  letterSpacing: "-0.02em",
-                }}
-              >
+            <span className="relative inline-block">
+              <span className="text-black dark:text-white" style={{ fontSize: 15, fontWeight: 700, letterSpacing: "-0.02em" }}>
                 {calcDuration(extraInfo.startDate, extraInfo.endDate)}
               </span>
-            </FuzzyText>
+            </span>
           </div>
           <div style={{ marginTop: 4 }}>
-            <FuzzyText style={{ margin: 0 }}>
-              <span
-                className="text-black/60 dark:text-white/40"
-                style={{ fontSize: 9, letterSpacing: "0.04em" }}
-              >
+            <span className="relative inline-block">
+              <span className="text-black/60 dark:text-white/40" style={{ fontSize: 9, letterSpacing: "0.04em" }}>
                 {extraInfo.startDate} – {extraInfo.endDate}
               </span>
-            </FuzzyText>
+            </span>
           </div>
 
-          <div
-            className="bg-black/[0.22] dark:bg-white/[0.15]"
-            style={{ height: 1, margin: "7px 12px" }}
-          />
+          {divider("7px 12px")}
 
           {/* Tech Stack */}
-          <FuzzyText style={{ margin: 0 }}>
-            <span
-              className="text-black/70 dark:text-white/50"
-              style={{
-                fontSize: 8,
-                textTransform: "uppercase",
-                letterSpacing: "0.1em",
-              }}
-            >
+          <span className="relative inline-block">
+            <span className="text-black/70 dark:text-white/50" style={smallCaps}>
               Stack
             </span>
-          </FuzzyText>
+          </span>
           <div
             style={{
               display: "flex",
@@ -521,141 +499,65 @@ export function InfoBubble({
             ))}
           </div>
 
-          <div
-            className="bg-black/[0.22] dark:bg-white/[0.15]"
-            style={{ height: 1, margin: "8px 12px" }}
-          />
+          {divider("8px 12px")}
+          <BubbleFact label="Industry" value={extraInfo.industry} />
+          {divider("7px 12px")}
+          <BubbleFact label="Location" value={extraInfo.location} />
 
-          {/* Industry */}
-          <FuzzyText style={{ margin: 0 }}>
-            <span
-              className="text-black/60 dark:text-white/40"
-              style={{
-                fontSize: 8,
-                textTransform: "uppercase",
-                letterSpacing: "0.1em",
-              }}
-            >
-              Industry
-            </span>
-          </FuzzyText>
-          <div style={{ marginTop: 3 }}>
-            <FuzzyText style={{ margin: 0 }}>
-              <span
-                className="text-black/80 dark:text-white/80"
-                style={{ fontSize: 11, fontWeight: 500 }}
-              >
-                {extraInfo.industry}
-              </span>
-            </FuzzyText>
-          </div>
-
-          <div
-            className="bg-black/[0.22] dark:bg-white/[0.15]"
-            style={{ height: 1, margin: "7px 12px" }}
-          />
-
-          {/* Location */}
-          <FuzzyText style={{ margin: 0 }}>
-            <span
-              className="text-black/60 dark:text-white/40"
-              style={{
-                fontSize: 8,
-                textTransform: "uppercase",
-                letterSpacing: "0.1em",
-              }}
-            >
-              Location
-            </span>
-          </FuzzyText>
-          <div style={{ marginTop: 3 }}>
-            <FuzzyText style={{ margin: 0 }}>
-              <span
-                className="text-black/80 dark:text-white/80"
-                style={{ fontSize: 11, fontWeight: 500 }}
-              >
-                {extraInfo.location}
-              </span>
-            </FuzzyText>
-          </div>
-
-          <p
-            style={{ margin: "7px 0 0", fontSize: 9, opacity: 0.4 }}
-            className="text-black dark:text-white"
-          >
-            {isMobile ? "tap to dismiss" : "click to dismiss"}
-          </p>
+          <DismissHint isMobile={isMobile} style={{ margin: "7px 0 0", fontSize: 9 }} />
         </div>
       </motion.div>
     </>
   );
 }
+
+function BubbleFact({ label, value }: { label: string; value: string }) {
+  return (
+    <>
+      <span className="relative inline-block">
+        <span className="text-black/60 dark:text-white/40" style={smallCaps}>
+          {label}
+        </span>
+      </span>
+      <div style={{ marginTop: 3 }}>
+        <span className="relative inline-block">
+          <span className="text-black/80 dark:text-white/80" style={{ fontSize: 11, fontWeight: 500 }}>
+            {value}
+          </span>
+        </span>
+      </div>
+    </>
+  );
+}
+
+/** "tap to dismiss" / "click to dismiss", faint, at the foot of a bubble. */
+export function DismissHint({ isMobile, style }: { isMobile: boolean | null; style: React.CSSProperties }) {
+  return (
+    <p style={{ ...style, opacity: 0.4 }} className="text-black dark:text-white">
+      {isMobile ? "tap to dismiss" : "click to dismiss"}
+    </p>
+  );
+}
+
 // ─── Hook for managing bubble state ───
 // `initialOpen` defaults to true for InfoBox, whose bubble is part of the box's
 // resting composition. ProjectCard opts out: eight cards' worth of bubbles open
 // at once buries the cards they belong to.
 export function useInfoBubble(initialOpen = true) {
   const [isBubbleOpen, setIsBubbleOpen] = useState(initialOpen);
-  const [isBubbleVisible, setIsBubbleVisible] = useState(false);
   const [popRequested, setPopRequested] = useState(false);
-  const [vaporOrigin, setVaporOrigin] = useState<{
-    x: number;
-    y: number;
-    w: number;
-    h: number;
-  } | null>(null);
+  const [vaporOrigin, setVaporOrigin] = useState<VaporOrigin | null>(null);
 
-  const handlePop = useCallback(
-    (x: number, y: number, w: number, h: number) => {
-      setIsBubbleOpen(false);
-      setPopRequested(false);
-      // Defer vapor cloud to next frame so bubble exit doesn't compete
-      requestAnimationFrame(() => {
-        setVaporOrigin({ x, y, w, h });
-      });
-    },
-    [],
-  );
-
-  const handleVaporDone = useCallback(() => {
-    setVaporOrigin(null);
+  const handlePop = useCallback((origin: VaporOrigin) => {
+    setIsBubbleOpen(false);
+    setPopRequested(false);
+    // Defer vapor cloud to next frame so bubble exit doesn't compete
+    requestAnimationFrame(() => setVaporOrigin(origin));
   }, []);
 
-  const openBubble = useCallback(() => {
-    setIsBubbleOpen(true);
-  }, []);
+  const handleVaporDone = useCallback(() => setVaporOrigin(null), []);
+  const openBubble = useCallback(() => setIsBubbleOpen(true), []);
+  const requestPop = useCallback(() => setPopRequested(true), []);
 
-  const requestPop = useCallback(() => {
-    setPopRequested(true);
-  }, []);
-
-  // Delayed version: delays the rising edge so the box fades in after the bubble
-  const [isBubbleVisibleDelayed, setIsBubbleVisibleDelayed] = useState(false);
-  const delayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleBubbleVisibility = useCallback((inView: boolean) => {
-    setIsBubbleVisible(inView);
-    if (delayTimer.current) clearTimeout(delayTimer.current);
-    if (inView) {
-      // Delay the rising edge so box fades in after bubble
-
-      setIsBubbleVisibleDelayed(true);
-    } else {
-      // No delay on fade-out: they fade together
-      setIsBubbleVisibleDelayed(false);
-    }
-  }, []);
-
-  return {
-    isBubbleOpen,
-    isBubbleVisible,
-    isBubbleVisibleDelayed,
-    popRequested,
-    vaporOrigin,
-    handlePop,
-    handleVaporDone,
-    openBubble,
-    requestPop,
-    handleBubbleVisibility,
-  };
+  return { isBubbleOpen, popRequested, vaporOrigin, handlePop, handleVaporDone, openBubble, requestPop };
 }
