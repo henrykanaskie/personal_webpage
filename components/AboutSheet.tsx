@@ -4,7 +4,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import GlassTitle from "@/components/GlassTitle";
 import { GlassLayers } from "@/lib/glass";
-import { glassBoxClassNames, metalClassNames } from "@/lib/tokens";
+import { LINKS } from "@/lib/site";
 
 // ─── AboutSheet ─────────────────────────────────────────────────────────────
 // The About section as the first sheet of the drawing set: the name as a title
@@ -37,8 +37,8 @@ export default function AboutSheet({
 }) {
   const buttons = [
     { label: "Email", onClick: onEmail },
-    { label: "LinkedIn", href: "https://linkedin.com/in/henry-kanaskie" },
-    { label: "GitHub", href: "https://github.com/henrykanaskie" },
+    { label: "LinkedIn", href: LINKS.linkedin },
+    { label: "GitHub", href: LINKS.github },
     { label: "Resume", onClick: onResume },
   ];
 
@@ -53,7 +53,7 @@ export default function AboutSheet({
       />
 
       <motion.div {...rise(0)} className="w-full max-w-[1180px] px-3 md:px-6">
-        <div data-liquid className={`${glassBoxClassNames} relative rounded-[28px] overflow-hidden`}>
+        <div data-liquid className="glass-panel relative rounded-[28px] overflow-hidden">
           <GlassLayers />
 
           <div className="relative z-[1] grid md:grid-cols-[minmax(220px,300px)_1fr] gap-6 md:gap-10 p-5 md:p-8">
@@ -98,7 +98,7 @@ export default function AboutSheet({
 
               <motion.div {...rise(4)} className="flex flex-wrap gap-2.5 pt-1">
                 {buttons.map((b) => {
-                  const cls = `${metalClassNames} rounded-full px-5 py-2 font-semibold text-[0.9rem] transition-transform duration-200 hover:-translate-y-px active:translate-y-px cursor-pointer`;
+                  const cls = "metal-surface rounded-full px-5 py-2 font-semibold text-[0.9rem] transition-transform duration-200 hover:-translate-y-px active:translate-y-px cursor-pointer";
                   return b.href ? (
                     <a key={b.label} href={b.href} target="_blank" rel="noopener noreferrer" className={cls}>
                       <span>{b.label}</span>

@@ -3,5 +3,4 @@ node_modules/
 .DS_Store
 .env.local
 *.svg
-# Next.js build output (this project uses dev/ as distDir)
-dev/
+*.tsbuildinfo

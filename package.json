@@ -6,18 +6,15 @@
     "dev": "next dev",
     "build": "npm run optimize-photos && next build",
     "start": "next start",
-    "lint": "next lint",
     "optimize-photos": "find public -type f \\( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' \\) -exec sips -Z 2400 --setProperty formatOptions 85 {} --out {} \\;"
   },
   "type": "module",
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.18",
     "framer-motion": "^12.34.0",
-    "image-size": "^2.0.2",
     "next": "^16.1.6",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-use-gesture": "^9.1.3",
     "resend": "^6.9.2",
     "sharp": "^0.34.5"
   },

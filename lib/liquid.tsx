@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { paper } from "./tokens";
+import { FULLSCREEN_VERT, GLSL_GLASS, rgb } from "./gl";
 
 // ─── Liquid glass ───────────────────────────────────────────────────────────
 // Two pieces that make the info bubbles behave like glass droplets:
@@ -280,49 +281,6 @@ export function CardLens({ strength = 38 }: { strength?: number }) {
   );
 }
 
-// ─── The glass, in GLSL ──────────────────────────────────────────────────────
-// One material for every glass surface the shaders draw: a card (DotField,
-// under the card's DOM fill), a card's swell toward the cursor, and a bubble
-// budding out of its card (LiquidBud). It is the settled bubble's glass,
-// modelled on what the browser does to it (.glass-bubble and useGlassLens):
-//   - the dots behind are blurred as by blur(1.6px): a Gaussian of sigma 1.6
-//     (a small disk convolved with it: peak r^2 / 2 sigma^2)
-//   - the lens: flat in the middle, a 22px bevel at the rim with a circular
-//     profile, sampling inward up to ~19px (lensMap at strength 38), each
-//     colour bent a little more than the last (1, 1.07, 1.14) for dispersion
-//   - saturate(1.25) and the brightness lift (--bubble-lift)
-//   - the rim's inner light (the inset glow in --bubble-edge), glassGlow
-// Needs uGap, uDotR, uDotA, uBg, uDot and uDark. `off` is the page position
-// of the canvas' top-left, so the dots land on the page grid.
-export const GLASS_GLSL = `
-float glassDot(vec2 p, vec2 off) {
-  vec2 c = (floor((p + off) / uGap) + 0.5) * uGap - off;
-  vec2 q = p - c;
-  const float S2 = 5.12; // 2 sigma^2, sigma 1.6
-  return min(1.0, uDotR * uDotR / S2) * exp(-dot(q, q) / S2);
-}
-// d: signed distance to the glass outline (negative inside); n: outward normal
-vec3 glassSurface(vec2 p, vec2 off, float d, vec2 n) {
-  float u = 1.0 - clamp(-d / 22.0, 0.0, 1.0);
-  float tilt = 1.0 - sqrt(max(0.0, 1.0 - u * u));
-  vec2 v = -n * tilt * 18.9;
-  // flat across the middle: one sample; only the bevel splits the colours
-  vec3 k = tilt < 1e-3
-    ? vec3(glassDot(p, off))
-    : vec3(glassDot(p + v, off), glassDot(p + v * 1.07, off), glassDot(p + v * 1.14, off));
-  k *= uDotA;
-  vec3 col = mix(uBg, uDot, k);
-  float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
-  col = mix(vec3(l), col, 1.25);
-  return col * mix(1.02, 1.12, uDark);
-}
-// how much white the rim's inner light adds, d inside the outline
-float glassGlow(float d) {
-  float x = max(-d, 0.0);
-  return mix(0.42 * exp(-x / 12.0), 0.11 * exp(-x / 14.0), uDark);
-}
-`;
-
 // ─── setRingHole ────────────────────────────────────────────────────────────
 // Open (or close, r <= 0) a hole in a panel's rim at x, y (panel-local px).
 // "s" is the cursor swell's hole ("b" is reserved for a second source).
@@ -363,7 +321,6 @@ export function setRingHole(panel: HTMLElement, which: "s" | "b", x: number, y: 
 // thin band inside its edge near the bud so the frost bends continuously.
 // When it settles, the real frosted bubble fades in.
 
-const BUD_VERT = `attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }`;
 const BUD_FRAG = `
 precision highp float;
 uniform vec2 uRes;
@@ -378,19 +335,11 @@ uniform vec3 uHole;   // the hole opened in the card's rim: x, y, radius
 uniform float uBubble; // 0 card material, 1 see-through bubble
 uniform float uBubA;
 uniform float uRim;   // the canvas's rim round the whole shape, in as the card's own rim hides
-uniform float uAlpha, uDark, uTime;
+uniform float uAlpha, uDark;
 uniform float uGap, uDotR, uDotA;
 uniform vec3 uBg, uDot, uFill;
 uniform float uFillA;
-
-float sdBox(vec2 p, vec2 c, vec2 hs, float r) {
-  vec2 q = abs(p - c) - hs + r;
-  return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
-}
-float smin(float a, float b, float k) {
-  float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
-  return mix(b, a, h) - k * h * (1.0 - h);
-}
+${GLSL_GLASS}
 float card(vec2 p) { return sdBox(p, uCard.xy + uCard.zw * 0.5, uCard.zw * 0.5, uCardR); }
 float cardStub(vec2 p) {
   float c = card(p);
@@ -403,7 +352,6 @@ float scene(vec2 p) {
   if (uDrop.z < 0.3) return c;
   return smin(c, drop(p), uK);
 }
-${GLASS_GLSL}
 
 void main() {
   vec2 p = vec2(gl_FragCoord.x, uRes.y * uDpr - gl_FragCoord.y) / uDpr;
@@ -434,10 +382,8 @@ void main() {
   // clear, iridescent one.
   float isDrop = uBubble * smoothstep(1.0, -1.0, drop(p) - cardStub(p));
   float stretch = max(smoothstep(2.0, 38.0, dc), isDrop);
-  // thin film colour, the same as the settled bubble's (.glass-bubble::after):
-  // pink on the left edge, cyan on the right, violet on top, gold below
-  float wl = max(-n.x, 0.0), wr = max(n.x, 0.0), wt = max(-n.y, 0.0), wb = max(n.y, 0.0);
-  vec3 film = (vec3(1.0, 0.59, 0.8) * wl + vec3(0.47, 0.8, 1.0) * wr + vec3(0.73, 0.63, 1.0) * wt + vec3(1.0, 0.86, 0.55) * wb) / (wl + wr + wt + wb + 1e-3);
+  // thin film colour, the same as the settled bubble's (.glass-bubble::after)
+  vec3 film = edgeFilm(n);
 
   if (cover > 0.0) {
     // the card's glass, exactly as the card is drawn (DotField's glass under
@@ -461,14 +407,14 @@ void main() {
   float glow = smoothstep(-6.0, -0.5, d) * (1.0 - smoothstep(-0.5, 0.5, d));
   // the glass edge (--edge-lip, --edge-film): a hairline all round, brighter
   // on top, a little on the bottom, and the film band just inside it
-  float lipA = mix(0.45 + 0.47 * max(-n.y, 0.0) + 0.22 * max(n.y, 0.0), 0.09 + 0.19 * max(-n.y, 0.0), uDark);
+  float lipA = edgeLip(n, uDark);
   vec3 rimCol = vec3(1.0);
   // only near the bud: elsewhere the card's own (DOM) edge is still there,
   // and the two hand over across the same 40px falloff the rim's hole uses
   float own = uHole.z > 0.5 ? 1.0 - clamp((length(p - uHole.xy) - uHole.z) / 40.0, 0.0, 1.0) : 0.0;
   float reach = uRim * max(own, smoothstep(0.5, 1.5, dc));
   float rimA = line * lipA * reach;
-  float filmA = glow * mix(0.3, 0.27, uDark) * reach;
+  float filmA = glow * edgeFilmA(uDark) * reach;
   outc = vec4(film, 1.0) * filmA + outc * (1.0 - filmA);
   outc = vec4(rimCol, 1.0) * rimA + outc * (1.0 - rimA);
   gl_FragColor = outc * uAlpha;
@@ -523,7 +469,7 @@ function makeBudGL(): BudGL | null {
     return x;
   };
   const prog = gl.createProgram()!;
-  gl.attachShader(prog, sh(gl.VERTEX_SHADER, BUD_VERT));
+  gl.attachShader(prog, sh(gl.VERTEX_SHADER, FULLSCREEN_VERT));
   gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, BUD_FRAG));
   gl.linkProgram(prog);
   const locs = new Map<string, WebGLUniformLocation | null>();
@@ -841,16 +787,15 @@ export function LiquidBud({
       gl.uniform1f(U("uBubA"), bubA);
       gl.uniform1f(U("uRim"), Math.min(1, t / 120));
       // the card's rim opens round the bud, and closes again as the canvas fades
-      if (panel) setRingHole(panel as HTMLElement, "b", hole.x - card.x, hole.y - card.y, hole.r * fade);
-      gl.uniform1f(U("uTime"), t / 1000);
+      if (panel) setRingHole(panel, "b", hole.x - card.x, hole.y - card.y, hole.r * fade);
       gl.uniform1f(U("uAlpha"), fade);
       gl.uniform1f(U("uDark"), dark ? 1 : 0);
       gl.uniform1f(U("uGap"), paper.gap);
       gl.uniform1f(U("uDotR"), paper.dotRadius);
       gl.uniform1f(U("uDotA"), pal.dotAlpha);
-      gl.uniform3f(U("uBg"), pal.bg[0] / 255, pal.bg[1] / 255, pal.bg[2] / 255);
-      gl.uniform3f(U("uDot"), pal.dot[0] / 255, pal.dot[1] / 255, pal.dot[2] / 255);
-      gl.uniform3f(U("uFill"), glass.fill[0] / 255, glass.fill[1] / 255, glass.fill[2] / 255);
+      gl.uniform3f(U("uBg"), ...rgb(pal.bg));
+      gl.uniform3f(U("uDot"), ...rgb(pal.dot));
+      gl.uniform3f(U("uFill"), ...rgb(glass.fill));
       gl.uniform1f(U("uFillA"), glass.alpha);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
 

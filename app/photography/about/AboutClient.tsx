@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
 import FadeImage from "@/components/photo/FadeImage";
 import { motion } from "framer-motion";
-import { useIsDark } from "@/lib/glass";
-import { EASE_OUT, photoTheme } from "@/components/photo/utils";
+import { useIsDark } from "@/hooks/useIsDark";
+import { useContactForm } from "@/hooks/useContactForm";
+import type { ContactField } from "@/lib/contact";
+import { MONO, EASE_OUT, photoTheme } from "@/components/photo/utils";
 
 // ─── Gear data: update with your actual kit ─────────────────────────────────
 
@@ -32,74 +33,14 @@ const GEAR: GearCategory[] = [
   },
 ];
 
-const mono: React.CSSProperties = {
-  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-  letterSpacing: "0.22em",
-  textTransform: "uppercase",
-};
-
 export default function AboutClient() {
   const isDark = useIsDark();
   const t = photoTheme(isDark);
 
-  // ── Email form state ──
-  const [emailForm, setEmailForm] = useState({ name: "", email: "", subject: "", message: "" });
-  const [honeypot, setHoneypot] = useState("");
-  const emailFormOpenedAt = useRef(Date.now());
-  const [emailStatus, setEmailStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
-  const [emailError, setEmailError] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [focused, setFocused] = useState<string | null>(null);
-
-  const validateEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-  const validateForm = () => {
-    const errs: Record<string, string> = {};
-    if (!emailForm.name.trim()) errs.name = "Name is required";
-    if (!emailForm.email.trim()) errs.email = "Email is required";
-    else if (!validateEmail(emailForm.email)) errs.email = "Enter a valid email";
-    if (!emailForm.subject.trim()) errs.subject = "Subject is required";
-    if (!emailForm.message.trim()) errs.message = "Message is required";
-    setFieldErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
-
-  const handleEmailSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-    setEmailStatus("sending");
-    setEmailError("");
-    try {
-      const res = await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...emailForm, website: honeypot, formOpenedAt: emailFormOpenedAt.current }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setEmailStatus("error");
-        setEmailError(data.error || "Failed to send.");
-        return;
-      }
-      setEmailStatus("sent");
-      setEmailForm({ name: "", email: "", subject: "", message: "" });
-    } catch {
-      setEmailStatus("error");
-      setEmailError("Something went wrong.");
-    }
-  };
-
-  const updateField = (field: keyof typeof emailForm, value: string) => {
-    setEmailForm((f) => ({ ...f, [field]: value }));
-    if (fieldErrors[field])
-      setFieldErrors((fe) => {
-        const n = { ...fe };
-        delete n[field];
-        return n;
-      });
-  };
+  const { values, update, status, setStatus, error, fieldErrors, focused, focusProps, honeypotProps, submit } = useContactForm();
 
   const errorColor = isDark ? "rgb(255,150,150)" : "rgb(185,50,55)";
-  const fieldStyle = (field: string): React.CSSProperties => ({
+  const fieldStyle = (field: ContactField): React.CSSProperties => ({
     width: "100%",
     padding: "13px 14px",
     // 16px keeps iOS Safari from zooming into the field on focus
@@ -120,7 +61,7 @@ export default function AboutClient() {
     padding: "0 clamp(18px, 5vw, 72px)",
   };
   const eyebrow = (label: string) => (
-    <div style={{ ...mono, fontSize: 9.5, color: t.sub, display: "flex", alignItems: "center", gap: 12 }}>
+    <div style={{ ...MONO, fontSize: 9.5, color: t.sub, display: "flex", alignItems: "center", gap: 12 }}>
       <span style={{ width: 28, height: 1, background: t.rule }} />
       {label}
     </div>
@@ -186,7 +127,7 @@ export default function AboutClient() {
               />
             </div>
           </div>
-          <figcaption style={{ ...mono, fontSize: 8.5, color: t.faint, display: "flex", justifyContent: "space-between", marginTop: 14 }}>
+          <figcaption style={{ ...MONO, fontSize: 8.5, color: t.faint, display: "flex", justifyContent: "space-between", marginTop: 14 }}>
             <span style={{ color: "rgb(90, 200, 130)" }}>● AF-C</span>
             <span>Salem, Oregon</span>
           </figcaption>
@@ -198,7 +139,7 @@ export default function AboutClient() {
           transition={{ duration: 1, delay: 0.15, ease: EASE_OUT }}
           style={{ display: "flex", flexDirection: "column", gap: 22 }}
         >
-          <div style={{ ...mono, fontSize: 10, color: t.sub }}>Henry Kanaskie</div>
+          <div style={{ ...MONO, fontSize: 10, color: t.sub }}>Henry Kanaskie</div>
           <h1
             style={{
               margin: 0,
@@ -235,7 +176,7 @@ export default function AboutClient() {
               If it does that, it is a good photo.
             </p>
           </div>
-          <div style={{ ...mono, fontSize: 9, color: t.ink, display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <div style={{ ...MONO, fontSize: 9, color: t.ink, display: "flex", flexWrap: "wrap", gap: 8 }}>
             {["Digital", "Film", "Available for commissions"].map((tag) => (
               <span key={tag} style={{ padding: "8px 12px", borderRadius: 999, border: `1px solid ${t.rule}` }}>
                 {tag}
@@ -253,7 +194,7 @@ export default function AboutClient() {
         >
           {GEAR.map((cat) => (
             <div key={cat.title}>
-              <h3 style={{ ...mono, fontSize: 9, color: t.faint, margin: "0 0 6px", fontWeight: 400 }}>{cat.title}</h3>
+              <h3 style={{ ...MONO, fontSize: 9, color: t.faint, margin: "0 0 6px", fontWeight: 400 }}>{cat.title}</h3>
               {cat.items.map((item) => (
                 <div
                   key={item.name}
@@ -266,7 +207,7 @@ export default function AboutClient() {
                   }}
                 >
                   <span style={{ fontFamily: "var(--font-elevated)", fontSize: "1.15rem", color: t.ink }}>{item.name}</span>
-                  <span style={{ ...mono, letterSpacing: "0.14em", fontSize: 9, color: t.sub }}>
+                  <span style={{ ...MONO, letterSpacing: "0.14em", fontSize: 9, color: t.sub }}>
                     {item.spec} · {item.note}
                   </span>
                 </div>
@@ -311,7 +252,7 @@ export default function AboutClient() {
             target="_blank"
             rel="noopener noreferrer"
             style={{
-              ...mono,
+              ...MONO,
               alignSelf: "flex-start",
               fontSize: 9.5,
               color: t.ink,
@@ -325,30 +266,19 @@ export default function AboutClient() {
           </a>
         </div>
 
-        <form onSubmit={handleEmailSubmit} noValidate style={{ display: "flex", flexDirection: "column", gap: 16, position: "relative" }}>
-          {/* Honeypot: visually hidden, bots fill it, humans never see it */}
-          <input
-            type="text"
-            name="website"
-            value={honeypot}
-            onChange={(e) => setHoneypot(e.target.value)}
-            tabIndex={-1}
-            aria-hidden="true"
-            autoComplete="off"
-            style={{ position: "absolute", left: "-9999px", opacity: 0, pointerEvents: "none" }}
-          />
+        <form onSubmit={submit} noValidate style={{ display: "flex", flexDirection: "column", gap: 16, position: "relative" }}>
+          <input {...honeypotProps} />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))", gap: 16 }}>
             {(["name", "email"] as const).map((field) => (
               <label key={field} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <span style={{ ...mono, fontSize: 8.5, color: t.sub }}>{field}</span>
+                <span style={{ ...MONO, fontSize: 8.5, color: t.sub }}>{field}</span>
                 <input
                   id={`contact-${field}`}
                   type={field === "email" ? "email" : "text"}
                   autoComplete={field === "email" ? "email" : "name"}
-                  value={emailForm[field]}
-                  onChange={(e) => updateField(field, e.target.value)}
-                  onFocus={() => setFocused(field)}
-                  onBlur={() => setFocused(null)}
+                  value={values[field]}
+                  onChange={(e) => update(field, e.target.value)}
+                  {...focusProps(field)}
                   style={fieldStyle(field)}
                 />
                 {fieldErrors[field] && <span style={{ fontSize: 12, color: errorColor }}>{fieldErrors[field]}</span>}
@@ -356,44 +286,42 @@ export default function AboutClient() {
             ))}
           </div>
           <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <span style={{ ...mono, fontSize: 8.5, color: t.sub }}>Subject</span>
+            <span style={{ ...MONO, fontSize: 8.5, color: t.sub }}>Subject</span>
             <input
               id="contact-subject"
               type="text"
-              value={emailForm.subject}
-              onChange={(e) => updateField("subject", e.target.value)}
-              onFocus={() => setFocused("subject")}
-              onBlur={() => setFocused(null)}
+              value={values.subject}
+              onChange={(e) => update("subject", e.target.value)}
+              {...focusProps("subject")}
               style={fieldStyle("subject")}
             />
             {fieldErrors.subject && <span style={{ fontSize: 12, color: errorColor }}>{fieldErrors.subject}</span>}
           </label>
           <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <span style={{ ...mono, fontSize: 8.5, color: t.sub }}>Message</span>
+            <span style={{ ...MONO, fontSize: 8.5, color: t.sub }}>Message</span>
             <textarea
               id="contact-message"
               rows={6}
-              value={emailForm.message}
-              onChange={(e) => updateField("message", e.target.value)}
-              onFocus={() => setFocused("message")}
-              onBlur={() => setFocused(null)}
+              value={values.message}
+              onChange={(e) => update("message", e.target.value)}
+              {...focusProps("message")}
               style={{ ...fieldStyle("message"), resize: "vertical", minHeight: 140 }}
             />
             {fieldErrors.message && <span style={{ fontSize: 12, color: errorColor }}>{fieldErrors.message}</span>}
           </label>
 
-          {emailStatus === "error" && <p style={{ margin: 0, fontSize: 14, color: errorColor }}>{emailError}</p>}
+          {status === "error" && <p style={{ margin: 0, fontSize: 14, color: errorColor }}>{error}</p>}
 
-          {emailStatus === "sent" ? (
+          {status === "sent" ? (
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16 }}>
               <p style={{ margin: 0, fontSize: 15, color: isDark ? "rgb(150, 215, 175)" : "rgb(40, 125, 80)" }}>
                 Message sent. I&apos;ll reply soon.
               </p>
               <button
                 type="button"
-                onClick={() => setEmailStatus("idle")}
+                onClick={() => setStatus("idle")}
                 style={{
-                  ...mono,
+                  ...MONO,
                   fontSize: 9,
                   padding: "12px 18px",
                   borderRadius: 999,
@@ -409,9 +337,9 @@ export default function AboutClient() {
           ) : (
             <button
               type="submit"
-              disabled={emailStatus === "sending"}
+              disabled={status === "sending"}
               style={{
-                ...mono,
+                ...MONO,
                 alignSelf: "flex-start",
                 fontSize: 10,
                 padding: "15px 26px",
@@ -419,12 +347,12 @@ export default function AboutClient() {
                 border: "none",
                 background: t.ink,
                 color: t.bg,
-                cursor: emailStatus === "sending" ? "wait" : "pointer",
-                opacity: emailStatus === "sending" ? 0.6 : 1,
+                cursor: status === "sending" ? "wait" : "pointer",
+                opacity: status === "sending" ? 0.6 : 1,
                 transition: "opacity 0.2s ease",
               }}
             >
-              {emailStatus === "sending" ? "Sending..." : "Send message →"}
+              {status === "sending" ? "Sending..." : "Send message →"}
             </button>
           )}
         </form>

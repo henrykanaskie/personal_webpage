@@ -2,9 +2,10 @@
 
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
-import { glassStyle, GlassLayers, FuzzyText, useIsDark, useIsMobile } from "../lib/glass";
-import { glassBoxClassNames, cs, themed } from "../lib/tokens";
-import { rise, settle, leave } from "../lib/motion";
+import { useIsMobile } from "@/hooks/useIsMobile";
+import CardHeader from "./CardHeader";
+import { GlassCard } from "@/lib/glass";
+import { rise, settle, leave } from "@/lib/motion";
 
 interface EducationCardProps {
   school: string;
@@ -12,21 +13,17 @@ interface EducationCardProps {
   timeline: string;
   gpa?: string;
   coursework?: string[];
-  extras?: string;
   /** A previous degree at the same school; GPA and coursework belong to it. */
   earlier?: { degree: string; timeline: string };
 }
 
-export default function EducationCard({
-  school,
-  degree,
-  timeline,
-  gpa,
-  coursework,
-  extras,
-  earlier,
-}: EducationCardProps) {
-  const isDark = useIsDark();
+const label: React.CSSProperties = {
+  fontSize: 9,
+  textTransform: "uppercase",
+  letterSpacing: "0.1em",
+};
+
+export default function EducationCard({ school, degree, timeline, gpa, coursework, earlier }: EducationCardProps) {
   const isMobile = useIsMobile(1000);
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: false, amount: isMobile ? 0.15 : 0.1 });
@@ -45,190 +42,85 @@ export default function EducationCard({
       }}
       className="px-4 md:px-12 lg:px-20 mx-auto max-w-[1400px]"
     >
-      {/* Glass box */}
-      <motion.div
-        style={{
-          position: "relative",
-          borderRadius: "24px",
-          ...glassStyle,
-        }}
-        data-liquid
-        className={`${glassBoxClassNames} p-5 md:p-10 lg:p-12`}
-      >
-        <GlassLayers refractionSide="left" />
+      <GlassCard className="p-5 md:p-10 lg:p-12">
+        <CardHeader title={school} subtitle={degree} meta={timeline} metaWeight={400} />
 
-        {/* Content */}
-        <div style={{ position: "relative", zIndex: 1 }}>
-          {/* School */}
-          <h2
-            style={{
-              marginTop: 0,
-              marginBottom: "8px",
-              fontSize: "clamp(1.375rem, 2.2vw, 1.875rem)",
-              fontWeight: 700,
-              textAlign: "center",
-            }}
-          >
-            <FuzzyText>
-              <span
-                className="bg-clip-text text-transparent metal-text"
-                style={{
-                  WebkitBackgroundClip: "text",
-                  backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
-                }}
-              >
-                {school}
-              </span>
-            </FuzzyText>
-          </h2>
+        <div className="bg-black/[0.08] dark:bg-white/[0.1]" style={{ height: 1, margin: "8px 0 16px" }} />
 
-          {/* Degree */}
-          <h3
-            className="font-[family-name:var(--font-elevated)]"
-            style={{
-              marginTop: 0,
-              marginBottom: "4px",
-              fontSize: "clamp(0.95rem, 1.3vw, 1.125rem)",
-              fontWeight: 500,
-              textAlign: "center",
-              letterSpacing: "-0.01em",
-              color: themed(isDark, cs.bodyColor.dark, cs.bodyColor.light),
-            }}
-          >
-            {degree}
-          </h3>
-
-          {/* Timeline */}
-          <h4
-            className="font-[family-name:var(--font-elevated)]"
-            style={{
-              marginTop: 0,
-              marginBottom: "16px",
-              fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)",
-              fontWeight: 400,
-              textAlign: "center",
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-              color: themed(isDark, cs.bodyColor.dark, cs.bodyColor.light),
-            }}
-          >
-            {timeline}
-          </h4>
-
-          {/* Divider */}
-          <div
-            className="bg-black/[0.08] dark:bg-white/[0.1]"
-            style={{ height: 1, margin: "8px 0 16px" }}
-          />
-
-          {/* The earlier degree, which the GPA and coursework below belong to */}
-          {earlier && (
-            <div style={{ textAlign: "center", marginBottom: 14 }}>
-              <div
-                className="font-[family-name:var(--font-elevated)]"
-                style={{ fontSize: "clamp(0.95rem, 1.3vw, 1.125rem)", fontWeight: 500, color: themed(isDark, cs.bodyColor.dark, cs.bodyColor.light) }}
-              >
-                {earlier.degree}
-              </div>
-              <div
-                className="font-[family-name:var(--font-elevated)]"
-                style={{ fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)", letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--ink-2)", marginTop: 2 }}
-              >
-                {earlier.timeline}
-              </div>
+        {/* The earlier degree, which the GPA and coursework below belong to */}
+        {earlier && (
+          <div style={{ textAlign: "center", marginBottom: 14 }}>
+            <div
+              className="font-[family-name:var(--font-elevated)]"
+              style={{ fontSize: "clamp(0.95rem, 1.3vw, 1.125rem)", fontWeight: 500, color: "var(--body-ink)" }}
+            >
+              {earlier.degree}
             </div>
-          )}
-
-          {/* GPA */}
-          {gpa && (
-            <div style={{ textAlign: "center", marginBottom: 16 }}>
-              <span
-                className="text-black/50 dark:text-white/50"
-                style={{
-                  fontSize: 9,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.1em",
-                }}
-              >
-                GPA
-              </span>
-              <div style={{ marginTop: 4 }}>
-                <FuzzyText>
-                  <span
-                    className="bg-clip-text text-transparent"
-                    style={{
-                      WebkitBackgroundClip: "text",
-                      backgroundImage: themed(isDark, cs.liquidGlass.dark, cs.liquidGlass.light),
-                      fontSize: "clamp(1.25rem, 2vw, 1.75rem)",
-                      fontWeight: 700,
-                    }}
-                  >
-                    {gpa}
-                  </span>
-                </FuzzyText>
-              </div>
+            <div
+              className="font-[family-name:var(--font-elevated)]"
+              style={{ fontSize: "clamp(0.8rem, 1.1vw, 0.95rem)", letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--ink-2)", marginTop: 2 }}
+            >
+              {earlier.timeline}
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Coursework */}
-          {coursework && coursework.length > 0 && (
-            <div style={{ textAlign: "center", marginBottom: 12 }}>
-              <span
-                className="text-black/50 dark:text-white/50"
-                style={{
-                  fontSize: 9,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.1em",
-                }}
-              >
-                Relevant Coursework
-              </span>
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 6,
-                  marginTop: 10,
-                  justifyContent: "center",
-                }}
-              >
-                {coursework.map((course) => (
-                  <span
-                    key={course}
-                    className="text-black/80 dark:text-white/80 bg-black/[0.04] dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08]"
-                    style={{
-                      fontSize: 11,
-                      fontFamily: "var(--font-elevated)",
-                      padding: "3px 8px",
-                      borderRadius: 8,
-                      letterSpacing: "0.04em",
-                    }}
-                  >
-                    {course}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Extras */}
-          {extras && (
-            <div style={{ textAlign: "center", marginTop: 12 }}>
-              <span
-                className="font-[family-name:var(--font-elevated)] bg-clip-text text-transparent"
-                style={{
-                  WebkitBackgroundClip: "text",
-                  backgroundImage: themed(isDark, cs.bodyShort.dark, cs.bodyShort.light),
-                  fontSize: "clamp(0.85rem, 1.1vw, 1rem)",
-                  fontWeight: 500,
-                }}
-              >
-                {extras}
+        {gpa && (
+          <div style={{ textAlign: "center", marginBottom: 16 }}>
+            <span className="text-black/50 dark:text-white/50" style={label}>
+              GPA
+            </span>
+            <div style={{ marginTop: 4 }}>
+              <span className="relative inline-block">
+                <span
+                  className="bg-clip-text text-transparent"
+                  style={{
+                    WebkitBackgroundClip: "text",
+                    backgroundImage: "var(--title-fill)",
+                    fontSize: "clamp(1.25rem, 2vw, 1.75rem)",
+                    fontWeight: 700,
+                  }}
+                >
+                  {gpa}
+                </span>
               </span>
             </div>
-          )}
-        </div>
-      </motion.div>
+          </div>
+        )}
+
+        {coursework && coursework.length > 0 && (
+          <div style={{ textAlign: "center", marginBottom: 12 }}>
+            <span className="text-black/50 dark:text-white/50" style={label}>
+              Relevant Coursework
+            </span>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 6,
+                marginTop: 10,
+                justifyContent: "center",
+              }}
+            >
+              {coursework.map((course) => (
+                <span
+                  key={course}
+                  className="text-black/80 dark:text-white/80 bg-black/[0.04] dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08]"
+                  style={{
+                    fontSize: 11,
+                    fontFamily: "var(--font-elevated)",
+                    padding: "3px 8px",
+                    borderRadius: 8,
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  {course}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </GlassCard>
     </motion.div>
   );
 }

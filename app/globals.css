@@ -19,13 +19,13 @@
   --ink-2: rgba(23, 22, 26, 0.68);
   --ink-3: rgba(23, 22, 26, 0.44);
   --hair: rgba(23, 22, 26, 0.1);
-  --accent: rgb(76, 96, 140);
 
-  /* Type is ink pressed into the page, never chrome: a gradient inside
-     letterforms puts the horizon band straight through them. The metal lives on
-     surfaces (.metal-surface); text gets a crisp highlight below, debossed. */
+  /* Small headings and labels are flat ink. Several are drawn as a
+     background clipped to the text, so the ink also comes as a flat fill. */
   --title-ink: #1b1a17;
-  --deboss: 0 1px 0 rgba(255, 255, 255, 0.75);
+  --title-fill: linear-gradient(var(--title-ink), var(--title-ink));
+  --body-ink: rgba(10, 10, 20, 0.92);
+  --body-fill: linear-gradient(135deg, rgba(10, 10, 20, 0.95) 0%, rgba(25, 15, 35, 0.92) 50%, rgba(12, 18, 30, 0.94) 100%);
   /* Chrome lettering: the pill's satin chrome, sized to one line of type so
      every line (and so every letter) gets the whole reflection, with a soft
      horizon instead of a hard band. On the light sheet it is the same bright
@@ -44,13 +44,11 @@
     inset 0 0 0 1px rgba(46, 38, 28, 0.22), inset 0 1.5px 0 #fff, inset 0 -2px 2px rgba(255, 255, 255, 0.6),
     inset 0 -10px 16px -10px rgba(60, 48, 36, 0.35);
   --metal-ink: #1b1a17;
-  --metal-edge: linear-gradient(180deg, #fff, rgba(180, 176, 170, 0.6) 42%, rgba(96, 92, 86, 0.55) 58%, rgba(214, 211, 206, 0.9));
 
   /* Glass reads as glass through its fill, rim and light, not blur: panels carry
      no backdrop-filter (it was the single biggest scroll cost). */
-  --glass-fill: rgba(255, 255, 255, 0.58);
   /* Cards are the bubbles' glass: the dot field draws the dots under a card as
-     a bubble shows them (GLASS_GLSL in lib/liquid.tsx: blurred, lensed at the
+     a bubble shows them (glassSurface in lib/gl.ts: blurred, lensed at the
      rim, lifted), and this fill, the bubbles' own (mirrored in lib/tokens
      `paper.glass`), sits over them. */
   --card-fill: rgba(255, 255, 255, 0.14);
@@ -60,7 +58,6 @@
   /* Only a broad shadow, set back from the edge (negative spread): a tight
      contact shadow would draw a line across a liquid swell. */
   --glass-drop: 0 18px 36px -20px rgba(40, 36, 30, 0.3);
-  --pill-blur: blur(8px) saturate(1.2);
 
   /* The glass edge, one for every glass surface (cards and bubbles alike):
      the light a curved edge catches (a bright lip on top, a faint one below,
@@ -81,20 +78,18 @@
   --ink-2: rgba(238, 240, 244, 0.64);
   --ink-3: rgba(238, 240, 244, 0.4);
   --hair: rgba(238, 240, 244, 0.1);
-  --accent: rgb(170, 190, 240);
 
   /* The chrome is a material, not a theme colour: it stays the same satin
      chrome on the dark sheet, with the same dark ink pressed into it. */
   --title-ink: #efede9;
-  --deboss: 0 -1px 0 rgba(0, 0, 0, 0.7);
+  --body-ink: rgba(248, 250, 255, 0.94);
+  --body-fill: linear-gradient(135deg, rgba(248, 250, 255, 0.96) 0%, rgba(255, 248, 255, 0.93) 50%, rgba(248, 250, 255, 0.95) 100%);
   --chrome-type: linear-gradient(180deg, #fbfaf8 0%, #dedbd6 24%, #aeaaa3 42%, #6c6963 52%, #57544f 56%, #8b8780 68%, #cfcbc5 86%, #f3f1ed 100%);
   --chrome-edge: none;
   --wire-hi: #f4f2ee;
   --wire-mid: #a3a09a;
   --wire-lo: #5f5d59;
-  --metal-edge: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.06) 45%, rgba(0, 0, 0, 0.2) 60%, rgba(255, 255, 255, 0.14));
 
-  --glass-fill: rgba(26, 28, 33, 0.7);
   --card-fill: rgba(255, 255, 255, 0.035);
   --glass-frost: blur(1.6px) saturate(1.25) brightness(1.12);
   --glass-glow: inset 0 0 26px -10px rgba(255, 255, 255, 0.14);
@@ -304,19 +299,6 @@ html.lens .edge-ring {
   box-shadow: var(--edge-lip), var(--edge-film), var(--glass-glow);
 }
 
-/* Hairline metal border for any rounded element: a gradient ring cut out by a mask. */
-.metal-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: var(--metal-edge);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
-  pointer-events: none;
-}
-
 /* ─── Glass ────────────────────────────────────────────────────────────────── */
 
 /* The panel itself carries only its broad drop shadow. Every line on its edge
@@ -326,29 +308,6 @@ html.lens .edge-ring {
 .glass-panel {
   background: var(--card-fill);
   box-shadow: var(--glass-drop);
-}
-/* While a bubble grows out of a card, the card has no border at all: its rim,
-   hairlines and edge light fade out so the growth reads as the card itself. */
-.glass-panel > .ring-mask {
-  transition: opacity 0.25s ease;
-}
-.glass-panel.is-budding > .ring-mask {
-  opacity: 0;
-}
-
-.glass-pill {
-  background: var(--glass-fill);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 0 0 1px rgba(28, 32, 42, 0.1), 0 4px 12px -6px rgba(20, 24, 32, 0.25);
-  -webkit-backdrop-filter: var(--pill-blur);
-  backdrop-filter: var(--pill-blur);
-  color: var(--ink-2);
-  transition: color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-}
-.dark .glass-pill {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 0 0 1px rgba(255, 255, 255, 0.07), 0 6px 14px -6px rgba(0, 0, 0, 0.7);
-}
-.glass-pill:hover {
-  color: var(--ink);
 }
 
 /* ─── Drafting details ─────────────────────────────────────────────────────── */
@@ -405,14 +364,6 @@ html.lens .edge-ring {
   scrollbar-width: none;
 }
 
-/* Utility: hide scrollbar on a specific element (e.g. film strip) */
-.scrollbar-hide {
-  scrollbar-width: none;
-}
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-
 /* the "scroll" hint's arrows bob on the compositor, not the main thread */
 .scroll-nudge {
   animation: scrollNudge 1.4s ease-in-out infinite;
@@ -439,45 +390,6 @@ html.lens .edge-ring {
   }
   50% {
     opacity: 1;
-  }
-}
-
-@keyframes glassShineIntro {
-  0% {
-    background-position: 200% center;
-  }
-  100% {
-    background-position: -50% center;
-  }
-}
-
-@keyframes iridescentShift {
-  0% {
-    background-position: 0% center;
-  }
-  100% {
-    background-position: 200% center;
-  }
-}
-
-@keyframes liquidGlassDrift {
-  0% {
-    background-position:
-      0% 45%,
-      100% 55%,
-      100% 50%;
-  }
-  50% {
-    background-position:
-      30% 62%,
-      75% 35%,
-      40% 50%;
-  }
-  100% {
-    background-position:
-      60% 40%,
-      40% 70%,
-      -20% 50%;
   }
 }
 
@@ -567,18 +479,6 @@ html:not(.lens) .glass-bubble::before {
   .glass-bubble::after {
     animation: none;
   }
-}
-
-/* The neck drawn by LiquidBud sits outside the bubble, so it reads the fill from the page. */
-:root {
-  --bud-fill: #fbfaf7;
-  --bud-rim: rgba(40, 36, 30, 0.2);
-  --bud-shadow: rgba(40, 36, 30, 0.18);
-}
-.dark {
-  --bud-fill: #1d1f24;
-  --bud-rim: rgba(255, 255, 255, 0.16);
-  --bud-shadow: rgba(0, 0, 0, 0.55);
 }
 
 /* Photography autofocus cursor: replaces the native pointer on fine pointers */
