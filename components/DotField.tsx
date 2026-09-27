@@ -15,7 +15,7 @@ import { setRingHole } from "@/lib/liquid";
 //   - under every card ([data-liquid]) the dots are frosted: blurred, and bent
 //     by the card's rim like the edge of a lens
 //   - a card is liquid: as the cursor comes near, its edge swells and reaches
-//     toward it on a wobbly spring, and settles back when the cursor leaves
+//     toward it on a critically damped spring, and settles back when the cursor leaves
 //
 // Dots are drawn in page space at exactly the positions of the CSS dots
 // (lib/tokens `paper`), so there's no seam when the canvas appears, and if
@@ -147,7 +147,11 @@ void main() {
       vec2 q = p + n * rim * 11.0;
       vec3 frost = mix(uBg, uDot, frostDots(q) * uDotA);
       float inLiquid = 1.0 - smoothstep(-aa, aa, dl);
-      float outCard = smoothstep(-aa, aa, dc);
+      // The swell's fill tucks 0.75px under the card: the DOM fill snaps to
+      // device pixels on its own, and without the overlap a sliver of bare
+      // paper shows between them as a line across the swell's base. Outside
+      // the swell the card's lip hairline covers the overlap.
+      float outCard = smoothstep(-aa, aa, dc + 0.75);
       // where the liquid reaches past the DOM card, paint the card's fill too
       vec3 swell = mix(frost, uFill, uFillA);
       vec3 inside = mix(frost, swell, outCard);
@@ -411,8 +415,10 @@ export default function DotField() {
       const moved = sig !== lastSig;
       lastSig = sig;
 
-      // The swell reaches about halfway to the cursor and grows as it closes in;
-      // underdamped, so it wobbles as it rises and when it lets go.
+      // The swell reaches about halfway to the cursor and grows as it closes in.
+      // Critically damped, like everything else that moves: it rises and lets
+      // go without a wobble, and its radius can't overshoot past zero and pop
+      // back up after the cursor leaves.
       const REACH = 120;
       let tx = blob.x, ty = blob.y, tr = 0;
       if (near && near.d < REACH && !reduced) {
@@ -422,14 +428,14 @@ export default function DotField() {
         const out = Math.min(near.d * 0.6, tr * 0.6 + 8);
         tx = near.ex + near.nx * out;
         ty = near.ey + near.ny * out;
-        if (blob.r < 0.5) { blob.x = near.ex - near.nx * 20; blob.y = near.ey - near.ny * 20; }
+        if (blob.r < 0.5) { blob.x = near.ex - near.nx * 20; blob.y = near.ey - near.ny * 20; blob.vx = blob.vy = 0; }
       }
-      const W = 16, Z = 0.42;
-      for (let i = 0, hs = dt / 4; i < 4; i++) {
-        blob.vx += (-2 * Z * W * blob.vx - W * W * (blob.x - tx)) * hs; blob.x += blob.vx * hs;
-        blob.vy += (-2 * Z * W * blob.vy - W * W * (blob.y - ty)) * hs; blob.y += blob.vy * hs;
-        blob.vr += (-2 * 0.35 * 18 * blob.vr - 18 * 18 * (blob.r - tr)) * hs; blob.r += blob.vr * hs;
-      }
+      let sb = springTo(blob.x, blob.vx, tx, 14, dt);
+      blob.x = sb[0]; blob.vx = sb[1];
+      sb = springTo(blob.y, blob.vy, ty, 14, dt);
+      blob.y = sb[0]; blob.vy = sb[1];
+      sb = springTo(blob.r, blob.vr, tr, 14, dt);
+      blob.r = Math.max(0, sb[0]); blob.vr = sb[1];
       const blobBusy = Math.abs(blob.vr) > 0.5 || Math.abs(blob.r - tr) > 0.3 || Math.hypot(blob.vx, blob.vy) > 2;
       if (moved || blobBusy) { lastActive = now; busy = true; }
 

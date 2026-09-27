@@ -32,7 +32,7 @@
      chrome; the dark horizon and a soft cast shadow (no outline) carry it. */
   --chrome-type: linear-gradient(180deg, #f4f2ee 0%, #d3d0ca 22%, #a6a29b 41%, #5f5c57 51%, #4d4b46 55%, #7e7a74 67%, #bfbbb5 85%, #e8e5e0 100%);
   --chrome-edge: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.8)) drop-shadow(0 0.025em 0.035em rgba(40, 34, 28, 0.16));
-  /* Steel wire for the line drawings */
+  /* Chrome wire for the line drawings: sky, horizon, ground (AnimatedSvg) */
   --wire-hi: #8d8a84;
   --wire-mid: #45433f;
   --wire-lo: #1f1e1c;
@@ -51,10 +51,9 @@
   /* Frosted: the dot field draws the dots under a card blurred and bent at its
      rim, and this fill (mirrored in lib/tokens `paper.glass`) sits over them. */
   --glass-fill: rgba(255, 255, 255, 0.58);
-  --glass-shadow:
-    inset 0 1px 0 #fff, inset 0 -1px 0 rgba(255, 255, 255, 0.5), 0 0 0 1px rgba(40, 36, 30, 0.06),
-    0 1px 2px rgba(40, 36, 30, 0.05), 0 18px 36px -20px rgba(40, 36, 30, 0.3);
-  --glass-drop: 0 1px 2px rgba(40, 36, 30, 0.05), 0 18px 36px -20px rgba(40, 36, 30, 0.3);
+  /* Only a broad shadow, set back from the edge (negative spread): a tight
+     contact shadow would draw a line across a liquid swell. */
+  --glass-drop: 0 18px 36px -20px rgba(40, 36, 30, 0.3);
   --pill-blur: blur(8px) saturate(1.2);
 
   /* The glass edge, one for every glass surface (cards and bubbles alike):
@@ -90,10 +89,7 @@
   --metal-edge: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.06) 45%, rgba(0, 0, 0, 0.2) 60%, rgba(255, 255, 255, 0.14));
 
   --glass-fill: rgba(26, 28, 33, 0.7);
-  --glass-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 1px 2px rgba(0, 0, 0, 0.3), 0 24px 48px -24px rgba(0, 0, 0, 0.7);
-  --glass-drop: 0 1px 2px rgba(0, 0, 0, 0.3), 0 24px 48px -24px rgba(0, 0, 0, 0.7);
+  --glass-drop: 0 24px 48px -24px rgba(0, 0, 0, 0.7);
   --edge-lip: inset 0 1px 0 rgba(255, 255, 255, 0.28), inset 0 -1px 0 rgba(255, 255, 255, 0.06), inset 0 0 0 1px rgba(255, 255, 255, 0.09);
   --edge-film:
     inset 3px 0 6px -4px rgba(255, 150, 205, 0.45), inset -3px 0 6px -4px rgba(120, 205, 255, 0.43),
@@ -278,23 +274,21 @@ body {
 
 /* ─── Glass ────────────────────────────────────────────────────────────────── */
 
+/* The panel itself carries only its broad drop shadow. Every line on its edge
+   (the lip, the film, the specular line) lives in .ring-mask, so a liquid
+   swell can open all of it: a hairline left on the panel would cut straight
+   across the swell. */
 .glass-panel {
   background: var(--glass-fill);
-  box-shadow: var(--glass-shadow);
-  transition: box-shadow 0.25s ease;
+  box-shadow: var(--glass-drop);
 }
 /* While a bubble grows out of a card, the card has no border at all: its rim,
    hairlines and edge light fade out so the growth reads as the card itself. */
-.glass-panel.is-budding {
-  box-shadow: var(--glass-drop);
-}
-.glass-panel > .ring-mask,
-.glass-panel > .glass-spec {
+.glass-panel > .ring-mask {
   transition: opacity 0.25s ease;
 }
-.glass-panel.is-budding > .ring-mask,
-.glass-panel.is-budding > .glass-spec {
-  opacity: 0 !important; /* the specular line sets its opacity inline */
+.glass-panel.is-budding > .ring-mask {
+  opacity: 0;
 }
 
 .glass-pill {

@@ -69,24 +69,24 @@ export function GlassLayers({
   return (
     <>
       {/* the rim sits in a mask the liquid swells can open (.ring-mask) */}
-      <div className="ring-mask" style={{ zIndex: 0 }}>
+      {/* the rim and the specular line sit in a mask the liquid swells can
+          open (.ring-mask), so nothing on the edge crosses a swell */}
+      <div className="ring-mask" style={{ zIndex: 1 }}>
         <div className="edge-ring" />
+        <div
+          className="glass-spec"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: specularInset,
+            right: specularInset,
+            height: 1,
+            background:
+              "linear-gradient(90deg, transparent, rgba(255,255,255,0.9) 30%, rgba(255,255,255,1) 50%, rgba(255,255,255,0.9) 70%, transparent)",
+            opacity: 0.55,
+          }}
+        />
       </div>
-      <div
-        className="glass-spec"
-        style={{
-          position: "absolute",
-          top: 0,
-          left: specularInset,
-          right: specularInset,
-          height: 1,
-          background:
-            "linear-gradient(90deg, transparent, rgba(255,255,255,0.9) 30%, rgba(255,255,255,1) 50%, rgba(255,255,255,0.9) 70%, transparent)",
-          opacity: 0.55,
-          pointerEvents: "none",
-          zIndex: 1,
-        }}
-      />
       <div
         style={{
           position: "absolute",

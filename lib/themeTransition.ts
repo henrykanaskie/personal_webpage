@@ -16,10 +16,13 @@ import { paper, photo } from "./tokens";
 
 const GAP = paper.gap;
 const R_FULL = GAP * Math.SQRT1_2 + 0.75; // a dot this big covers its whole cell
-const SPREAD = 0.34; // seconds for the wave to cross the screen
-const GROW = 0.22; // seconds each dot takes to close up
-const HOLD = 0.04; // a beat fully covered while the theme swaps
-const SHRINK = 0.28; // seconds each dot takes to shrink back
+// Slow enough to watch (about 2.5s end to end): the wave visibly travels, each
+// dot visibly swells and closes up, so the page reads as morphing from one
+// sheet into the other rather than flashing between them.
+const SPREAD = 0.75; // seconds for the wave to cross the screen
+const GROW = 0.45; // seconds each dot takes to close up
+const HOLD = 0.1; // a beat fully covered while the theme swaps
+const SHRINK = 0.5; // seconds each dot takes to shrink back
 
 let running = false;
 
