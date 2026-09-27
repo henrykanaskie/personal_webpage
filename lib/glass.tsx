@@ -1,10 +1,8 @@
-import { CardLens } from "./liquid";
-
 // ─── GlassLayers ────────────────────────────────────────────────────────────
 // Decorates a .glass-panel: the glass edge (the same lip and thin film as the
 // bubbles, .edge-ring) and a specular line along the top edge, both inside the
-// rim mask, and the bubbles' lens along the rim (CardLens). No sheen: the
-// bubbles have none.
+// rim mask. The glass itself (frost and lens, over the dots and the line
+// drawings) is DotField's. No sheen: the bubbles have none.
 
 export function GlassLayers({
   specularInset = "8%",
@@ -15,8 +13,6 @@ export function GlassLayers({
 } = {}) {
   return (
     <>
-      {/* the bubbles' lens along the rim (Chromium) */}
-      <CardLens />
       {/* the rim and the specular line sit in a mask the liquid swells can
           open (.ring-mask), so nothing on the edge crosses a swell */}
       <div className="ring-mask" style={{ zIndex: 1 }}>

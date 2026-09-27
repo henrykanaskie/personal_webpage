@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { paper } from "@/lib/tokens";
 import { setRingHole } from "@/lib/liquid";
 import { GLSL_GLASS, fullscreenProgram, rgb, uniforms } from "@/lib/gl";
+import { type Drawing, allDrawings, onDrawingsChange } from "@/lib/drawings";
 
 // ─── DotField ───────────────────────────────────────────────────────────────
 // The page's dot grid, redrawn in WebGL as one fixed backdrop behind every CS
@@ -15,6 +16,8 @@ import { GLSL_GLASS, fullscreenProgram, rgb, uniforms } from "@/lib/gl";
 //   - a click on bare paper sends a ripple through the dots
 //   - under every card ([data-liquid]) the dots are seen through the info
 //     bubbles' glass: blurred, lensed at the rim, lifted (glassSurface, lib/gl)
+//   - the line drawings, once drawn, are painted here too (lib/drawings), so
+//     the glass frosts and bends them exactly as it does the dots
 //   - a card is liquid: as the cursor comes near, its edge swells and reaches
 //     toward it on a critically damped spring, and settles back when the cursor leaves
 //
@@ -27,7 +30,11 @@ import { GLSL_GLASS, fullscreenProgram, rgb, uniforms } from "@/lib/gl";
 // exact. Resolution steps down on its own if frames run long, and the loop
 // stops entirely once nothing is moving.
 
-const FRAG = `
+// The drawings are read with an explicit mip level (EXT_shader_texture_lod):
+// a plain texture2D takes its level from screen derivatives, which makes
+// compilers run it outside the branch that should skip it, so every pixel on
+// screen paid for every drawing. Without the extension the drawings stay DOM.
+const FRAG = (lod: boolean) => `${lod ? "#extension GL_EXT_shader_texture_lod : enable\n#define TEXL(t, uv, l) texture2DLodEXT(t, uv, l)" : "#define TEXL(t, uv, l) vec4(0.0)"}
 precision highp float;
 uniform vec2 uRes;        // css px
 uniform float uDpr;
@@ -48,8 +55,38 @@ uniform float uHoleR;     // radius of the hole opened in that card's rim (centr
 uniform vec3 uFill;
 uniform float uFillA;
 uniform float uDark;
-uniform float uLens;       // 1 where the cards carry the bubbles' DOM lens on their rim (CardLens)
+// the line drawings (lib/drawings): up to four textures, each mapped from
+// viewport px to its uv by two affine rows
+uniform sampler2D uDraw0, uDraw1, uDraw2, uDraw3;
+uniform vec3 uDrawA[4];
+uniform vec3 uDrawB[4];
+uniform float uNDraw;
+uniform float uDrawL[4];   // each drawing's own mip level at this size (texels per device px)
 ${GLSL_GLASS}
+// One drawing at p, premultiplied, sharp or blurred (below). Only pixels
+// inside a drawing's box read its texture at all.
+vec4 drawOne(sampler2D t, vec3 A, vec3 B, float base, vec2 p, float blur) {
+  vec2 uv = vec2(dot(A, vec3(p, 1.0)), dot(B, vec3(p, 1.0)));
+  if (uv.x < -0.02 || uv.y < -0.02 || uv.x > 1.02 || uv.y > 1.02) return vec4(0.0);
+  if (blur < 0.01) return TEXL(t, uv, max(0.0, base));
+  // Four reads on the diagonals at sigma/sqrt2, each from a mip level about
+  // as soft (a trilinear read at level L spreads about 2^L / 2 texels), so
+  // they merge into one Gaussian of sigma = blur css px (the bubbles' frost):
+  // no ghosted double lines, no mip blockiness.
+  vec2 ex = vec2(A.x, B.x) * blur * 0.707, ey = vec2(A.y, B.y) * blur * 0.707;
+  float lod = max(0.0, base + log2(blur * 1.414 * uDpr));
+  return (TEXL(t, uv + ex + ey, lod) + TEXL(t, uv + ex - ey, lod)
+    + TEXL(t, uv - ex + ey, lod) + TEXL(t, uv - ex - ey, lod)) * 0.25;
+}
+vec4 over(vec4 top, vec4 under) { return top + under * (1.0 - top.a); }
+vec4 drawings(vec2 p, float blur) {
+  vec4 c = vec4(0.0);
+  if (uNDraw > 0.5) c = drawOne(uDraw0, uDrawA[0], uDrawB[0], uDrawL[0], p, blur);
+  if (uNDraw > 1.5) c = over(drawOne(uDraw1, uDrawA[1], uDrawB[1], uDrawL[1], p, blur), c);
+  if (uNDraw > 2.5) c = over(drawOne(uDraw2, uDrawA[2], uDrawB[2], uDrawL[2], p, blur), c);
+  if (uNDraw > 3.5) c = over(drawOne(uDraw3, uDrawA[3], uDrawB[3], uDrawL[3], p, blur), c);
+  return c;
+}
 // The cards alone (what the DOM draws) and the liquid (cards plus the swell).
 float cards(vec2 p, out float alpha) {
   float d = 1e5;
@@ -118,10 +155,13 @@ void main() {
   if (dc < -30.0 && ca > 0.99 && (uBlob.z < 0.5 || length(p - uBlob.xy) > uBlob.z + 70.0)) {
     // the same glass as the rim path below, flat here (past the lens bevel),
     // with the tail of the rim's inner light, so there's no step at the tier
-    gl_FragColor = vec4(mix(glassSurface(p, uScroll, dc, vec2(0.0)), vec3(1.0), glassGlow(dc) * (1.0 - uLens)), 1.0);
+    gl_FragColor = vec4(mix(glassSurface(p, uScroll, dc, vec2(0.0)), vec3(1.0), glassGlow(dc)), 1.0);
     return;
   }
   vec3 col = mix(uBg, uDot, dots(p) * uDotA);
+  // the drawings on bare paper, sharp
+  vec4 dr = drawings(p, 0.0);
+  col = col * (1.0 - dr.a) + dr.rgb;
 
   if (uNCards > 0.5) {
     float dl = liquid(p, dc);
@@ -144,19 +184,11 @@ void main() {
       float outCard = smoothstep(-aa, aa, dc + 0.75);
       // where the liquid reaches past the DOM card, paint the card's fill too
       vec3 swell = mix(frost, uFill, uFillA);
-      // The rim's hole (same falloff as .ring-mask and the lens strips): 0 in
-      // the hole around a swell, 1 away from it.
-      float ringVis = uHoleR > 0.5 ? clamp((length(p - uBlob.xy) - uHoleR) / 14.0, 0.0, 1.0) : 1.0;
-      // Along a card's rim the DOM lens (CardLens) is the glass: it refracts
-      // the page behind, these dots included, so here the canvas shows the
-      // plain page for it to bend, and the rim's light is the DOM's too. In the
-      // hole it's the canvas again, lensed along the liquid outline, so the
-      // refraction follows the swell. (The strips fade out from 10px to 24px
-      // in, and this fades back in over the same band.)
-      float dom = uLens * ringVis * (1.0 - clamp((-dc - 10.0) / 14.0, 0.0, 1.0)) * (1.0 - step(0.75, dc));
-      vec3 inside = mix(mix(frost, swell, outCard), vec3(1.0), glassGlow(dl) * (1.0 - uLens * ringVis));
-      inside = mix(inside, col, dom);
+      vec3 inside = mix(mix(frost, swell, outCard), vec3(1.0), glassGlow(dl));
       col = mix(col, inside, inLiquid * ca);
+      // the rim's hole (same falloff as .ring-mask): 0 in the hole around a
+      // swell, 1 away from it
+      float ringVis = uHoleR > 0.5 ? clamp((length(p - uBlob.xy) - uHoleR) / 14.0, 0.0, 1.0) : 1.0;
       // The rim of the whole liquid outline, just outside it: along the swell,
       // and along the card's edge inside the hole opened in the card's own rim,
       // so the border molds into the swell.
@@ -205,12 +237,15 @@ export default function DotField() {
     const gl = canvas.getContext("webgl", { antialias: false, alpha: false, premultipliedAlpha: false, powerPreference: "low-power" });
     if (!gl) return;
 
-    const prog = fullscreenProgram(gl, FRAG);
+    // explicit mip levels for the drawings; without them the drawings stay DOM
+    const texLod = !!gl.getExtension("EXT_shader_texture_lod");
+    const prog = fullscreenProgram(gl, FRAG(texLod));
     if (!prog) return; // the CSS dots stay
     // prettier-ignore
     const u = uniforms(gl, prog, [
       "uRes", "uDpr", "uScroll", "uGap", "uDotR", "uBg", "uDot", "uDotA", "uMouse", "uMouseOn",
-      "uRipple", "uOrigin", "uIntro", "uCards", "uCardP", "uNCards", "uBlob", "uHoleR", "uFill", "uFillA", "uDark", "uLens",
+      "uRipple", "uOrigin", "uIntro", "uCards", "uCardP", "uNCards", "uBlob", "uHoleR", "uFill", "uFillA", "uDark",
+      "uDraw0", "uDraw1", "uDraw2", "uDraw3", "uDrawA", "uDrawB", "uDrawL", "uNDraw",
     ]);
     const cardBuf = new Float32Array(32), cardPBuf = new Float32Array(16);
     let panels: HTMLElement[] = [];
@@ -313,6 +348,7 @@ export default function DotField() {
       cancelAnimationFrame(raf);
       raf = 0;
       canvas.style.opacity = "0";
+      showAll();
     };
     canvas.addEventListener("webglcontextlost", onLost);
     document.documentElement.addEventListener("pointerleave", onLeave);
@@ -320,6 +356,20 @@ export default function DotField() {
     document.addEventListener("visibilitychange", onVis);
     // A theme switch repaints the paper even if nothing else is moving.
     const themeObs = new MutationObserver(() => wake());
+    // The drawings (lib/drawings): one texture each, re-uploaded when the theme
+    // or its image changes. A drawing's SVG is hidden only while it's painted here.
+    const drawTex = new Map<Drawing, { tex: WebGLTexture; key: string }>();
+    const drawBufA = new Float32Array(12), drawBufB = new Float32Array(12), drawBufL = new Float32Array(4);
+    const hidden = new Set<Drawing>();
+    let lastDrawSig = "";
+    const setHidden = (d: Drawing, on: boolean) => {
+      if (on === hidden.has(d)) return;
+      if (on) hidden.add(d); else hidden.delete(d);
+      d.svg.style.visibility = on ? "hidden" : "";
+    };
+    const showAll = () => { for (const d of Array.from(hidden)) setHidden(d, false); };
+    const offDrawings = onDrawingsChange(() => wake());
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
     themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 
     function wake() {
@@ -429,6 +479,61 @@ export default function DotField() {
       mouse.onV = sp[1];
       if (ripple.t >= 0) { ripple.t += dt; if (ripple.t > 1.6) ripple.t = -1; }
 
+      // The drawings on screen (at most four): where each sits, as the affine
+      // map from viewport px to its image's uv (the inverse of its screen CTM).
+      let nd = 0;
+      let dsig = "";
+      const theme = dark ? "dark" : "light";
+      for (const d of allDrawings()) {
+        const img = d.images[theme];
+        const m = texLod && nd < 4 && img && d.svg.isConnected ? d.svg.getScreenCTM() : null;
+        let on = false;
+        if (m && img) {
+          const b = d.box;
+          const xs = [b.x, b.x + b.w], ys = [b.y, b.y + b.h];
+          let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+          for (const x of xs) for (const y of ys) {
+            const px = m.a * x + m.c * y + m.e, py = m.b * x + m.d * y + m.f;
+            x0 = Math.min(x0, px); x1 = Math.max(x1, px); y0 = Math.min(y0, py); y1 = Math.max(y1, py);
+          }
+          if (x1 > -40 && x0 < w + 40 && y1 > -40 && y0 < h + 40) {
+            const key = `${theme}:${d.version}`;
+            let t = drawTex.get(d);
+            if (!t || t.key !== key) {
+              const tex = t?.tex ?? gl.createTexture();
+              if (tex) {
+                gl.activeTexture(gl.TEXTURE0 + nd);
+                gl.bindTexture(gl.TEXTURE_2D, tex);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+                gl.generateMipmap(gl.TEXTURE_2D);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                t = { tex, key };
+                drawTex.set(d, t);
+              }
+            }
+            if (t) {
+              gl.activeTexture(gl.TEXTURE0 + nd);
+              gl.bindTexture(gl.TEXTURE_2D, t.tex);
+              const inv = new DOMMatrix([m.a, m.b, m.c, m.d, m.e, m.f]).inverse();
+              drawBufA.set([inv.a / b.w, inv.c / b.w, (inv.e - b.x) / b.w], nd * 3);
+              // its own mip level: texels per device px at its current size
+              drawBufL[nd] = Math.log2(img.width / (b.w * Math.hypot(m.a, m.b) * (canvas.width / w)));
+              drawBufB.set([inv.b / b.h, inv.d / b.h, (inv.f - b.y) / b.h], nd * 3);
+              dsig += `${m.a.toFixed(3)},${m.e | 0},${m.f | 0};`;
+              nd++;
+              on = true;
+            }
+          }
+        }
+        setHidden(d, on);
+      }
+      for (const [d, t] of drawTex) if (!allDrawings().has(d)) { gl.deleteTexture(t.tex); drawTex.delete(d); hidden.delete(d); }
+      // a drawing that moves without a scroll (a card rising into place) keeps the loop awake
+      if (dsig !== lastDrawSig) { lastDrawSig = dsig; lastActive = now; busy = true; }
+
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.uniform2f(u.uRes, w, h);
       gl.uniform1f(u.uDpr, canvas.width / w);
@@ -451,7 +556,14 @@ export default function DotField() {
       gl.uniform3f(u.uFill, ...rgb(glass.fill));
       gl.uniform1f(u.uFillA, glass.alpha);
       gl.uniform1f(u.uDark, dark ? 1 : 0);
-      gl.uniform1f(u.uLens, document.documentElement.classList.contains("lens") ? 1 : 0);
+      gl.uniform1i(u.uDraw0, 0);
+      gl.uniform1i(u.uDraw1, 1);
+      gl.uniform1i(u.uDraw2, 2);
+      gl.uniform1i(u.uDraw3, 3);
+      gl.uniform3fv(u.uDrawA, drawBufA);
+      gl.uniform3fv(u.uDrawB, drawBufB);
+      gl.uniform1fv(u.uDrawL, drawBufL);
+      gl.uniform1f(u.uNDraw, nd);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       canvas.style.opacity = "1";
 
@@ -464,6 +576,8 @@ export default function DotField() {
     return () => {
       cancelAnimationFrame(raf);
       themeObs.disconnect();
+      offDrawings();
+      showAll();
       window.removeEventListener("resize", resize);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerdown", onDown);
