@@ -257,11 +257,12 @@ void main() {
   vec3 film = edgeFilm(n);
 
   if (cover > 0.0) {
-    float rim = 1.0 - clamp(-d / 26.0, 0.0, 1.0);
-    rim *= rim;
-    // card material, exactly as the card is drawn (DotField's frost under the card fill)
-    vec3 col = mix(uBg, uDot, frostDots(p + n * rim * 11.0, uPage, uGap, uDotR) * uDotA);
+    // the card's glass, exactly as the card is drawn (DotField's glass under
+    // the card fill), which is the settled bubble's glass: lensed at the rim
+    // of the growing shape, so the refraction follows the bulge as it forms
+    vec3 col = glassSurface(p, uPage, d, n);
     col = mix(col, uFill, uFillA);
+    col = mix(col, vec3(1.0), glassGlow(d));
     vec4 cardM = vec4(col, 1.0);
     // bubble material: a light see-through fill, the film glowing toward the rim
     float f = pow(1.0 - clamp(-d / 14.0, 0.0, 1.0), 2.0);

@@ -226,7 +226,8 @@ export const VaporCloud = memo(function VaporCloud({
 export const BUBBLE_FROST = "blur(1.6px) saturate(1.25) brightness(var(--bubble-lift))";
 
 const SETTLE_SPRING = { type: "spring", stiffness: 170, damping: 26 } as const;
-const PRESS_SPRING = { type: "spring", stiffness: 170, damping: 14 } as const;
+// critically damped: a press settles, it doesn't bounce back
+const PRESS_SPRING = { type: "spring", stiffness: 170, damping: 26 } as const;
 
 const POP_TRANSITION: Transition = {
   scale: { duration: 0.08, ease: "easeOut" },

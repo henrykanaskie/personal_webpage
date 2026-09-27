@@ -48,8 +48,8 @@ export function uniforms<K extends string>(gl: WebGLRenderingContext, prog: WebG
 export const rgb = (c: readonly number[]) => [c[0] / 255, c[1] / 255, c[2] / 255] as const;
 
 /**
- * GLSL shared by both shaders: signed distances, the frosted dots under glass,
- * and the glass edge (--edge-lip and --edge-film in app/globals.css).
+ * GLSL shared by both shaders: signed distances, the glass itself, and the
+ * glass edge (--edge-lip and --edge-film in app/globals.css).
  */
 export const GLSL_GLASS = `
 float sdBox(vec2 p, vec2 c, vec2 hs, float r) {
@@ -61,14 +61,45 @@ float smin(float a, float b, float k) {
   return mix(b, a, h) - k * h * (1.0 - h);
 }
 
-// Frosted dots: the paper's grid (page-anchored: page is the page position of
-// the canvas' top-left), each dot spread soft and wide.
-float frostDots(vec2 p, vec2 page, float gap, float dotR) {
-  vec2 w = p + page;
-  vec2 c = (floor(w / gap) + 0.5) * gap - page;
-  float d = length(p - c);
-  float R = dotR + 2.6;
-  return smoothstep(R, 0.0, d) * 0.6;
+// The glass: one material for every glass surface the shaders draw: a card
+// (DotField, under the card's DOM fill), a card's swell toward the cursor,
+// and a bubble budding out of its card (LiquidBud). It is the settled
+// bubble's glass, modelled on what the browser does to it (.glass-bubble and
+// useGlassLens in lib/liquid.tsx):
+//   - the dots behind are blurred as by blur(1.6px): a Gaussian of sigma 1.6
+//     (a small disk convolved with it: peak r^2 / 2 sigma^2)
+//   - the lens: flat in the middle, a 22px bevel at the rim with a circular
+//     profile, sampling inward up to ~19px (lensMap at strength 38), each
+//     colour bent a little more than the last (1, 1.07, 1.14) for dispersion
+//   - saturate(1.25) and the brightness lift (--bubble-lift)
+//   - the rim's inner light (the inset glow in --bubble-edge), glassGlow
+// Needs uGap, uDotR, uDotA, uBg, uDot and uDark declared above it. off is
+// the page position of the canvas' top-left, so the dots land on the page grid.
+float glassDot(vec2 p, vec2 off) {
+  vec2 c = (floor((p + off) / uGap) + 0.5) * uGap - off;
+  vec2 q = p - c;
+  const float S2 = 5.12; // 2 sigma^2, sigma 1.6
+  return min(1.0, uDotR * uDotR / S2) * exp(-dot(q, q) / S2);
+}
+// d: signed distance to the glass outline (negative inside); n: outward normal
+vec3 glassSurface(vec2 p, vec2 off, float d, vec2 n) {
+  float u = 1.0 - clamp(-d / 22.0, 0.0, 1.0);
+  float tilt = 1.0 - sqrt(max(0.0, 1.0 - u * u));
+  vec2 v = -n * tilt * 18.9;
+  // flat across the middle: one sample; only the bevel splits the colours
+  vec3 k = tilt < 1e-3
+    ? vec3(glassDot(p, off))
+    : vec3(glassDot(p + v, off), glassDot(p + v * 1.07, off), glassDot(p + v * 1.14, off));
+  k *= uDotA;
+  vec3 col = mix(uBg, uDot, k);
+  float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
+  col = mix(vec3(l), col, 1.25);
+  return col * mix(1.02, 1.12, uDark);
+}
+// how much white the rim's inner light adds, d inside the outline
+float glassGlow(float d) {
+  float x = max(-d, 0.0);
+  return mix(0.42 * exp(-x / 12.0), 0.11 * exp(-x / 14.0), uDark);
 }
 
 // The thin film just inside the edge, by the direction the edge faces (n):
