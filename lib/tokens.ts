@@ -129,11 +129,11 @@ export const paper = {
   dotRadius: 1.15,
   light: { bg: [0xf1, 0xf0, 0xed], dot: [52, 48, 42], dotAlpha: 0.27 },
   dark: { bg: [0x0c, 0x0d, 0x10], dot: [196, 204, 222], dotAlpha: 0.16 },
-  // The frosted cards' fill (--glass-fill): the shaders paint the same fill
-  // wherever a card's liquid edge reaches past its DOM box.
+  // The cards' fill (--card-fill), the same as the bubbles' (--bubble-fill):
+  // the shaders paint it wherever a card's liquid edge reaches past its DOM box.
   glass: {
-    light: { fill: [255, 255, 255], alpha: 0.58 },
-    dark: { fill: [26, 28, 33], alpha: 0.7 },
+    light: { fill: [255, 255, 255], alpha: 0.14 },
+    dark: { fill: [255, 255, 255], alpha: 0.035 },
   },
 } as const;
 

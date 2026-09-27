@@ -431,8 +431,9 @@ export function InfoBubble({
                 x: { type: "spring", stiffness: 170, damping: 26 },
                 y: { type: "spring", stiffness: 170, damping: 26 },
                 top: { type: "spring", stiffness: 170, damping: 26 },
-                scaleX: { type: "spring", stiffness: 170, damping: 14 },
-                scaleY: { type: "spring", stiffness: 170, damping: 14 },
+                // critically damped: a press settles, it doesn't bounce back
+                scaleX: { type: "spring", stiffness: 170, damping: 26 },
+                scaleY: { type: "spring", stiffness: 170, damping: 26 },
                 // the clear bubble frosts over: a slower crossfade with the droplet
                 opacity: { duration: 0.32, ease: "easeInOut" },
               }
