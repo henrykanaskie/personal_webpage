@@ -58,12 +58,10 @@ export default function DepthWorld({
   sections,
   perSection,
   isDark,
-  onOpen,
 }: {
   sections: Section[];
   perSection: number;
   isDark: boolean;
-  onOpen: (items: LightboxItem[], index: number, rect: DOMRect) => void;
 }) {
   const t = photoTheme(isDark);
   const router = useRouter();
@@ -76,6 +74,11 @@ export default function DepthWorld({
   const [near, setNear] = useState(0);
   const [active, setActive] = useState(-1);
   const [hoverStop, setHoverStop] = useState<number | null>(null);
+  const [hoverStation, setHoverStation] = useState<number | null>(null);
+  const [hoverPrint, setHoverPrint] = useState<number | null>(null);
+  // The camera's current depth, for click handlers that need to know how far away something is
+  const camRef = useRef(0);
+  const enteringRef = useRef(false);
   const isMobile = !!useIsMobile();
   const reduceMotion = !!useReducedMotion();
 
@@ -136,10 +139,8 @@ export default function DepthWorld({
     window.scrollTo({ top: scrollFor(stops[stop].z - ARRIVE), behavior: reduceMotion ? "auto" : "smooth" });
   };
 
-  // Entering a station: the camera surges forward through it, then the page changes
-  const enter = (href: string) => (e: React.MouseEvent) => {
-    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-    e.preventDefault();
+  // The camera surges forward through whatever is ahead, then the page changes
+  const surgeInto = (href: string) => {
     const fly = flyRef.current;
     if (fly && !reduceMotion) {
       fly.style.transition = "transform 0.75s cubic-bezier(0.55, 0, 0.9, 0.35), opacity 0.75s ease-in";
@@ -147,6 +148,39 @@ export default function DepthWorld({
       fly.style.opacity = "0";
     }
     setTimeout(() => router.push(href), reduceMotion ? 0 : 680);
+  };
+
+  // Plain clicks only: modifier clicks and middle clicks keep their normal new-tab behaviour
+  const plainClick = (e: React.MouseEvent) => !(e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0);
+
+  // A chapter title: from far away, fly to it first, then go through it
+  const enterStation = (i: number) => (e: React.MouseEvent) => {
+    if (!plainClick(e)) return;
+    e.preventDefault();
+    if (enteringRef.current) return;
+    enteringRef.current = true;
+    const target = stops[i].z - ARRIVE;
+    if (reduceMotion || Math.abs(target - camRef.current) < 1400) {
+      surgeInto(stops[i].href);
+      return;
+    }
+    flyTo(i);
+    const start = performance.now();
+    const waitForArrival = () => {
+      // Enter once the camera is nearly there; never wait forever
+      if (Math.abs(target - camRef.current) < 140 || performance.now() - start > 1800) surgeInto(stops[i].href);
+      else requestAnimationFrame(waitForArrival);
+    };
+    requestAnimationFrame(waitForArrival);
+  };
+
+  // A print: go straight into its chapter
+  const enterPrint = (href: string) => (e: React.MouseEvent) => {
+    if (!plainClick(e)) return;
+    e.preventDefault();
+    if (enteringRef.current) return;
+    enteringRef.current = true;
+    surgeInto(href);
   };
 
   // Camera loop, running only while the world is on screen
@@ -182,6 +216,7 @@ export default function DepthWorld({
       const target = progress() * depth + introOffset;
       const prev = camZ;
       camZ += (target - camZ) * (reduceMotion ? 1 : smoothing(intro < 1 ? 0.2 : 0.075, dt));
+      camRef.current = camZ;
       velocity += ((camZ - prev) / Math.max(dt, 1)) * 1000 * 0.1 - velocity * 0.1;
       const kl = reduceMotion ? 0 : smoothing(0.05, dt);
       look.x += (lookTarget.x - look.x) * kl;
@@ -221,7 +256,8 @@ export default function DepthWorld({
           const y = p.kind === "station" ? 0.07 * vh : mobile ? 0.22 * vh : 0.24 * vh;
           const rz = p.kind === "station" ? p.rz : 0;
           el.style.transform = `translate(-50%, -50%) translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, ${(-rel).toFixed(1)}px) rotateZ(${rz}deg)`;
-          el.style.pointerEvents = p.kind === "station" && rel > 120 && rel < 3400 ? "auto" : "none";
+          // Titles stay clickable as long as you can see them, however far away
+          el.style.pointerEvents = p.kind === "station" && rel > 120 && rel < FAR * 0.9 ? "auto" : "none";
           continue;
         }
 
@@ -237,7 +273,7 @@ export default function DepthWorld({
         el.style.transform = `translate(-50%, -50%) translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, ${(-rel).toFixed(1)}px) rotateX(${(
           p.rx * settle
         ).toFixed(2)}deg) rotateY(${(p.ry * settle).toFixed(2)}deg) rotateZ(${rz.toFixed(2)}deg)`;
-        el.style.pointerEvents = rel > 60 && rel < 2400 ? "auto" : "none";
+        el.style.pointerEvents = rel > 60 && rel < FAR * 0.75 ? "auto" : "none";
         if (rel > 0 && rel < best) {
           best = rel;
           bestIdx = p.archiveIndex;
@@ -312,8 +348,9 @@ export default function DepthWorld({
           }}
         />
 
-        <div ref={flyRef} style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d" }}>
-          <div ref={worldRef} style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d" }}>
+        {/* These full-screen layers sit at depth 0, in front of every print, so they must let clicks through */}
+        <div ref={flyRef} style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d", pointerEvents: "none" }}>
+          <div ref={worldRef} style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d", pointerEvents: "none" }}>
             {planes.map((p, i) => {
               const ref = (el: HTMLDivElement | null) => {
                 planeRefs.current[i] = el;
@@ -359,8 +396,12 @@ export default function DepthWorld({
                     <Link
                       href={stop.href}
                       data-af=""
-                      onClick={enter(stop.href)}
-                      onMouseEnter={() => router.prefetch(stop.href)}
+                      onClick={enterStation(p.stop)}
+                      onMouseEnter={() => {
+                        router.prefetch(stop.href);
+                        setHoverStation(p.stop);
+                      }}
+                      onMouseLeave={() => setHoverStation(null)}
                       style={{
                         display: "flex",
                         flexDirection: "column",
@@ -389,8 +430,10 @@ export default function DepthWorld({
                           fontSize: 10,
                           padding: "10px 18px",
                           borderRadius: 999,
-                          border: `1px solid ${t.rule}`,
-                          color: t.sub,
+                          border: `1px solid ${hoverStation === p.stop ? t.ink : t.rule}`,
+                          background: hoverStation === p.stop ? t.ink : "transparent",
+                          color: hoverStation === p.stop ? t.bg : t.sub,
+                          transition: "background 0.25s ease, color 0.25s ease, border-color 0.25s ease",
                         }}
                       >
                         Enter →
@@ -413,8 +456,13 @@ export default function DepthWorld({
                   <button
                     type="button"
                     data-af=""
-                    aria-label={`Open ${p.item.sectionTitle} photograph`}
-                    onClick={(e) => onOpen(items, p.archiveIndex, e.currentTarget.getBoundingClientRect())}
+                    aria-label={`Go to ${p.item.sectionTitle}`}
+                    onClick={enterPrint(`/photography/${p.item.sectionId}`)}
+                    onMouseEnter={() => {
+                      router.prefetch(`/photography/${p.item.sectionId}`);
+                      setHoverPrint(i);
+                    }}
+                    onMouseLeave={() => setHoverPrint(null)}
                     style={{
                       display: "block",
                       width: "100%",
@@ -438,6 +486,26 @@ export default function DepthWorld({
                       <FadeImage src={p.item.photo.src} alt="" fill sizes="(min-width: 768px) 28vw, 56vw" style={{ objectFit: "cover" }} />
                     </span>
                   </button>
+                  {/* Where a click on this print goes, written under it like a caption */}
+                  <span
+                    aria-hidden
+                    style={{
+                      ...mono,
+                      position: "absolute",
+                      left: 0,
+                      top: "100%",
+                      marginTop: 10,
+                      fontSize: 10,
+                      color: t.ink,
+                      whiteSpace: "nowrap",
+                      pointerEvents: "none",
+                      textShadow: halo,
+                      opacity: hoverPrint === i ? 1 : 0,
+                      transition: "opacity 0.25s ease",
+                    }}
+                  >
+                    {p.item.sectionTitle} →
+                  </span>
                 </div>
               );
             })}

@@ -524,3 +524,15 @@ html.vt-css::view-transition-new(root) {
   -webkit-mask-composite: source-over, source-in, source-over;
   mask-composite: add, intersect, add;
 }
+
+/* Split screen: photography chapter links brighten and underline on hover */
+.photo-split-link {
+  transition: color 0.25s ease;
+  text-underline-offset: 6px;
+  text-decoration-thickness: 1px;
+}
+.photo-split-link:hover,
+.photo-split-link:focus-visible {
+  color: var(--photo-ink) !important;
+  text-decoration: underline !important;
+}
