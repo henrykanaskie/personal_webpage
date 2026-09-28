@@ -185,6 +185,7 @@ body {
   pointer-events: none;
 }
 .dot-field {
+  transition: opacity 600ms ease;
   position: absolute;
   top: 0;
   left: 0;
@@ -292,6 +293,13 @@ body {
 html.paper-gl .glass-panel[data-liquid] {
   background: transparent;
   box-shadow: none;
+}
+/* DotField's takeover is a crossfade: these fade out as its canvas fades in
+   (.dot-field, the same 600ms), so the frost arrives gradually, not as a switch */
+.glass-panel[data-liquid] {
+  transition:
+    background-color 600ms ease,
+    box-shadow 600ms ease;
 }
 
 /* ─── Drafting details ─────────────────────────────────────────────────────── */

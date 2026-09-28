@@ -284,6 +284,8 @@ const CONTENT = ".glass-panel, .metal-surface, a, button, img, input, textarea, 
 // each time it draws, with this much to spare above and below, it moves with
 // the cards between draws.
 const MARGIN = 160;
+// the crossfade from the CSS glass to the canvas's (matches .dot-field in globals.css)
+const REVEAL_MS = 600;
 
 export default function DotField() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -368,6 +370,8 @@ export default function DotField() {
       // frost, fill and shadow it paints trailed a rising card by a frame.
       // \`raf\` is just "a frame is queued".
       let raf = 0, last = performance.now();
+      // when the first frame was drawn (the crossfade in starts then); 0 before
+      let revealAt = 0, drawn = 0;
       const onFrame = (d: FrameData) => frame(d.timestamp);
       const queue = () => { motionFrame.postRender(onFrame); return 1; };
       const unqueue = () => cancelFrame(onFrame);
@@ -454,6 +458,7 @@ export default function DotField() {
         lost = true;
         unqueue();
         raf = 0;
+        canvas.style.transition = "none"; // gone at once, not faded
         canvas.style.opacity = "0";
         showAll();
         releaseBuds();
@@ -681,7 +686,8 @@ export default function DotField() {
               on = true;
             }
           }
-          setHidden(d, on);
+          // the SVG stays until the canvas has faded in, or the drawing would dip
+          setHidden(d, on && revealAt > 0 && now - revealAt > REVEAL_MS);
         }
         // within the budget: the least recently drawn go first
         let bytes = 0;
@@ -704,8 +710,12 @@ export default function DotField() {
         gl.viewport(0, 0, canvas.width, canvas.height);
         gl.uniform2f(u.uRes, w, h);
         gl.uniform1f(u.uMargin, MARGIN);
-        // placed for this frame's scroll, in the same frame as it's drawn
-        canvas.style.transform = `translate3d(0, ${scrollY - MARGIN}px, 0)`;
+        // placed for this frame's scroll, in the same frame as it's drawn, from
+        // where its wrapper actually is: the wrapper fills <body>, and a child's
+        // top margin collapsing through <body> put it 8px down the page, so
+        // placing the canvas by scrollY alone drew every card's glass 8px low
+        const wr = (canvas.parentElement ?? canvas).getBoundingClientRect();
+        canvas.style.transform = `translate3d(${-wr.left}px, ${-MARGIN - wr.top}px, 0)`;
         gl.uniform1f(u.uDpr, canvas.width / w);
         gl.uniform2f(u.uScroll, window.scrollX, scrollY);
         gl.uniform1f(u.uGap, paper.gap);
@@ -750,7 +760,19 @@ export default function DotField() {
         gl.uniform4fv(u.uBudS, budBuf.s);
         gl.uniform1f(u.uNBud, nb);
         gl.drawArrays(gl.TRIANGLES, 0, 3);
-        canvas.style.opacity = "1";
+        if (!revealAt && ++drawn >= 3) {
+          // The takeover is a crossfade, not a switch: the canvas fades in
+          // (.dot-field's opacity transition) as the cards' CSS fill and shadow
+          // fade out (paper-gl, their transition), both over REVEAL_MS.
+          // Switched at once, the frost appeared whole seconds after the page
+          // had loaded (the shader compiles in the background). It starts on
+          // the third frame drawn, not the first: the driver finishes the
+          // shader on its first use, a long frame, and a fade started then ran
+          // its course behind the stall and arrived as a jump anyway.
+          revealAt = now;
+          canvas.style.opacity = "1";
+          document.documentElement.classList.add("paper-gl");
+        }
 
         // With nothing moving, the last frame stays on screen and the loop sleeps
         // until the next scroll, pointer move, click, resize or theme change.
@@ -763,11 +785,10 @@ export default function DotField() {
           busy = true; // one more frame, at full resolution (resized as it draws)
         }
         // (a bud stepping above may already have woken the loop: never queue two frames)
+        if (!revealAt) busy = true; // warming up: keep drawing until the reveal
         if (busy && !raf) raf = queue();
       }
       glassDriver.active = true;
-      // the cards' shadows are drawn here now (see the shader); their CSS ones step aside
-      document.documentElement.classList.add("paper-gl");
       raf = queue();
 
       return () => {
