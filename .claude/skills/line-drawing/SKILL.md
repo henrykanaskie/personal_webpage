@@ -125,8 +125,11 @@ Hand the user the prompt and these steps:
    the most detail.
 2. Thumbnail test before tracing: shrink it to 140px. If the object isn't
    recognisable, simplify it and regenerate. More detail never fixes it.
-3. Trace it to SVG with the same tracer and settings as the existing drawings
-   (stroked outlines, few tones). Save it as `svgs/svg_data/<name>.svg`.
+3. Trace it: `python3 svgs/trace.py <name> <image>` writes
+   `svgs/svg_data/<name>.svg` (vtracer, binary ink, spline curves, specks
+   dropped; it reproduces the bee from a raster of it). An image is the only
+   route to the density of the bee and the chip: thousands of hand-shaded
+   contours, organic curves, texture. Code drawing can't reach that.
 
 Or draw it in code instead: `svgs/draw/scenes.py` holds one function per
 drawing, built from the isometric kit in `svgs/draw/iso.py` (solids,
