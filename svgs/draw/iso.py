@@ -141,13 +141,16 @@ class Scene:
         pad = 4
         vb = (min(xs) - pad, min(ys) - pad, max(xs) - min(xs) + 2 * pad, max(ys) - min(ys) + 2 * pad)
         body = []
+        # a few polylines per path: the site animates each path drawing itself,
+        # so one path per part would draw a whole object in a single stroke
+        per_path = 8
         for k in order:
-            if not groups[k]:
-                continue
-            d = " ".join(
-                "M " + " L ".join(f"{sx * x:.2f} {y:.2f}" for x, y in ln) for ln in groups[k]
-            )
-            body.append(f'<path stroke="#000000" d="{d}"/>')
+            lines = groups[k]
+            for i in range(0, len(lines), per_path):
+                d = " ".join(
+                    "M " + " L ".join(f"{sx * x:.2f} {y:.2f}" for x, y in ln) for ln in lines[i:i + per_path]
+                )
+                body.append(f'<path stroke="#000000" d="{d}"/>')
         with open(path, "w") as f:
             f.write(
                 f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{vb[0]:.2f} {vb[1]:.2f} {vb[2]:.2f} {vb[3]:.2f}">\n'
@@ -449,8 +452,8 @@ def rbox(o, size, r=1.0, shade=1.0, rng=None, top_detail=None):
         nrm = norm((ty, -tx, 0))
         if dot(nrm, VIEW) > 0.05:
             dark = 1 - max(0.0, dot(nrm, LIGHT))
-            if dark > 0.45 and rng is not None and rng.random() < dark * shade:
-                frac = 0.35 + 0.6 * dark * (rng.uniform(0.6, 1.0))
+            if dark > 0.62 and rng is not None and rng.random() < (dark - 0.5) * 2 * shade:
+                frac = 0.15 + 0.35 * dark * (rng.uniform(0.5, 1.0))
                 lines.append([P((p0.x, p0.y, z)), P((p0.x, p0.y, z + h * frac))])
             t += step * (1.4 - dark)
         else:
@@ -519,14 +522,16 @@ def bolt_circle(c, u, v, R, count, r=0.45):
     return out
 
 
-def tube(path3, r, n=16):
-    """A cable or hose along a 3D path: two silhouette lines and a few ring
-    marks, occluding what's behind it."""
+def tube(path3, r, n=16, shading=True):
+    """A cable, bar or casting along a 3D path: its silhouette, occluding what's
+    behind it, and (with shading) a line along its shadow side."""
     pts = [P(p) for p in path3]
     line = LineString(pts)
     body = line.buffer(r, cap_style=1, quad_segs=4)
     lines = []
     L = line.length
+    if not shading:
+        return lines, body
     # a shading line along the lower side
     off = []
     for i in range(0, 101):
@@ -537,3 +542,31 @@ def tube(path3, r, n=16):
         off.append((a.x - dy / ln * r * 0.45, a.y + dx / ln * r * 0.45))
     lines.append(off)
     return lines, body
+
+
+def rslab(o, ex, ey, ez, w, d, h, r=1.0, shade=0.5, rng=None):
+    """A rounded slab in any orientation: a rounded rectangle w x d in the
+    ex, ey plane, extruded h along ez. For lids, sheets and panels at an angle."""
+    ring = rounded_rect(w / 2, d / 2, w, d, r)
+    W = lambda a, b, c: add(o, add(mul(ex, a), add(mul(ey, b), mul(ez, c))))
+    cap0 = [P(W(a, b, 0)) for a, b in ring]
+    cap1 = [P(W(a, b, h)) for a, b in ring]
+    hull = MultiPoint(cap0 + cap1).convex_hull
+    facing = cap1 if dot(ez, VIEW) > 0 else cap0
+    lines = [facing + [facing[0]]]
+    if rng is not None and shade > 0:
+        per = LineString(ring + [ring[0]])
+        t, L = 0.0, per.length
+        while t < L:
+            p0, p1 = per.interpolate(t), per.interpolate(min(t + 0.05, L))
+            n = norm(add(mul(ex, p1.y - p0.y), mul(ey, -(p1.x - p0.x))))
+            dark = 1 - max(0.0, dot(n, LIGHT))
+            if dot(n, VIEW) > 0.05 and dark > 0.62 and rng.random() < (dark - 0.5) * 2 * shade:
+                lines.append([P(W(p0.x, p0.y, 0)), P(W(p0.x, p0.y, h * (0.15 + 0.35 * dark * rng.uniform(0.5, 1))))])
+            t += 0.5
+    return lines, hull
+
+
+def plane_pts(o, ex, ey, pts2):
+    """2D points in a plane's own units (along ex, ey from o), to screen."""
+    return [P(add(o, add(mul(ex, a), mul(ey, b)))) for a, b in pts2]

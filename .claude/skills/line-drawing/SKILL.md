@@ -10,18 +10,26 @@ pasted by the user. Output: a spec at `svgs/specs/<name>.md` holding the image
 prompt, and, once the user has a traced SVG, `svgs/<name>Paths.ts` wired into
 the card.
 
-The standard is the drawings already on the site. The bee is not a bee: it's a
-bee made of machinery (a gear train in a glass abdomen, a circuit-board thorax,
-rocket nozzles). The neural net is not a picture about learning: it is the
-network, drawn as an engraving plate. So:
+The standard is the drawings already on the site: the rocket in cutaway, the
+chip, the FPGA package, the thruster, the mechanical bee. Each is **one real
+object**, drawn like a blueprint or patent plate in three-quarter view, bold
+outline, fine detail, its working parts showing. None is a scene, a pipeline or
+a diagram of boxes and arrows.
 
-> **Draw the project's actual mechanism, made physical.** Either a real object
-> with its computation built into it, or the project's own diagram drawn as an
-> engineering plate. Never a metaphor that only gestures at the topic (a
-> compass for "navigating code", a book for "knowledge").
+> **One picture, one or two concrete objects that stand for the whole project.**
+> A real, recognisable piece of hardware, not a metaphor that only gestures at
+> the topic (a compass for "navigating code") and not an abstract assembly of
+> floating plates, trees and arrows. Its details carry the specifics.
 
-The test: someone who has read the card could point at each part of the drawing
-and name the claim in the description it stands for.
+Worked examples, all on the site: a Galton board for the Monte Carlo engine (its
+ball piles run past the Gaussian printed on its back: the fat tail); an open
+laptop with the pixel room hanging from its notch for Sprite Room; a microscope
+over a slide of code with three lines boxed for AccliMate (the exact lines an
+answer cites).
+
+The test: the object is recognisable at 140px, and someone who has read the
+card can say why this object, and point at the detail that makes it this
+project.
 
 ## 1. Claims
 
@@ -38,14 +46,11 @@ brag about in an interview). That becomes the **signature detail**.
 
 ## 2. Three concepts
 
-Sketch three concepts in a sentence or two each, at least one of each kind:
-
-- **Machine**: a physical object whose parts are the computation (the bee).
-- **Plate**: the project's own diagram or pipeline drawn as an exploded
-  engineering assembly (the network).
-
-For each, a part map: every major part → the claim it depicts. A part with no
-claim is decoration; cut it.
+Sketch three concepts in a sentence or two each. Each is one or two real
+objects (instruments, machines, devices, hardware), never a scene or a
+pipeline. For each, name the object, the detail on it that carries the
+signature claim, and which other claims its details show. Prefer objects with
+hard, machined forms: they draw well both from an image model and in code.
 
 ## 3. Score
 
@@ -56,7 +61,7 @@ if the best is under 10 of 12.
 |---|---|---|
 | **Specific** | could illustrate any project in the field | at least two parts only this project would have |
 | **Silhouette** | needs the detail to be recognised | recognisable from its outline at 140px |
-| **Part budget** | 6+ major parts | 3-4 major parts plus the signature detail |
+| **One object** | a scene, a pipeline, or floating parts joined by arrows | one or two real objects, nothing floating |
 | **Traceable** | needs text, tone, gradients, photo realism or big solid areas | pure line work and hatching |
 | **Family** | looks like clip art, or repeats a drawing already in `svgs/drawings.json` (two chips, two drones) | reads as another plate from the same book as the bee and the network |
 | **Tone** | brains, robots, glow, money signs, weapons, lightning | precise, understated, engineered |
@@ -73,17 +78,14 @@ in this shape:
 ```
 # <Card title>
 Card: <project|experience>, <left|right> column
-Concept: <machine|plate>: <one line>
+Object: <the one or two objects>
+Code-drawn version: `svgs/draw/scenes.py`, `<name>()` (if there is one)
 
-## Claims → parts
-| Claim (from the description) | Part |
+## Claims → details
+| Claim (from the description) | Detail on the object |
 
 ## Signature detail
-<the part that carries the most specific claim, and why it must survive>
-
-## Cut order
-<parts to drop first if the thumbnail doesn't read, most expendable first;
-the signature detail is never on it>
+<the detail that carries the most specific claim, and why it must survive>
 
 ## Prompt
 <style block from svgs/specs/STYLE.md, verbatim>
@@ -92,9 +94,9 @@ the signature detail is never on it>
 ```
 
 Write the subject block in this order, since image models weight what comes
-first: **silhouette and pose → the cutaway or exploded structure → the parts,
-each as a physical thing with its shape, count and placement → the signature
-detail, described precisely → `Avoid:` list.** Describe shapes, never
+first: **the object and its pose → its major parts, each with shape, count and
+placement → the cutaway, if any → the signature detail, described precisely →
+`Avoid:` list.** Describe shapes, never
 concepts: not "showing data flowing" but "a flat ribbon of tape carrying small
 rectangular blocks". Every avoid list includes readable text, and whatever
 cliché the topic invites (money for finance, a brain for ML, a robot for
@@ -107,16 +109,16 @@ Hand the user the prompt and these steps:
 1. Generate four candidates at 2048px or more, all with the same model and
    settings as the other drawings. Pick the one with the cleanest outline, not
    the most detail.
-2. Thumbnail test before tracing: shrink it to 140px. If it doesn't read, cut
-   the next part on the cut order and regenerate. More detail never fixes it.
+2. Thumbnail test before tracing: shrink it to 140px. If the object isn't
+   recognisable, simplify it and regenerate. More detail never fixes it.
 3. Trace it to SVG with the same tracer and settings as the existing drawings
    (stroked outlines, few tones). Save it as `svgs/svg_data/<name>.svg`.
 
 Or draw it in code instead: `svgs/draw/scenes.py` holds one function per
 drawing, built from the isometric kit in `svgs/draw/iso.py` (solids,
 cylinders, hatching, stipple, pixel sprites, hidden-line removal). Code-drawn
-art is clean and diagrammatic rather than engraved, and a fraction of the
-size; it suits plate concepts best. `python3 svgs/draw/scenes.py <name>`
+art reads as a clean technical illustration rather than an engraving, and is
+a fraction of the size; it suits machined, hard-edged objects best. `python3 svgs/draw/scenes.py <name>`
 writes `svgs/svg_data/<name>.svg`, then continue below.
 
 ## 6. Trim and check
@@ -135,7 +137,7 @@ on the report:
 - **dense source**: the image had tones or fine hatching everywhere. Regenerate
   the image flatter; trimming can't recover a muddy trace.
 - **sparse**: little of the linework survived. Only matters if the thumbnail
-  doesn't read; then simplify the drawing (cut order), don't raise the budget.
+  doesn't read; then simplify the drawing, don't raise the budget.
 - **only N paths**: the drawing will draw itself in a few strokes rather than
   line by line. Retrace with a tracer setting that separates outlines.
 - Too heavy on the page: `--budget 300`. Pinned count wrong: `--keep N` or
