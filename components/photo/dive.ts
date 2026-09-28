@@ -129,17 +129,18 @@ function run(f: Flight) {
       // the chapter has mounted once its heading is in the DOM (outside the fading flight)
       if ([...document.querySelectorAll("main h1")].some((h) => !h.closest("[data-depth-world]"))) {
         f.dissolving = true;
-        const cover = Math.max(window.innerWidth, window.innerHeight * (f.a.w / f.a.h)) * 1.15;
-        f.guess = { cx: window.innerWidth / 2, cy: window.innerHeight / 2, w: cover };
+        // drift a little closer while fading: a float, not a rush to fill the screen (which, fast,
+        // turned any stall while the page mounted into a lurch)
+        f.guess = { cx: f.pos.cx, cy: f.pos.cy, w: f.pos.w * 1.4 };
         f.landedAt = now;
-        f.root.style.transition = "opacity 0.6s ease-in";
+        f.root.style.transition = "opacity 0.7s ease";
         f.root.style.opacity = "0";
       }
     }
 
     const goal = f.target ?? f.guess;
     // Gentle while it only has a guess, firmer once it knows where it's going
-    const omega = f.target ? 10 : f.dissolving ? 4 : 5.5;
+    const omega = f.target ? 10 : f.dissolving ? 2.5 : 5.5;
     [f.pos.cx, f.vel.cx] = spring(f.pos.cx, f.vel.cx, goal.cx, omega, dt);
     [f.pos.cy, f.vel.cy] = spring(f.pos.cy, f.vel.cy, goal.cy, omega, dt);
     [f.pos.w, f.vel.w] = spring(f.pos.w, f.vel.w, goal.w, omega, dt);
@@ -182,7 +183,7 @@ function run(f: Flight) {
         f.root.style.transition = "opacity 0.35s ease";
         f.root.style.opacity = "0";
       }
-    } else if (now - f.landedAt > (f.dissolving ? 700 : 400)) {
+    } else if (now - f.landedAt > (f.dissolving ? 800 : 400)) {
       cleanup(f);
       return;
     }
@@ -296,8 +297,9 @@ export function divePrint(opts: { href: string; from: HTMLElement; img: HTMLImag
 
   // The print shrinks from its white border to the photo, so start from the photo area
   const pos = { cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width };
-  // While the chapter loads, the photo keeps coming toward you: toward the middle, growing
-  const guess = { cx: window.innerWidth / 2, cy: window.innerHeight / 2, w: Math.min(window.innerWidth * 0.9, pos.w * 3.5) };
+  // It arrives centred and large (the camera floated to it), so while the chapter loads it only
+  // keeps drifting gently closer
+  const guess = { cx: window.innerWidth / 2, cy: window.innerHeight / 2, w: pos.w * 1.08 };
   const needle = encodeURIComponent(opts.src);
 
   // hide the whole print (frame too), not just the photo the overlay stands in for
