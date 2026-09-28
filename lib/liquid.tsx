@@ -641,7 +641,7 @@ export function LiquidBud({
         if (st === "failed" || gl.isContextLost()) { finish(); return; }
         if (st === "compiling") { schedule(); return; }
         if (!started) { started = true; t0 = last = now; } // the bud's clock starts once it can draw
-        const dt = Math.min(0.034, (now - last) / 1000);
+        const dt = Math.min(0.034, Math.max(0, (now - last) / 1000)); // never a step back (a spring grows on one)
         last = now;
         const t = now - t0;
         let cx: number, cy: number, hw: number, hh: number, k: number;

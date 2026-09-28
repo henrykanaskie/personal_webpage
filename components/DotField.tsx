@@ -71,6 +71,7 @@ uniform vec4 uBudP[2];
 uniform vec4 uBudS[2];
 uniform float uNBud;
 uniform float uDrawL[4];   // each drawing's own mip level at this size (texels per device px)
+uniform float uDrawO[4];   // and its opacity (its wrapper fades with its card)
 ${GLSL_GLASS}
 // One drawing at p, premultiplied, sharp or blurred (below). Only pixels
 // inside a drawing's box read its texture at all.
@@ -93,10 +94,10 @@ vec4 drawOne(sampler2D t, vec3 A, vec3 B, float base, vec2 p, float blur) {
 vec4 over(vec4 top, vec4 under) { return top + under * (1.0 - top.a); }
 vec4 drawings(vec2 p, float blur) {
   vec4 c = vec4(0.0);
-  if (uNDraw > 0.5) c = drawOne(uDraw0, uDrawA[0], uDrawB[0], uDrawL[0], p, blur);
-  if (uNDraw > 1.5) c = over(drawOne(uDraw1, uDrawA[1], uDrawB[1], uDrawL[1], p, blur), c);
-  if (uNDraw > 2.5) c = over(drawOne(uDraw2, uDrawA[2], uDrawB[2], uDrawL[2], p, blur), c);
-  if (uNDraw > 3.5) c = over(drawOne(uDraw3, uDrawA[3], uDrawB[3], uDrawL[3], p, blur), c);
+  if (uNDraw > 0.5) c = drawOne(uDraw0, uDrawA[0], uDrawB[0], uDrawL[0], p, blur) * uDrawO[0];
+  if (uNDraw > 1.5) c = over(drawOne(uDraw1, uDrawA[1], uDrawB[1], uDrawL[1], p, blur) * uDrawO[1], c);
+  if (uNDraw > 2.5) c = over(drawOne(uDraw2, uDrawA[2], uDrawB[2], uDrawL[2], p, blur) * uDrawO[2], c);
+  if (uNDraw > 3.5) c = over(drawOne(uDraw3, uDrawA[3], uDrawB[3], uDrawL[3], p, blur) * uDrawO[3], c);
   return c;
 }
 // The cards alone (what the DOM draws) and the liquid (cards plus the swell).
@@ -319,26 +320,38 @@ export default function DotField() {
       const u = uniforms(gl, prog, [
         "uRes", "uDpr", "uScroll", "uMargin", "uGap", "uDotR", "uBg", "uDot", "uDotA", "uMouse", "uMouseOn",
         "uRipple", "uOrigin", "uIntro", "uCards", "uCardP", "uNCards", "uBlob", "uHoleR", "uFill", "uFillA", "uDark",
-        "uDraw0", "uDraw1", "uDraw2", "uDraw3", "uDrawA", "uDrawB", "uDrawL", "uNDraw",
+        "uDraw0", "uDraw1", "uDraw2", "uDraw3", "uDrawA", "uDrawB", "uDrawL", "uDrawO", "uNDraw",
         "uBudC", "uBudD", "uBudP", "uBudS", "uNBud",
       ]);
       const cardBuf = new Float32Array(32), cardPBuf = new Float32Array(16);
-      let panels: HTMLElement[] = [];
-      let panelsAt = -1e9;
+      // live: a card that mounts (a page arriving) is in the next frame's list,
+      // not up to a second later, part way through its fade
+      const panels = document.getElementsByClassName("glass-panel") as HTMLCollectionOf<HTMLElement>;
       const radiusOf = new WeakMap<HTMLElement, number>();
       let lastSig = "";
       // The swell: a blob that rises out of the nearest card's edge toward the cursor.
       const blob = { x: 0, y: 0, vx: 0, vy: 0, r: 0, vr: 0 };
       let holeEl: HTMLElement | null = null;
 
-      // Opacity from inline styles up the tree (Framer Motion writes it there), so
-      // the frost appears with its card rather than before it.
-      const opacityOf = (el: HTMLElement) => {
+      // Opacity through the whole tree, as the browser is compositing it right
+      // now, so the frost (and a drawing) fades with its card rather than
+      // switching on. It has to be the computed value: Framer Motion runs
+      // opacity as a Web Animation on the compositor, and the inline style only
+      // jumps from the start value to the end one when it finishes (the frost
+      // popped in whole as the card's fade ended). The computed styles are live
+      // objects, so the chain is looked up once per element.
+      const chains = new WeakMap<Element, CSSStyleDeclaration[]>();
+      const opacityOf = (el: Element) => {
+        let chain = chains.get(el);
+        if (!chain || !el.isConnected) {
+          chain = [];
+          for (let e: Element | null = el; e && e !== document.body; e = e.parentElement) chain.push(getComputedStyle(e));
+          chains.set(el, chain);
+        }
         let a = 1;
-        let e: HTMLElement | null = el;
-        for (let i = 0; i < 6 && e; i++, e = e.parentElement) {
-          const o = e.style.opacity;
-          if (o !== "") a *= parseFloat(o);
+        for (const cs of chain) {
+          a *= parseFloat(cs.opacity);
+          if (a <= 0) return 0;
         }
         return a;
       };
@@ -464,7 +477,7 @@ export default function DotField() {
           if (c && !disposed) { ready.set(d, { theme, canvas: c }); wake(); }
         });
       };
-      const drawBufA = new Float32Array(12), drawBufB = new Float32Array(12), drawBufL = new Float32Array(4);
+      const drawBufA = new Float32Array(12), drawBufB = new Float32Array(12), drawBufL = new Float32Array(4), drawBufO = new Float32Array(4);
       const hidden = new Set<Drawing>();
       let lastDrawSig = "";
       const setHidden = (d: Drawing, on: boolean) => {
@@ -500,7 +513,13 @@ export default function DotField() {
         stepBuds(now);
         let busy = scrolling || themeChanged || settling || ripple.t >= 0 || introT < 2.2 || now - lastActive < 250 || buds.size > 0 || budTicks.size > 0;
 
-        const dt = Math.min(0.05, (now - last) / 1000);
+        // Never negative: wake() stamps \`last\` from inside an input handler, and
+        // the frame's own timestamp (when the frame began) can be earlier than
+        // that, by a whole frame after a long one. The springs are exact for any
+        // step forward, but a step back grows them by exp(omega * |dt|): after a
+        // hang, one frame threw the swell hundreds of px wide and the cursor's
+        // swelling dots into a solid block.
+        const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
         last = now;
 
         // Adaptive resolution: if busy frames keep running long, step the pixel ratio down.
@@ -514,15 +533,12 @@ export default function DotField() {
         const glass = dark ? paper.glass.dark : paper.glass.light;
 
         // Visible cards, nearest first.
-        if (now - panelsAt > 1000) {
-          panels = Array.from(document.querySelectorAll<HTMLElement>("[data-liquid]"));
-          panelsAt = now;
-        }
         let n = 0;
         let sig = "";
         let near: { d: number; ex: number; ey: number; nx: number; ny: number; el: HTMLElement; left: number; top: number } | null = null;
-        for (const el of panels) {
+        for (const el of Array.from(panels)) {
           if (n >= 8) break;
+          if (!el.hasAttribute("data-liquid")) continue;
           const r = el.getBoundingClientRect();
           if (r.bottom < -40 || r.top > h + 40 || r.width < 1) continue;
           let rad = radiusOf.get(el);
@@ -648,7 +664,9 @@ export default function DotField() {
               drawBufB.set([inv.b / b.h, inv.d / b.h, (inv.f - b.y) / b.h], nd * 3);
               // its own mip level: texels per device px at its current size
               drawBufL[nd] = Math.log2(t.size / (b.w * Math.hypot(m.a, m.b) * (canvas.width / w)));
-              dsig += `${m.a.toFixed(3)},${m.e | 0},${m.f | 0};`;
+              const o = opacityOf(d.svg);
+              drawBufO[nd] = o;
+              dsig += `${m.a.toFixed(3)},${m.e | 0},${m.f | 0},${o.toFixed(2)};`;
               nd++;
               on = true;
             }
@@ -705,6 +723,7 @@ export default function DotField() {
         gl.uniform3fv(u.uDrawA, drawBufA);
         gl.uniform3fv(u.uDrawB, drawBufB);
         gl.uniform1fv(u.uDrawL, drawBufL);
+        gl.uniform1fv(u.uDrawO, drawBufO);
         gl.uniform1f(u.uNDraw, nd);
         let nb = 0;
         for (const bd of buds) {
