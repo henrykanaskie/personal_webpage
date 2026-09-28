@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { animate, useMotionValue, type MotionValue } from "framer-motion";
 import { paper } from "./tokens";
 import { FULLSCREEN_VERT, GLSL_GLASS, rgb } from "./gl";
 
@@ -153,30 +154,6 @@ export function useGlassLens(
   return { filter, style };
 }
 
-// The lens filter as DOM, for an element that isn't rendered by React (the
-// droplet LiquidBud flies): the same three-pass colour split as useGlassLens.
-const SVGNS = "http://www.w3.org/2000/svg";
-function lensFilterEl(id: string, href: string, w: number, h: number, strength: number): SVGSVGElement {
-  const svg = document.createElementNS(SVGNS, "svg");
-  svg.setAttribute("width", "0");
-  svg.setAttribute("height", "0");
-  svg.style.position = "absolute";
-  const f = document.createElementNS(SVGNS, "filter");
-  const attrs = (el: Element, a: Record<string, string | number>) => { for (const k in a) el.setAttribute(k, String(a[k])); return el; };
-  attrs(f, { id, x: 0, y: 0, width: w, height: h, filterUnits: "userSpaceOnUse", "color-interpolation-filters": "sRGB" });
-  const add = (tag: string, a: Record<string, string | number>) => f.appendChild(attrs(document.createElementNS(SVGNS, tag), a));
-  add("feImage", { href, x: 0, y: 0, width: w, height: h, preserveAspectRatio: "none", result: "map" });
-  [["dR", 1], ["dG", 1.07], ["dB", 1.14]].forEach(([r, m]) =>
-    add("feDisplacementMap", { in: "SourceGraphic", in2: "map", scale: strength * (m as number), xChannelSelector: "R", yChannelSelector: "G", result: r as string }));
-  add("feColorMatrix", { in: "dR", type: "matrix", values: "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0", result: "r" });
-  add("feColorMatrix", { in: "dG", type: "matrix", values: "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0", result: "g" });
-  add("feColorMatrix", { in: "dB", type: "matrix", values: "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0", result: "b" });
-  add("feComposite", { in: "r", in2: "g", operator: "arithmetic", k2: 1, k3: 1, result: "rg" });
-  add("feComposite", { in: "rg", in2: "b", operator: "arithmetic", k2: 1, k3: 1 });
-  svg.appendChild(f);
-  return svg;
-}
-
 // ─── setRingHole ────────────────────────────────────────────────────────────
 // Open (or close, r <= 0) a hole in a panel's rim at x, y (panel-local px).
 // "s" is the cursor swell's hole ("b" is reserved for a second source).
@@ -323,7 +300,8 @@ void main() {
   // 1 some way out along the bulge, and 1 for the freed droplet. A stretched
   // film thins, so it turns from the card's frosted surface into the bubble's
   // clear, iridescent one.
-  float isDrop = uBubble * smoothstep(1.0, -1.0, drop(p) - cardStub(p));
+  float dropSide = smoothstep(1.0, -1.0, drop(p) - cardStub(p)); // nearer the drop than the card
+  float isDrop = uBubble * dropSide;
   float stretch = max(smoothstep(2.0, 38.0, dc), isDrop);
   // thin film colour, the same as the settled bubble's (.glass-bubble::after)
   vec3 film = edgeFilm(n);
@@ -358,6 +336,9 @@ void main() {
   float filmA = glow * edgeFilmA(uDark) * reach;
   outc = vec4(film, 1.0) * filmA + outc * (1.0 - filmA);
   outc = vec4(rimCol, 1.0) * rimA + outc * (1.0 - rimA);
+  // once free, the drop is the real bubble's (it flies over this canvas's
+  // place): what's drawn of it here hands over as the bubble fades in
+  outc *= 1.0 - uBubble * dropSide;
   gl_FragColor = outc * uAlpha;
 }
 `;
@@ -476,14 +457,45 @@ if (typeof window !== "undefined") {
 const SWELL_MS = 560;
 const NECK_MS = 330;
 
+// ─── useBud ─────────────────────────────────────────────────────────────────
+// A bubble's visibility while it buds and after: `glass` is the bubble
+// element's opacity and `content` its text's. LiquidBud drives both while the
+// bubble flies (the glass as the canvas hands the drop over, the text as the
+// bubble grows into place); once it has landed they follow `visible` (the
+// card being in view).
+export function useBud(visible: boolean) {
+  const glass = useMotionValue(0);
+  const content = useMotionValue(0);
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    if (!done) return;
+    const a = animate(glass, visible ? 1 : 0, { duration: 0.32, ease: "easeInOut" });
+    const c = animate(content, visible ? 1 : 0, { duration: 0.32, ease: "easeInOut" });
+    return () => { a.stop(); c.stop(); };
+  }, [done, visible, glass, content]);
+  const onDone = useCallback(() => setDone(true), []);
+  return { glass, content, onDone };
+}
+
+// At most two buds grow at a time (DotField draws the glass of two, and the
+// canvas pool holds two); another waits its turn rather than open a new WebGL
+// context, which past the browser's limit costs the oldest one: DotField's.
+const BUD_MAX = 2;
+let budsActive = 0;
+
 export function LiquidBud({
   bubbleRef,
   cardRadius = 24,
   bubbleRadius = 24,
   onDone,
+  glass: glassOp,
+  content: contentOp,
 }: {
   /** The bubble, already at its resting position (invisible); its offsetParent is the overlay over the card. */
   bubbleRef: React.RefObject<HTMLElement | null>;
+  /** The bubble's opacity and its text's (useBud): the bubble itself flies from the break to its box. */
+  glass?: MotionValue<number>;
+  content?: MotionValue<number>;
   cardRadius?: number;
   /** Corner radius of the finished bubble (anything at least half its size makes it round). */
   bubbleRadius?: number;
@@ -517,258 +529,287 @@ export function LiquidBud({
     const bubble = bubbleRef.current;
     const host = bubble?.offsetParent as HTMLElement | null;
     if (!box || !holder || !bubble || !host) return;
-    const finish = () => { doneRef.current(); setGone(true); };
+    // A bud's teardown runs the moment it's done, not when the bubble closes:
+    // an open bubble used to keep its canvas and WebGL context, so every
+    // further bud made a new context, until the browser dropped the oldest one
+    // (DotField's, and with it every card's glass) and the screen flashed.
+    let cancelled = false;
+    let waitRaf = 0;
+    let holding = false;
+    let teardown: (() => void) | null = null;
+    const release = () => {
+      teardown?.();
+      teardown = null;
+      if (holding) { holding = false; budsActive--; }
+    };
+    const finish = () => { release(); doneRef.current(); setGone(true); };
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { finish(); return; }
-    const b = takeBudGL();
-    if (!b) { finish(); return; }
-    const { gl, U, canvas } = b;
-    holder.appendChild(canvas);
+    const begin = () => {
+      const b = takeBudGL();
+      if (!b) { finish(); return; }
+      const { gl, U, canvas } = b;
+      holder.appendChild(canvas);
 
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.round(box.w * dpr);
-    canvas.height = Math.round(box.h * dpr);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(box.w * dpr);
+      canvas.height = Math.round(box.h * dpr);
 
-    // Geometry in canvas space, measured once: the bubble already sits,
-    // invisible, exactly where it will end up.
-    const hr = host.getBoundingClientRect();
-    const br = bubble.getBoundingClientRect();
-    const card = { x: -box.left, y: -box.top, w: hr.width, h: hr.height };
-    const goal = { cx: br.left - hr.left - box.left + br.width / 2, cy: br.top - hr.top - box.top + br.height / 2, hw: br.width / 2, hh: br.height / 2 };
+      // Geometry in canvas space, measured once: the bubble already sits,
+      // invisible, exactly where it will end up.
+      const hr = host.getBoundingClientRect();
+      const br = bubble.getBoundingClientRect();
+      const card = { x: -box.left, y: -box.top, w: hr.width, h: hr.height };
+      const goal = { cx: br.left - hr.left - box.left + br.width / 2, cy: br.top - hr.top - box.top + br.height / 2, hw: br.width / 2, hh: br.height / 2 };
 
-    // Which side it buds from, the point on that side, and the outward normal.
-    const dxOut = goal.cx > card.x + card.w ? goal.cx - (card.x + card.w) : goal.cx < card.x ? card.x - goal.cx : 0;
-    const dyOut = goal.cy > card.y + card.h ? goal.cy - (card.y + card.h) : goal.cy < card.y ? card.y - goal.cy : 0;
-    const sideways = dxOut >= dyOut;
-    const inset = cardRadius * 1.6 + 30;
-    let ex: number, ey: number, nx = 0, ny = 0;
-    if (sideways) {
-      nx = goal.cx > card.x + card.w / 2 ? 1 : -1;
-      ex = nx > 0 ? card.x + card.w : card.x;
-      ey = Math.min(card.y + card.h - inset, Math.max(card.y + inset, goal.cy));
-    } else {
-      ny = goal.cy > card.y + card.h / 2 ? 1 : -1;
-      ey = ny > 0 ? card.y + card.h : card.y;
-      ex = Math.min(card.x + card.w - inset, Math.max(card.x + inset, goal.cx));
-    }
-    // The bud grows to about this radius before it lets go.
-    const rb = Math.max(22, Math.min(46, Math.min(goal.hw, goal.hh) * 0.4));
-
-    const dark = document.documentElement.classList.contains("dark");
-    const pal = dark ? paper.dark : paper.light;
-    const glass = dark ? paper.glass.dark : paper.glass.light;
-    const bubA = dark ? 0.035 : 0.14; // .glass-bubble's fill (white, low strength)
-
-    // The card element whose rim we open: the liquid panel that fills the host.
-    let panel: HTMLElement | null = null;
-    let best = 12;
-    document.querySelectorAll<HTMLElement>("[data-liquid]").forEach((el) => {
-      const r = el.getBoundingClientRect();
-      const e = Math.abs(r.left - hr.left) + Math.abs(r.top - hr.top) + Math.abs(r.width - hr.width) + Math.abs(r.height - hr.height);
-      if (e < best) { best = e; panel = el; }
-    });
-    const hole = { x: ex, y: ey, r: 0 };
-
-    // The droplet: once it pinches free, the bubble's real lens flies with it,
-    // under the canvas (which keeps drawing the rim, film and shadow), so what
-    // it passes over bends through it exactly as through the settled bubble.
-    // It sits at the bubble's box and is carried there by a transform that
-    // follows the same spring, corners and all. Chromium only, like the lens.
-    let droplet: HTMLDivElement | null = null;
-    let dropletSvg: SVGSVGElement | null = null;
-    if (supportsLens()) {
-      const gw = Math.round(goal.hw * 2), gh = Math.round(goal.hh * 2);
-      const href = lensMap(gw, gh, Math.min(bubbleRadius, gw / 2, gh / 2), Math.min(22, Math.min(gw, gh) / 4));
-      if (href) {
-        const fid = `budlens-${Math.random().toString(36).slice(2)}`;
-        dropletSvg = lensFilterEl(fid, href, gw, gh, 38);
-        droplet = document.createElement("div");
-        Object.assign(droplet.style, {
-          position: "absolute",
-          left: `${goal.cx - gw / 2}px`,
-          top: `${goal.cy - gh / 2}px`,
-          width: `${gw}px`,
-          height: `${gh}px`,
-          transformOrigin: "50% 50%",
-          pointerEvents: "none",
-          opacity: "0",
-          backdropFilter: `url(#${fid}) var(--glass-frost)`,
-          webkitBackdropFilter: `url(#${fid}) var(--glass-frost)`,
-        } as Partial<CSSStyleDeclaration>);
-        holder.insertBefore(dropletSvg, canvas);
-        holder.insertBefore(droplet, canvas);
-      }
-    }
-    // The card keeps its own (DOM) rim; around the bud it's opened
-    // (setRingHole) and the canvas draws the edge there instead, round card
-    // and bulge as one shape, handing over across the same falloff.
-
-    // After the break: springs carry the bubble to its box, and the stub on the card's side recoils.
-    const flight: Spring = { x: 0, v: 0 };
-    const from = { cx: 0, cy: 0, hw: 0, hh: 0 };
-    const stub: Spring = { x: 0, v: 0 };
-    let broken = false;
-    let brokeAt = 0;
-    let t0 = performance.now();
-    let last = t0, raf = 0, fade = 1, fading = false, fadeAt = 0;
-
-    const shape: BudShape = { card: [0, 0, 0, 0], drop: [0, 0, 0, 0], cardR: 0, dropR: 0, k: 1, bubble: 0, stub: [0, 0, 0] };
-    let started = false;
-    // the next step: inside DotField's frame when it's drawing the glass, else our own
-    const schedule = () => {
-      if (glassDriver.active) { budTicks.add(frame); budsChanged(); }
-      else raf = requestAnimationFrame(frame);
-    };
-    const frame = (now: number) => {
-      budTicks.delete(frame);
-      const st = budState(b);
-      if (st === "failed" || gl.isContextLost()) { finish(); return; }
-      if (st === "compiling") { schedule(); return; }
-      if (!started) { started = true; t0 = last = now; } // the bud's clock starts once it can draw
-      const dt = Math.min(0.034, (now - last) / 1000);
-      last = now;
-      const t = now - t0;
-      let cx: number, cy: number, hw: number, hh: number, k: number;
-
-      if (t < SWELL_MS + NECK_MS) {
-        if (t < SWELL_MS) {
-          // swell: the bud rises from inside the card, so what shows is the
-          // card's own side bulging, broad at first (a wide smooth union)
-          const e = smooth(t / SWELL_MS);
-          const r = rb * (0.55 + 0.45 * e);
-          const out = -r + (r * 1.25) * e;
-          cx = ex + nx * out; cy = ey + ny * out; hw = hh = r;
-          k = 70 - 12 * e;
-          hole.r = r + k * 0.9 + 6;
-        } else {
-          // stretch: it pulls away, faster and faster, and the union's reach
-          // narrows so the base draws in to a neck until it pinches
-          const e = clamp01((t - SWELL_MS) / NECK_MS);
-          const a = e * e;
-          const out = rb * 0.25 + rb * 1.55 * a;
-          cx = ex + nx * out; cy = ey + ny * out;
-          // stretched along the pull, thinner across it
-          const along = rb * (1 + 0.22 * a), across = rb * (1 - 0.1 * a);
-          hw = nx !== 0 ? along : across; hh = nx !== 0 ? across : along;
-          k = 58 - 42 * a;
-          hole.r = across + k * 0.9 + 6;
-        }
+      // Which side it buds from, the point on that side, and the outward normal.
+      const dxOut = goal.cx > card.x + card.w ? goal.cx - (card.x + card.w) : goal.cx < card.x ? card.x - goal.cx : 0;
+      const dyOut = goal.cy > card.y + card.h ? goal.cy - (card.y + card.h) : goal.cy < card.y ? card.y - goal.cy : 0;
+      const sideways = dxOut >= dyOut;
+      const inset = cardRadius * 1.6 + 30;
+      let ex: number, ey: number, nx = 0, ny = 0;
+      if (sideways) {
+        nx = goal.cx > card.x + card.w / 2 ? 1 : -1;
+        ex = nx > 0 ? card.x + card.w : card.x;
+        ey = Math.min(card.y + card.h - inset, Math.max(card.y + inset, goal.cy));
       } else {
-        if (!broken) {
-          // the break: the bubble leaves from where the neck let go, with the
-          // speed it had, and the card's side keeps a stub that snaps back
-          broken = true;
-          const out = rb * 1.8;
-          from.cx = ex + nx * out; from.cy = ey + ny * out;
-          from.hw = nx !== 0 ? rb * 1.22 : rb * 0.9; from.hh = nx !== 0 ? rb * 0.9 : rb * 1.22;
-          // carry the stretch's speed into the flight, as a rate of progress
-          const v = (rb * 1.55 * 2) / (NECK_MS / 1000);
-          const dist = Math.hypot(goal.cx - from.cx, goal.cy - from.cy) || 1;
-          flight.x = 0; flight.v = Math.min(4, v / dist);
-          stub.x = rb * 0.55; stub.v = 0;
-          brokeAt = t;
-        }
-        // One motion: a single spring carries the bubble from where it broke
-        // off to its box, moving and growing together (size, position and
-        // corners all follow the same progress). Critically damped, so it eases
-        // in with no bounce at all (the starting speed is below omega, so it
-        // can't overshoot either). Two springs (one to move, one to grow) made
-        // it arrive and then inflate, like filling a shape.
-        stepSpring(flight, 1, 8.5, 1, dt);
-        // the card's side settles back flat, no wobble
-        stepSpring(stub, 0, 20, 1, dt);
-        const q = flight.x;
-        cx = from.cx + (goal.cx - from.cx) * q;
-        cy = from.cy + (goal.cy - from.cy) * q;
-        hw = Math.max(0, from.hw + (goal.hw - from.hw) * q);
-        hh = Math.max(0, from.hh + (goal.hh - from.hh) * q);
-        // It never touches the card again (a smooth union there made it
-        // reconnect as it grew): as it swells it's pushed away to keep a gap.
-        const GAP = 8;
-        if (nx < 0) cx = Math.min(cx, ex - GAP - hw);
-        if (nx > 0) cx = Math.max(cx, ex + GAP + hw);
-        if (ny < 0) cy = Math.min(cy, ey - GAP - hh);
-        if (ny > 0) cy = Math.max(cy, ey + GAP + hh);
-        k = 0.5; // a plain union from here on: separate shapes
-        hole.r = clamp01(stub.x / (rb * 0.55)) * (rb * 0.55 + 30);
-        const settled = Math.abs(1 - flight.x) < 0.004 && Math.abs(flight.v) < 0.05;
-        const tb = t - SWELL_MS - NECK_MS;
-        if ((settled || tb > 1800) && !fading) {
-          fading = true;
-          fadeAt = now;
-          doneRef.current(); // the frosted bubble fades in over this one...
-        }
-        // ...as this one fades out (on the clock, not per frame, so dropped frames can't stall it)
-        if (fading) fade = Math.max(0, 1 - (now - fadeAt) / 300);
+        ny = goal.cy > card.y + card.h / 2 ? 1 : -1;
+        ey = ny > 0 ? card.y + card.h : card.y;
+        ex = Math.min(card.x + card.w - inset, Math.max(card.x + inset, goal.cx));
       }
-      // round while it's a bud; after the break the corners go from round to
-      // the finished bubble's own on the same progress as everything else
-      const small = Math.min(hw, hh);
-      const dropR = broken
-        ? Math.min(small, Math.min(from.hw, from.hh) + (Math.min(bubbleRadius, goal.hw, goal.hh) - Math.min(from.hw, from.hh)) * clamp01(flight.x))
-        : small;
+      // The bud grows to about this radius before it lets go.
+      const rb = Math.max(22, Math.min(46, Math.min(goal.hw, goal.hh) * 0.4));
 
-      if (droplet) {
-        const on = broken ? clamp01((t - brokeAt) / 220) * fade : 0;
-        droplet.style.opacity = on.toFixed(3);
-        if (on > 0) {
+      const dark = document.documentElement.classList.contains("dark");
+      const pal = dark ? paper.dark : paper.light;
+      const glass = dark ? paper.glass.dark : paper.glass.light;
+      const bubA = dark ? 0.035 : 0.14; // .glass-bubble's fill (white, low strength)
+
+      // The card element whose rim we open: the liquid panel that fills the host.
+      let panel: HTMLElement | null = null;
+      let best = 12;
+      document.querySelectorAll<HTMLElement>("[data-liquid]").forEach((el) => {
+        const r = el.getBoundingClientRect();
+        const e = Math.abs(r.left - hr.left) + Math.abs(r.top - hr.top) + Math.abs(r.width - hr.width) + Math.abs(r.height - hr.height);
+        if (e < best) { best = e; panel = el; }
+      });
+      const hole = { x: ex, y: ey, r: 0 };
+
+      // The flight: from the break the bubble itself flies, carried from the
+      // drop's box to its own by individual CSS translate and scale (which
+      // compose with Framer Motion's transform instead of fighting it), its
+      // corners matched to the drop's, its glass fading in as the canvas hands
+      // the drop over and its text as it grows into place. So the last frame
+      // of the animation is the bubble, with nothing swapped in at the end.
+      // Positions in host px: the bubble's layout centre (transforms aside)
+      // and its resting centre (with Framer's own offset, R).
+      const lc = { x: bubble.offsetLeft + bubble.offsetWidth / 2, y: bubble.offsetTop + bubble.offsetHeight / 2 };
+      const G = { x: goal.cx + box.left, y: goal.cy + box.top };
+      const R = { x: G.x - lc.x, y: G.y - lc.y };
+      const saved = { origin: bubble.style.transformOrigin, radius: bubble.style.borderRadius };
+      let flying = false;
+      const clearFlight = () => {
+        if (!flying) return;
+        flying = false;
+        bubble.style.translate = "";
+        bubble.style.scale = "";
+        bubble.style.transformOrigin = saved.origin;
+        bubble.style.borderRadius = saved.radius;
+      };
+      // The card keeps its own (DOM) rim; around the bud it's opened
+      // (setRingHole) and the canvas draws the edge there instead, round card
+      // and bulge as one shape, handing over across the same falloff.
+
+      // After the break: springs carry the bubble to its box, and the stub on the card's side recoils.
+      const flight: Spring = { x: 0, v: 0 };
+      const from = { cx: 0, cy: 0, hw: 0, hh: 0 };
+      const stub: Spring = { x: 0, v: 0 };
+      let broken = false;
+      let brokeAt = 0;
+      let t0 = performance.now();
+      let last = t0, raf = 0, fade = 1, fading = false, fadeAt = 0;
+
+      const shape: BudShape = { card: [0, 0, 0, 0], drop: [0, 0, 0, 0], cardR: 0, dropR: 0, k: 1, bubble: 0, stub: [0, 0, 0] };
+      let started = false;
+      // the next step: inside DotField's frame when it's drawing the glass, else our own
+      const schedule = () => {
+        if (glassDriver.active) { budTicks.add(frame); budsChanged(); }
+        else raf = requestAnimationFrame(frame);
+      };
+      const frame = (now: number) => {
+        budTicks.delete(frame);
+        const st = budState(b);
+        if (st === "failed" || gl.isContextLost()) { finish(); return; }
+        if (st === "compiling") { schedule(); return; }
+        if (!started) { started = true; t0 = last = now; } // the bud's clock starts once it can draw
+        const dt = Math.min(0.034, (now - last) / 1000);
+        last = now;
+        const t = now - t0;
+        let cx: number, cy: number, hw: number, hh: number, k: number;
+
+        if (t < SWELL_MS + NECK_MS) {
+          if (t < SWELL_MS) {
+            // swell: the bud rises from inside the card, so what shows is the
+            // card's own side bulging, broad at first (a wide smooth union)
+            const e = smooth(t / SWELL_MS);
+            const r = rb * (0.55 + 0.45 * e);
+            const out = -r + (r * 1.25) * e;
+            cx = ex + nx * out; cy = ey + ny * out; hw = hh = r;
+            k = 70 - 12 * e;
+            hole.r = r + k * 0.9 + 6;
+          } else {
+            // stretch: it pulls away, faster and faster, and the union's reach
+            // narrows so the base draws in to a neck until it pinches
+            const e = clamp01((t - SWELL_MS) / NECK_MS);
+            const a = e * e;
+            const out = rb * 0.25 + rb * 1.55 * a;
+            cx = ex + nx * out; cy = ey + ny * out;
+            // stretched along the pull, thinner across it
+            const along = rb * (1 + 0.22 * a), across = rb * (1 - 0.1 * a);
+            hw = nx !== 0 ? along : across; hh = nx !== 0 ? across : along;
+            k = 58 - 42 * a;
+            hole.r = across + k * 0.9 + 6;
+          }
+        } else {
+          if (!broken) {
+            // the break: the bubble leaves from where the neck let go, with the
+            // speed it had, and the card's side keeps a stub that snaps back
+            broken = true;
+            const out = rb * 1.8;
+            from.cx = ex + nx * out; from.cy = ey + ny * out;
+            from.hw = nx !== 0 ? rb * 1.22 : rb * 0.9; from.hh = nx !== 0 ? rb * 0.9 : rb * 1.22;
+            // carry the stretch's speed into the flight, as a rate of progress
+            const v = (rb * 1.55 * 2) / (NECK_MS / 1000);
+            const dist = Math.hypot(goal.cx - from.cx, goal.cy - from.cy) || 1;
+            flight.x = 0; flight.v = Math.min(4, v / dist);
+            stub.x = rb * 0.55; stub.v = 0;
+            brokeAt = t;
+          }
+          // One motion: a single spring carries the bubble from where it broke
+          // off to its box, moving and growing together (size, position and
+          // corners all follow the same progress). Critically damped, so it eases
+          // in with no bounce at all (the starting speed is below omega, so it
+          // can't overshoot either). Two springs (one to move, one to grow) made
+          // it arrive and then inflate, like filling a shape.
+          stepSpring(flight, 1, 8.5, 1, dt);
+          // the card's side settles back flat, no wobble
+          stepSpring(stub, 0, 20, 1, dt);
+          const q = flight.x;
+          cx = from.cx + (goal.cx - from.cx) * q;
+          cy = from.cy + (goal.cy - from.cy) * q;
+          hw = Math.max(0, from.hw + (goal.hw - from.hw) * q);
+          hh = Math.max(0, from.hh + (goal.hh - from.hh) * q);
+          // It never touches the card again (a smooth union there made it
+          // reconnect as it grew): as it swells it's pushed away to keep a gap.
+          const GAP = 8;
+          if (nx < 0) cx = Math.min(cx, ex - GAP - hw);
+          if (nx > 0) cx = Math.max(cx, ex + GAP + hw);
+          if (ny < 0) cy = Math.min(cy, ey - GAP - hh);
+          if (ny > 0) cy = Math.max(cy, ey + GAP + hh);
+          k = 0.5; // a plain union from here on: separate shapes
+          hole.r = clamp01(stub.x / (rb * 0.55)) * (rb * 0.55 + 30);
+          const settled = Math.abs(1 - flight.x) < 0.004 && Math.abs(flight.v) < 0.05;
+          const tb = t - SWELL_MS - NECK_MS;
+          if ((settled || tb > 1800) && !fading) {
+            // landed: the bubble at rest, exactly as it stays
+            fading = true;
+            fadeAt = now;
+            clearFlight();
+            glassOp?.set(1);
+            contentOp?.set(1);
+            doneRef.current();
+          }
+          // ...as this one fades out (on the clock, not per frame, so dropped frames can't stall it)
+          if (fading) fade = Math.max(0, 1 - (now - fadeAt) / 300);
+        }
+        // round while it's a bud; after the break the corners go from round to
+        // the finished bubble's own on the same progress as everything else
+        const small = Math.min(hw, hh);
+        const dropR = broken
+          ? Math.min(small, Math.min(from.hw, from.hh) + (Math.min(bubbleRadius, goal.hw, goal.hh) - Math.min(from.hw, from.hh)) * clamp01(flight.x))
+          : small;
+
+        if (broken && !fading) {
+          const on = clamp01((t - brokeAt) / 220);
           const sx = Math.max(0.01, hw / goal.hw), sy = Math.max(0.01, hh / goal.hh);
-          droplet.style.transform = `translate(${(cx - goal.cx).toFixed(2)}px, ${(cy - goal.cy).toFixed(2)}px) scale(${sx.toFixed(4)}, ${sy.toFixed(4)})`;
-          droplet.style.borderRadius = `${(dropR / sx).toFixed(2)}px / ${(dropR / sy).toFixed(2)}px`;
+          // c' = layout centre + translate + scale * R, placed on the drop's centre
+          const tx = cx + box.left - G.x + R.x * (1 - sx), ty = cy + box.top - G.y + R.y * (1 - sy);
+          flying = true;
+          bubble.style.transformOrigin = "50% 50%";
+          bubble.style.translate = `${tx.toFixed(2)}px ${ty.toFixed(2)}px`;
+          bubble.style.scale = `${sx.toFixed(4)} ${sy.toFixed(4)}`;
+          bubble.style.borderRadius = `${(dropR / sx).toFixed(2)}px / ${(dropR / sy).toFixed(2)}px`;
+          glassOp?.set(on);
+          const q = clamp01((flight.x - 0.55) / 0.45);
+          contentOp?.set(q * q * (3 - 2 * q));
         }
-      }
 
-      const cr = canvas.getBoundingClientRect();
-      // the shape, in viewport px, for DotField to draw the glass of
-      shape.card = [card.x + cr.left, card.y + cr.top, card.w, card.h];
-      shape.drop = [cx + cr.left, cy + cr.top, hw, hh];
-      shape.cardR = cardRadius;
-      shape.dropR = dropR;
-      shape.k = k;
-      shape.bubble = broken ? clamp01((t - brokeAt) / 220) : 0;
-      shape.stub = [ex + cr.left, ey + cr.top, Math.max(0, stub.x)];
-      if (!buds.has(shape)) { buds.add(shape); budsChanged(); }
-      gl.viewport(0, 0, canvas.width, canvas.height);
-      gl.clearColor(0, 0, 0, 0);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.uniform2f(U("uRes"), box.w, box.h);
-      gl.uniform1f(U("uDpr"), dpr);
-      gl.uniform2f(U("uPage"), cr.left + window.scrollX, cr.top + window.scrollY);
-      gl.uniform4f(U("uCard"), card.x, card.y, card.w, card.h);
-      gl.uniform1f(U("uCardR"), cardRadius);
-      gl.uniform4f(U("uDrop"), cx, cy, hw, hh);
-      gl.uniform1f(U("uDropR"), dropR);
-      gl.uniform1f(U("uK"), k);
-      gl.uniform3f(U("uStub"), ex, ey, Math.max(0, stub.x));
-      gl.uniform3f(U("uHole"), hole.x, hole.y, hole.r);
-      gl.uniform1f(U("uBubble"), broken ? clamp01((t - brokeAt) / 220) : 0);
-      gl.uniform1f(U("uBubA"), bubA);
-      gl.uniform1f(U("uRim"), Math.min(1, t / 120));
-      // the card's rim opens round the bud, and closes again as the canvas fades
-      if (panel) setRingHole(panel, "b", hole.x - card.x, hole.y - card.y, hole.r * fade);
-      gl.uniform1f(U("uAlpha"), fade);
-      gl.uniform1f(U("uShadow"), glassDriver.active ? 0 : 1);
-      gl.uniform1f(U("uDark"), dark ? 1 : 0);
-      gl.uniform1f(U("uGap"), paper.gap);
-      gl.uniform1f(U("uDotR"), paper.dotRadius);
-      gl.uniform1f(U("uDotA"), pal.dotAlpha);
-      gl.uniform3f(U("uBg"), ...rgb(pal.bg));
-      gl.uniform3f(U("uDot"), ...rgb(pal.dot));
-      gl.uniform3f(U("uFill"), ...rgb(glass.fill));
-      gl.uniform1f(U("uFillA"), glass.alpha);
-      gl.drawArrays(gl.TRIANGLES, 0, 3);
+        const cr = canvas.getBoundingClientRect();
+        // the shape, in viewport px, for DotField to draw the glass of
+        shape.card = [card.x + cr.left, card.y + cr.top, card.w, card.h];
+        // once the bubble has taken the drop over, the glass here is the card's side alone
+        shape.drop = broken && t - brokeAt >= 220 ? [0, 0, 0, 0] : [cx + cr.left, cy + cr.top, hw, hh];
+        shape.cardR = cardRadius;
+        shape.dropR = dropR;
+        shape.k = k;
+        shape.bubble = broken ? clamp01((t - brokeAt) / 220) : 0;
+        shape.stub = [ex + cr.left, ey + cr.top, Math.max(0, stub.x)];
+        if (!buds.has(shape)) { buds.add(shape); budsChanged(); }
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.uniform2f(U("uRes"), box.w, box.h);
+        gl.uniform1f(U("uDpr"), dpr);
+        gl.uniform2f(U("uPage"), cr.left + window.scrollX, cr.top + window.scrollY);
+        gl.uniform4f(U("uCard"), card.x, card.y, card.w, card.h);
+        gl.uniform1f(U("uCardR"), cardRadius);
+        gl.uniform4f(U("uDrop"), cx, cy, hw, hh);
+        gl.uniform1f(U("uDropR"), dropR);
+        gl.uniform1f(U("uK"), k);
+        gl.uniform3f(U("uStub"), ex, ey, Math.max(0, stub.x));
+        gl.uniform3f(U("uHole"), hole.x, hole.y, hole.r);
+        gl.uniform1f(U("uBubble"), broken ? clamp01((t - brokeAt) / 220) : 0);
+        gl.uniform1f(U("uBubA"), bubA);
+        gl.uniform1f(U("uRim"), Math.min(1, t / 120));
+        // the card's rim opens round the bud, and closes again as the canvas fades
+        if (panel) setRingHole(panel, "b", hole.x - card.x, hole.y - card.y, hole.r * fade);
+        gl.uniform1f(U("uAlpha"), fade);
+        gl.uniform1f(U("uShadow"), glassDriver.active ? 0 : 1);
+        gl.uniform1f(U("uDark"), dark ? 1 : 0);
+        gl.uniform1f(U("uGap"), paper.gap);
+        gl.uniform1f(U("uDotR"), paper.dotRadius);
+        gl.uniform1f(U("uDotA"), pal.dotAlpha);
+        gl.uniform3f(U("uBg"), ...rgb(pal.bg));
+        gl.uniform3f(U("uDot"), ...rgb(pal.dot));
+        gl.uniform3f(U("uFill"), ...rgb(glass.fill));
+        gl.uniform1f(U("uFillA"), glass.alpha);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
 
-      if (fade > 0) schedule();
-      else { buds.delete(shape); budsChanged(); setGone(true); }
+        if (fade > 0) schedule();
+        else { release(); setGone(true); }
+      };
+      schedule();
+      teardown = () => {
+        cancelAnimationFrame(raf);
+        budTicks.delete(frame);
+        if (panel) setRingHole(panel as HTMLElement, "b", 0, 0, 0);
+        clearFlight();
+        if (buds.delete(shape)) budsChanged();
+        returnBudGL(b);
+      };
     };
-    schedule();
+    // wait for a free slot (two buds at a time)
+    const tryStart = () => {
+      if (cancelled) return;
+      if (budsActive >= BUD_MAX) { waitRaf = requestAnimationFrame(tryStart); return; }
+      budsActive++;
+      holding = true;
+      begin();
+    };
+    tryStart();
     return () => {
-      cancelAnimationFrame(raf);
-      budTicks.delete(frame);
-      if (panel) setRingHole(panel as HTMLElement, "b", 0, 0, 0);
-      droplet?.remove();
-      dropletSvg?.remove();
-      if (buds.delete(shape)) budsChanged();
-      returnBudGL(b);
+      cancelled = true;
+      cancelAnimationFrame(waitRaf);
+      release();
     };
   }, [box, bubbleRef, cardRadius, bubbleRadius]);
 

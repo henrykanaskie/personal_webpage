@@ -170,15 +170,29 @@ body {
 
 /* The dot field canvas: sized to the large viewport so the iOS toolbar
    collapsing doesn't resize it mid-scroll (DotField.tsx). */
+/* DotField's canvas scrolls with the page (see MARGIN in DotField.tsx): it's
+   placed at the scroll position each time it draws and reaches 160px past the
+   viewport above and below. The wrapper covers the page and clips it, so the
+   canvas never lengthens the document. */
+body {
+  position: relative;
+}
+.dot-field-wrap {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  z-index: -1;
+  pointer-events: none;
+}
 .dot-field {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   width: 100%;
-  height: 100%;
-  height: 100lvh;
-  z-index: -1;
+  height: calc(100vh + 320px);
+  height: calc(100lvh + 320px);
   pointer-events: none;
+  will-change: transform;
 }
 .metal-surface > * {
   position: relative;

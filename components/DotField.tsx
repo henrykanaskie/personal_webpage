@@ -41,6 +41,7 @@ precision highp float;
 uniform vec2 uRes;        // css px
 uniform float uDpr;
 uniform vec2 uScroll;     // page position of the viewport's top-left
+uniform float uMargin;    // the canvas reaches this far above and below the viewport (css px)
 uniform float uGap, uDotR;
 uniform vec3 uBg, uDot;
 uniform float uDotA;
@@ -185,7 +186,8 @@ float dots(vec2 p) {
 }
 
 void main() {
-  vec2 p = vec2(gl_FragCoord.x, uRes.y * uDpr - gl_FragCoord.y) / uDpr;
+  // p in viewport px (the canvas starts uMargin above the viewport)
+  vec2 p = vec2(gl_FragCoord.x, uRes.y * uDpr - gl_FragCoord.y) / uDpr - vec2(0.0, uMargin);
   // Cost matters: this runs for every pixel on screen, every frame anything
   // moves. So the card work is tiered. Deep inside a card (well past the rim
   // band) the page is just the glass, flat: no rim normal, no edge, and none of
@@ -273,6 +275,14 @@ function springTo(pos: number, vel: number, target: number, omega: number, dt: n
 // A click on any of these is a click on content, not on the paper: no ripple.
 const CONTENT = ".glass-panel, .metal-surface, a, button, img, input, textarea, p, h1, h2, h3, h4, li";
 
+// The canvas is part of the page, not fixed to the window: the browser
+// scrolls the page on its own thread, ahead of this loop, and a fixed canvas
+// (which paints the cards' glass, fill and shadow) trailed the cards by a
+// frame or more, shimmering at their edges. Placed at the scroll position
+// each time it draws, with this much to spare above and below, it moves with
+// the cards between draws.
+const MARGIN = 160;
+
 export default function DotField() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pathname = usePathname();
@@ -307,7 +317,7 @@ export default function DotField() {
     const begin = (prog: WebGLProgram) => {
       // prettier-ignore
       const u = uniforms(gl, prog, [
-        "uRes", "uDpr", "uScroll", "uGap", "uDotR", "uBg", "uDot", "uDotA", "uMouse", "uMouseOn",
+        "uRes", "uDpr", "uScroll", "uMargin", "uGap", "uDotR", "uBg", "uDot", "uDotA", "uMouse", "uMouseOn",
         "uRipple", "uOrigin", "uIntro", "uCards", "uCardP", "uNCards", "uBlob", "uHoleR", "uFill", "uFillA", "uDark",
         "uDraw0", "uDraw1", "uDraw2", "uDraw3", "uDrawA", "uDrawB", "uDrawL", "uNDraw",
         "uBudC", "uBudD", "uBudP", "uBudS", "uNBud",
@@ -367,7 +377,7 @@ export default function DotField() {
       const resize = () => {
         dpr = Math.min(dpr, Math.min(window.devicePixelRatio || 1, 2));
         const nw = canvas.clientWidth || window.innerWidth;
-        const nh = Math.max(canvas.clientHeight || 0, window.innerHeight);
+        const nh = Math.max(canvas.clientHeight || 0, window.innerHeight + MARGIN * 2);
         if (nw === w && nh <= h) return;
         h = nw !== w ? nh : Math.max(h, nh);
         w = nw;
@@ -434,8 +444,11 @@ export default function DotField() {
       const themeObs = new MutationObserver(() => wake());
       // The drawings (lib/drawings): one texture each, re-uploaded when the theme
       // or its image changes. A drawing's SVG is hidden only while it's painted here.
-      const drawTex = new Map<Drawing, { tex: WebGLTexture; theme: string; size: number; used: number }>();
-      const MAX_DRAW_TEX = 6;
+      const drawTex = new Map<Drawing, { tex: WebGLTexture; theme: string; size: number; bytes: number; used: number }>();
+      // Textures are kept within a memory budget (about every drawing on the
+      // page at its size), so scrolling back doesn't re-rasterise one and flip
+      // it to its unfrosted SVG under the glass while it does.
+      const TEX_BUDGET = 96 * 1024 * 1024;
       // rasters are made one at a time, in idle moments (a drawing is ~1,200
       // paths), and held only until they're uploaded
       const pending = new Set<Drawing>();
@@ -615,7 +628,7 @@ export default function DotField() {
                   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
                   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
                   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-                  t = { tex, theme, size: r.canvas.width, used: now };
+                  t = { tex, theme, size: r.canvas.width, bytes: r.canvas.width * r.canvas.height * 4 * 1.34, used: now };
                   drawTex.set(d, t);
                 }
                 ready.delete(d);
@@ -624,7 +637,9 @@ export default function DotField() {
                 requestRaster(d, theme);
               }
             }
-            if (inView && nd < 4 && t && t.theme === theme) {
+            // (a texture of the other theme is still drawn until this theme's is
+            // ready: better a moment in the old ink than the SVG flipping in)
+            if (inView && nd < 4 && t) {
               gl.activeTexture(gl.TEXTURE0 + nd);
               gl.bindTexture(gl.TEXTURE_2D, t.tex);
               t.used = now;
@@ -640,10 +655,17 @@ export default function DotField() {
           }
           setHidden(d, on);
         }
-        // at most six textures: the least recently drawn go first
-        if (drawTex.size > MAX_DRAW_TEX) {
+        // within the budget: the least recently drawn go first
+        let bytes = 0;
+        for (const t of drawTex.values()) bytes += t.bytes;
+        if (bytes > TEX_BUDGET) {
           const old = Array.from(drawTex).filter(([, t]) => t.used !== now).sort((x, y) => x[1].used - y[1].used);
-          for (const [d, t] of old.slice(0, drawTex.size - MAX_DRAW_TEX)) { gl.deleteTexture(t.tex); drawTex.delete(d); }
+          for (const [d, t] of old) {
+            if (bytes <= TEX_BUDGET) break;
+            gl.deleteTexture(t.tex);
+            drawTex.delete(d);
+            bytes -= t.bytes;
+          }
         }
         for (const [d, t] of drawTex) if (!allDrawings().has(d)) { gl.deleteTexture(t.tex); drawTex.delete(d); hidden.delete(d); }
         for (const d of ready.keys()) if (!allDrawings().has(d)) ready.delete(d);
@@ -653,6 +675,9 @@ export default function DotField() {
         sizeCanvas();
         gl.viewport(0, 0, canvas.width, canvas.height);
         gl.uniform2f(u.uRes, w, h);
+        gl.uniform1f(u.uMargin, MARGIN);
+        // placed for this frame's scroll, in the same frame as it's drawn
+        canvas.style.transform = `translate3d(0, ${scrollY - MARGIN}px, 0)`;
         gl.uniform1f(u.uDpr, canvas.width / w);
         gl.uniform2f(u.uScroll, window.scrollX, scrollY);
         gl.uniform1f(u.uGap, paper.gap);
@@ -754,6 +779,8 @@ export default function DotField() {
 
   if (!enabled) return null;
   return (
-    <canvas ref={canvasRef} aria-hidden className="dot-field" style={{ opacity: 0 }} />
+    <div className="dot-field-wrap" aria-hidden>
+      <canvas ref={canvasRef} className="dot-field" style={{ opacity: 0 }} />
+    </div>
   );
 }
