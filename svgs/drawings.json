@@ -37,22 +37,22 @@
       "precision": null
     },
     "acclimate": {
-      "keep": 271
+      "keep": 565
     },
     "spriteRoom": {
-      "keep": 424
+      "keep": 612
     },
     "monteCarlo": {
       "keep": 613
     },
     "gptScratch": {
-      "keep": 523
+      "keep": 502
     },
     "capMatch": {
-      "keep": 238
+      "keep": 262
     },
     "smallsh": {
-      "keep": 215
+      "keep": 368
     }
   }
 }

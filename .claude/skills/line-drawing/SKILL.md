@@ -21,11 +21,25 @@ a diagram of boxes and arrows.
 > the topic (a compass for "navigating code") and not an abstract assembly of
 > floating plates, trees and arrows. Its details carry the specifics.
 
-Worked examples, all on the site: a Galton board for the Monte Carlo engine (its
-ball piles run past the Gaussian printed on its back: the fat tail); an open
-laptop with the pixel room hanging from its notch for Sprite Room; a microscope
-over a slide of code with three lines boxed for AccliMate (the exact lines an
-answer cites).
+The bar is **impressive engineering hardware**, the kind of object the rocket,
+the thruster and the FPGA are: machined, dense with real parts, shown lid-off
+or cut away so its insides read, with 45 degree section hatching on cut
+surfaces. An everyday object (a microscope, a typewriter, a plain circuit
+board) is too ordinary even when it fits; choose the more technical machine
+that fits as well. Worked examples, all on the site:
+
+- AccliMate: a hard drive with its lid off; the tracks are drawn as data and
+  the head sits over one exact track, marked (the exact lines an answer cites).
+- GPT From Scratch: an Enigma-style rotor machine; four rotors for the model's
+  four blocks, one lamp lit for the next character.
+- Monte Carlo: a Galton board; its ball piles run past the Gaussian printed on
+  its back panel (the fat tail).
+- Cap Match: an open RF tuner chassis; four identical air-variable capacitors
+  set symmetrically and strapped into a bridge.
+- smallsh: a Teletype ASR-33, the terminal Unix grew up on; prompts on the
+  paper, punched tape out its side.
+- Sprite Room: a laptop with its deck cut away to the logic board; the pixel
+  room hangs from the notch on its screen.
 
 The test: the object is recognisable at 140px, and someone who has read the
 card can say why this object, and point at the detail that makes it this

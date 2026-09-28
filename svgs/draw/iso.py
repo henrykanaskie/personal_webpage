@@ -570,3 +570,53 @@ def rslab(o, ex, ey, ez, w, d, h, r=1.0, shade=0.5, rng=None):
 def plane_pts(o, ex, ey, pts2):
     """2D points in a plane's own units (along ex, ey from o), to screen."""
     return [P(add(o, add(mul(ex, a), mul(ey, b)))) for a, b in pts2]
+
+
+# ── Blueprint details ────────────────────────────────────────────────────────
+
+
+def section(poly, spacing=0.45):
+    """45 degree section hatching on a cut face, the blueprint convention for
+    material that has been cut through."""
+    return [list(poly.exterior.coords)] + hatch(poly.buffer(-0.05), 45, spacing)
+
+
+def screw(c, u, v, r=0.6, slot=True):
+    """A screw head seen on a face: a ring, an inner ring, and a cross slot."""
+    out = [circle3(c, u, v, r, 20), circle3(c, u, v, r * 0.65, 16)]
+    if slot:
+        for a in (0.6, 0.6 + math.pi / 2):
+            d = add(mul(u, math.cos(a) * r * 0.55), mul(v, math.sin(a) * r * 0.55))
+            out.append([P(sub(c, d)), P(add(c, d))])
+    return out
+
+
+def knurl(c0, c1, r, count=24, n=72):
+    """Lines along a cylinder's visible half, evenly spaced around it."""
+    a, u, v = perp_frame(sub(c1, c0))
+    out = []
+    for k in range(count):
+        t = 2 * math.pi * k / count
+        nrm = add(mul(u, math.cos(t)), mul(v, math.sin(t)))
+        if dot(nrm, VIEW) > 0.12:
+            off = mul(nrm, r)
+            out.append([P(add(c0, off)), P(add(c1, off))])
+    return out
+
+
+def disc(c, u, v, r, r_in=0.0, a0=0.0, a1=2 * math.pi, n=60):
+    """A flat plate (a full or partial disc, optionally with a hole) in the
+    plane u, v at c: lines and its screen occluder."""
+    outer = [add(c, add(mul(u, r * math.cos(a0 + (a1 - a0) * i / n)), mul(v, r * math.sin(a0 + (a1 - a0) * i / n)))) for i in range(n + 1)]
+    if a1 - a0 < 2 * math.pi - 1e-6:
+        pts = outer + ([add(c, add(mul(u, r_in * math.cos(a1 - (a1 - a0) * i / n)), mul(v, r_in * math.sin(a1 - (a1 - a0) * i / n)))) for i in range(n + 1)] if r_in else [c])
+    else:
+        pts = outer
+    scr = [P(p) for p in pts]
+    poly = Polygon(scr).buffer(0)
+    lines = [scr + [scr[0]]]
+    if r_in and a1 - a0 >= 2 * math.pi - 1e-6:
+        inner = circle3(c, u, v, r_in, n)
+        lines.append(inner)
+        poly = poly.difference(Polygon(inner))
+    return lines, poly

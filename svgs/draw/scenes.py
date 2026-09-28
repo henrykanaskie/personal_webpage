@@ -12,11 +12,11 @@ import math
 import sys
 from pathlib import Path
 
-from shapely.geometry import Polygon
+from shapely.geometry import LineString, MultiPoint, Polygon
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from iso import (P, Scene, add, circle3, contour_cylinder, cylinder, dashed, hatch, mul, norm,  # noqa: E402
-                 plane_pts, rbox, rounded_rect, rslab, sphere, sprite, tube)
+from iso import (P, Scene, add, box, circle3, contour_cylinder, cylinder, dashed, disc, hatch, knurl, mul, norm,  # noqa: E402
+                 plane_pts, rbox, rounded_rect, rslab, screw, section, sphere, sprite, sub, tube)
 
 OUT = Path(__file__).resolve().parent.parent / "svg_data"
 
@@ -210,6 +210,42 @@ def spriteRoom():
     # the base, its keyboard and trackpad
     s.add(*rbox((0, 0, 0), (D, Wd, T), r=2.4, shade=0.6, rng=rng))
     top = T + 0.01
+    # the cutaway: the near corner of the deck removed down to the logic board
+    cut2d = [(D - 1.2, Wd * 0.52), (15, Wd * 0.52), (15, Wd - 1.2), (D - 1.2, Wd - 1.2)]
+    cut = Polygon([P((x, y, top)) for x, y in cut2d])
+    inner = []
+    lo_z = 0.7
+    board = [(17, Wd * 0.55), (D - 3, Wd * 0.55), (D - 3, Wd - 3), (17, Wd - 3)]
+    inner.append([P((x, y, lo_z)) for x, y in board + board[:1]])
+    for (x, y, w, d) in [(19, Wd * 0.58, 5, 5), (26, Wd * 0.58, 3, 2.2), (26, Wd * 0.58 + 3, 3, 2.2)]:
+        inner.append([P((x + a, y + b, lo_z + 0.5)) for a, b in [(0, 0), (w, 0), (w, d), (0, d), (0, 0)]])
+        inner.append([P((x + a, y + b, lo_z)) for a, b in [(w, 0), (w, d), (0, d)]])
+    fc = (22, Wd - 8)
+    inner.append(circle3((fc[0], fc[1], lo_z + 0.3), X_, Y_, 3.4, 40))
+    inner.append(circle3((fc[0], fc[1], lo_z + 0.3), X_, Y_, 1.0, 20))
+    for k in range(9):
+        t = 2 * math.pi * k / 9
+        inner.append([P((fc[0] + 1.0 * math.cos(t), fc[1] + 1.0 * math.sin(t), lo_z + 0.3)),
+                      P((fc[0] + 3.2 * math.cos(t + 0.5), fc[1] + 3.2 * math.sin(t + 0.5), lo_z + 0.3))])
+    for k in range(3):
+        y0 = Wd * 0.55 + k * 4.4
+        inner.append([P((x, y, lo_z)) for x, y in [(D - 9, y0 + 0.3), (D - 3.5, y0 + 0.3), (D - 3.5, y0 + 4), (D - 9, y0 + 4), (D - 9, y0 + 0.3)]])
+    # the cut's inner walls: its far edges dropping down to the board
+    c0, c1, c2 = cut2d[0], cut2d[1], cut2d[2]
+    inner += [[P((c1[0], c1[1], top)), P((c1[0], c1[1], lo_z))],
+              [P((c0[0], c0[1], lo_z)), P((c1[0], c1[1], lo_z)), P((c2[0], c2[1], lo_z))]]
+    for f in (0.3, 0.6):
+        inner.append([P(lerp3((c0[0], c0[1], top), (c1[0], c1[1], top), f)), P(lerp3((c0[0], c0[1], lo_z), (c1[0], c1[1], lo_z), f))])
+    clipped = []
+    for ln in inner:
+        g = LineString(ln).intersection(cut.buffer(-0.5))
+        for part in getattr(g, "geoms", [g]):
+            if part.geom_type == "LineString" and part.length > 0.2:
+                clipped.append(list(part.coords))
+    ring = cut.difference(cut.buffer(-0.55))
+    s.add(clipped + section(ring.buffer(0), 0.3) if ring.geom_type == "Polygon" else clipped, outline=False,
+          heavy=[list(cut.exterior.coords)])
+
     keys = []
     kw, kd = 3.2, 3.1
     for row in range(6):
@@ -218,220 +254,163 @@ def spriteRoom():
         for i in range(n):
             y = 4 + i * (Wd - 8) / n
             w = (Wd - 8) / n - 0.5
+            if x + kd > 15 and y + w > Wd * 0.52:
+                continue  # inside the cutaway
             if row == 5 and 3 <= i <= 9:
                 if i == 3:
                     keys.append(plane_pts((x, 0, top), X_, Y_, rounded_rect(kd / 2, y + w * 3.5 + 0.25 * 7, kd, w * 7 + 0.5 * 6, 0.4, 3)))
                 continue
             pts = rounded_rect(kd / 2, y + w / 2, kd if row else kd * 0.7, w, 0.4, 3)
             keys.append(plane_pts((x, 0, top), X_, Y_, pts + pts[:1]))
-    keys.append(rrect_on((0, 0, top), X_, Y_, 3.2 + 3.6 * 3, Wd / 2, 3.6 * 6 + 0.6, Wd - 5.4, 1.2))
-    keys.append(rrect_on((0, 0, top), X_, Y_, D - 5.5, Wd / 2, 7.2, 17, 1.0))
+    well = Polygon(rrect_on((0, 0, top), X_, Y_, 3.2 + 3.6 * 3, Wd / 2, 3.6 * 6 + 0.6, Wd - 5.4, 1.2))
+    pad = Polygon(rrect_on((0, 0, top), X_, Y_, D - 5.5, Wd / 2 - 7, 7.2, 13, 1.0))
+    for g in (well, pad):
+        g = g.exterior.difference(cut.buffer(0.2))
+        keys += [list(q.coords) for q in getattr(g, "geoms", [g])]
     s.add(keys, outline=False)
     # ports on the near side
     s.add([rrect_on((0, Wd + 0.01, 0), X_, Z_, x, T / 2, 2.2, 0.8, 0.35) for x in (6, 9.5)], outline=False)
     return s
 
 
-# ── GPT From Scratch: the typewriter ─────────────────────────────────────────
-# A manual typewriter with its casing off: the basket of typebars with one
-# mid-strike, the keys, the platen, and a sheet whose last line is still being
-# written, one character at a time.
+# ── Capacitor Matching Network: the tuner ────────────────────────────────────
+# An open RF tuner chassis: four air-variable capacitors, identical and set
+# symmetrically, strapped into a bridge between the input and output
+# connectors. Their meshed plates are the discrete, real parts the solver picks.
 
 
-def gptScratch():
-    s = Scene(mirror=True, seed=4, bold=0.45)
-    rng = s.rng
-    D, Wd = 34, 46
-
-    # the paper, rising behind the platen (drawn first: everything is in front of it)
-    PX, PZ, PR = 5, 19, 3.2
-    lean = norm((-0.28, 0, 1))
-    so = (PX - 0.4, 10, PZ + PR - 0.5)
-    SW, SH = Wd - 20, 25
-    sheet = plane_pts(so, Y_, lean, [(0, 0), (SW, 0), (SW, SH - 2)]) + [P(add(so, add(mul(Y_, SW - 3), mul(lean, SH))))] + plane_pts(so, Y_, lean, [(0, SH), (0, 0)])
-    rows = dash_rows(so, Y_, lean, 2.5, SH - 3.5, SW - 5, 10, 1.9, rng, unit=1.35, last_partial=True)
-    s.add(rows + [sheet], Polygon(sheet))
-
-    # ribbon spools on their posts, the carriage rail behind the platen
-    s.add(*rbox((-2, -3, 13), (5, Wd + 6, 3), r=1.2, shade=0.5, rng=rng))
-    for y in (9, Wd - 9):
-        s.add(*contour_cylinder((10, y, 14), (10, y, 16), 3.2, rings=0, bands=(0.5,), shade=0, rng=rng))
-    s.add([[P((10, 9 + 3, 15.2)), P((12, Wd / 2 - 3, 15.4)), P((12, Wd / 2 + 3, 15.4)), P((10, Wd - 12, 15.2))]], outline=False)
-    # the platen and its knobs
-    s.add(*contour_cylinder((PX, -1, PZ), (PX, Wd + 1, PZ), PR, rings=0, bands=(0.06, 0.94), shade=0.5, rng=rng))
-    for y0, y1 in [(-5, -1), (Wd + 1, Wd + 5)]:
-        s.add(*contour_cylinder((PX, y0, PZ), (PX, y1, PZ), 2.6, rings=5, shade=0.3, rng=rng))
-    # carriage return lever
-    s.add(*tube([(PX, -3, PZ + 2.6), (PX + 3, -5, PZ + 5), (PX + 9, -7, PZ + 6)], 0.5))
-
-    # side frames and base
-    for y in (0, Wd - 2.5):
-        s.add(*rbox((3, y, 3), (D - 10, 2.5, 11), r=1.2, shade=0.6, rng=rng))
-    s.add(*rbox((0, -1, 0), (D, Wd + 2, 3), r=2.5, shade=0.6, rng=rng))
-
-    # the basket of typebars fanning to the printing point, one raised
-    bc = (12, Wd / 2, 9.5)
-    strike = (PX + PR + 0.4, Wd / 2, PZ - 0.5)
-    bars, heavy = [], []
-    for k in range(29):
-        t = math.pi * (0.08 + 0.84 * k / 28)
-        o = add(bc, (math.sin(t) * 9.5, -math.cos(t) * 9.5 * 1.35, 0))
-        tip = add(bc, (math.sin(t) * 3.2 - 1.5, -math.cos(t) * 3.2, 1.2))
-        if k == 14:
-            bars.append([P(o), P(strike)])
-            heavy.append([P(o), P(strike)])
+def air_cap(s, o, rotor_angle=0.9, plates=7, r=4.2, L=9.0):
+    """An air-variable capacitor along +x from o: ceramic end frames, stator
+    plates fixed in the upper half, rotor plates on the shaft swung partway in."""
+    x0, y, z0 = o
+    zc = z0 + r + 1.6
+    # far end frame
+    s.add(*rslab((x0, y - r - 1.2, z0), Y_, Z_, X_, 2 * r + 2.4, 2 * r + 3.4, 0.9, r=0.8, shade=0.2, rng=s.rng))
+    # rails along the bottom and the shaft
+    for dy in (-r - 0.6, r + 0.6):
+        s.add(*contour_cylinder((x0 + 0.9, y + dy, z0 + 1), (x0 + L, y + dy, z0 + 1), 0.45, rings=0, shade=0, rng=s.rng))
+    s.add(*contour_cylinder((x0 - 1.5, y, zc), (x0 + L + 4, y, zc), 0.45, rings=0, shade=0, rng=s.rng))
+    # plates, far to near: stators (upper half) and rotors (swung in) alternating
+    for i in range(plates * 2):
+        x = x0 + 1.6 + i * (L - 2.2) / (plates * 2)
+        c = (x, y, zc)
+        if i % 2 == 0:
+            lines, occ = disc(c, Y_, Z_, r, r * 0.22, 0.15, math.pi - 0.15, 40)
         else:
-            bars.append([P(o), P(tip)])
-    arc = [P(add(bc, (math.sin(t) * 10.2, -math.cos(t) * 10.2 * 1.35, -0.4))) for t in [math.pi * i / 40 for i in range(41)]]
-    bars.append(arc)
-    s.add(bars, heavy=heavy + [arc])
-
-    # four stepped rows of round keys on their stems, and the space bar
-    for row in range(4):
-        x = D - 5 - row * 4.2
-        z = 5.5 + row * 1.8
-        n = 11 - (row == 0)
-        for i in range(n):
-            y = 4.5 + (i + (0.5 if row % 2 else 0) + (0.5 if row == 0 else 0)) * (Wd - 9) / 11
-            s.add([[P((x, y, 3)), P((x, y, z))]], outline=False)
-            s.add(*contour_cylinder((x, y, z), (x, y, z + 0.7), 1.4, rings=0, shade=0, rng=rng))
-    s.add(*rbox((D - 1.5, 13, 4.2), (2, Wd - 26, 1), r=0.5, shade=0, rng=rng))
-    return s
-
-
-# ── Capacitor Matching Network: the board ────────────────────────────────────
-# The RF board the solver designs for: signal in and out on SMA connectors,
-# four radial capacitors matched and placed symmetrically on a diamond bridge.
+            a0 = math.pi + rotor_angle
+            lines, occ = disc(c, Y_, Z_, r * 0.93, 0.0, a0, a0 + math.pi, 40)
+        s.add(lines, occ)
+    # near end frame, the shaft coupling and a pointer knob
+    s.add(*rslab((x0 + L, y - r - 1.2, z0), Y_, Z_, X_, 2 * r + 2.4, 2 * r + 3.4, 0.9, r=0.8, shade=0.2, rng=s.rng))
+    s.add(*contour_cylinder((x0 + L + 0.9, y, zc), (x0 + L + 2.2, y, zc), 1.1, rings=0, bands=(0.5,), shade=0, rng=s.rng))
+    s.add(*contour_cylinder((x0 + L + 2.4, y, zc), (x0 + L + 4.2, y, zc), 2.2, rings=0, shade=0.3, rng=s.rng))
+    kc = (x0 + L + 4.21, y, zc)
+    s.add(knurl((x0 + L + 2.4, y, zc), (x0 + L + 4.2, y, zc), 2.2, 30) + [[P(kc), P(add(kc, (0, 1.9 * math.cos(rotor_angle), 1.9 * math.sin(rotor_angle))))]], outline=False)
+    return (x0 + L / 2, y, z0 + 2 * r + 3.4)  # the top terminal
 
 
 def capMatch():
     s = Scene(mirror=False, seed=3, bold=0.45)
     rng = s.rng
-    D, Wd, T = 34, 54, 1.6
-    top = T + 0.01
-    cx, cy = D / 2, Wd / 2
+    D, Wd = 44, 48
 
-    # the far SMA connector (behind the board edge)
-    def sma(y0, dirn):
-        body = (cx, y0, T / 2 + 2.2)
-        s.add(*rbox((cx - 3, y0 - (3 if dirn < 0 else 0), -1.8), (6, 3, 7.5), r=0.5, shade=0.5, rng=rng))
-        c1 = add(body, (0, dirn * 3, 0))
-        s.add(*contour_cylinder(add(body, (0, dirn * 3, 0)), add(body, (0, dirn * 9, 0)), 2.1, rings=8, shade=0.4, rng=rng))
-        s.add(*contour_cylinder(add(body, (0, dirn * 9, 0)), add(body, (0, dirn * 11, 0)), 1.4, rings=0, shade=0, rng=rng))
-        s.add([circle3(add(body, (0, dirn * 11.01, 0)), X_, Z_, 0.35, 16)], outline=False)
-
-    sma(0, -1)
-    s.add(*rbox((0, 0, 0), (D, Wd, T), r=1.8, shade=0.7, rng=rng))
-    # copper pour edge, stitching vias, mounting holes
-    ln = [rrect_on((0, 0, top), X_, Y_, cx, cy, D - 3, Wd - 3, 1.2)]
-    for i in range(1, 18):
-        for x in (2.6, D - 2.6):
-            ln.append(circle3((x, 1.5 + i * (Wd - 3) / 18, top), X_, Y_, 0.3, 12))
-    for x in (3.4, D - 3.4):
-        for y in (3.4, Wd - 3.4):
-            ln.append(circle3((x, y, top), X_, Y_, 1.3, 30))
-            ln.append(circle3((x, y, top), X_, Y_, 0.8, 30))
-    # the bridge: four nodes in a diamond, feed lines to the connectors
-    N, E, S_, W = (cx - 11, cy), (cx, cy + 12), (cx + 11, cy), (cx, cy - 12)
-    def strip(a, b, w=0.7):
-        dx, dy = b[0] - a[0], b[1] - a[1]
-        L = math.hypot(dx, dy)
-        nx, ny = -dy / L * w, dx / L * w
-        return [plane_pts((0, 0, top), X_, Y_, [(a[0] + nx, a[1] + ny), (b[0] + nx, b[1] + ny)]),
-                plane_pts((0, 0, top), X_, Y_, [(a[0] - nx, a[1] - ny), (b[0] - nx, b[1] - ny)])]
-    ln += strip((cx, 0), W) + strip(E, (cx, Wd))
-    pads = []
-    for a, b in [(W, N), (N, E), (E, S_), (S_, W)]:
-        m = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
-        d = (b[0] - a[0], b[1] - a[1])
-        L = math.hypot(*d)
-        ux, uy = d[0] / L, d[1] / L
-        p1 = (m[0], m[1] - 1.6)
-        p2 = (m[0], m[1] + 1.6)
-        ln += strip(a, (m[0] - ux * 2.4, m[1] - uy * 2.4), 0.55) + strip((m[0] + ux * 2.4, m[1] + uy * 2.4), b, 0.55)
-        for p in (p1, p2):
-            ln.append(circle3((p[0], p[1], top), X_, Y_, 0.75, 20))
-        pads.append((m, (ux, uy), p1, p2))
-    for node in (N, E, S_, W):
-        ln.append(circle3((node[0], node[1], top), X_, Y_, 1.1, 24))
-    # ground vias at the two unused bridge corners
-    for node in (N, S_):
-        ln.append(circle3((node[0], node[1], top), X_, Y_, 0.45, 16))
-    s.add(ln, outline=False)
-    # the capacitors: matched discs on two leads, back to front
-    for m, (ux, uy), p1, p2 in sorted(pads, key=lambda q: q[0][0] + q[0][1]):
-        h = 5.2
-        s.add([[P((p1[0], p1[1], top)), P((p1[0], p1[1], h - 1))], [P((p2[0], p2[1], top)), P((p2[0], p2[1], h - 1))]], outline=False)
-        c = (m[0], m[1], h + 2.6)
-        s.add(*contour_cylinder(add(c, (-0.5, 0, 0)), add(c, (0.5, 0, 0)), 2.9, rings=0, shade=0.4, rng=rng))
-    sma(Wd, 1)
+    # chassis: floor, the tall back panel with the connectors, low far side
+    s.add(*rbox((0, 0, 0), (D, Wd, 1.6), r=1.5, shade=0.5, rng=rng))
+    s.add(*rbox((0, 0, 1.6), (1.6, Wd, 18), r=0.6, shade=0, rng=rng))
+    s.add(*rbox((0, 0, 1.6), (D, 1.6, 4), r=0.6, shade=0, rng=rng))
+    # N connectors through the back panel, in and out
+    ports = []
+    for y in (12, Wd - 12):
+        c = (1.61, y, 13)
+        s.add(*rbox((1.6, y - 2.6, 10.4), (0.8, 5.2, 5.2), r=0.4, shade=0, rng=rng))
+        s.add(screw((2.41, y - 1.8, 11.2), Y_, Z_, 0.35, slot=False) + screw((2.41, y + 1.8, 14.8), Y_, Z_, 0.35, slot=False), outline=False)
+        s.add(*contour_cylinder((2.4, y, 13), (5.2, y, 13), 1.6, rings=3, shade=0.3, rng=rng))
+        ports.append((5.3, y, 13))
+    # four matched capacitors, set symmetrically in a square
+    tops = []
+    for x0, y in [(10, 14), (10, Wd - 14), (25, 14), (25, Wd - 14)]:
+        tops.append(air_cap(s, (x0, y, 1.6), rotor_angle=0.9))
+    # the bridge: copper straps joining the capacitors' terminals, fed from the ports
+    straps = []
+    f, n_ = tops[0], tops[1]
+    for a, b in [(tops[0], tops[1]), (tops[2], tops[3]), (tops[0], tops[2]), (tops[1], tops[3])]:
+        straps.append([P(a), P(b)])
+        straps.append([P(add(a, (0.6, 0, 0))), P(add(b, (0.6, 0, 0)))])
+    for p, t in zip(ports, (tops[0], tops[1])):
+        straps.append([P(p), P(add(p, (2, 0, 3))), P(t)])
+    s.add(straps, outline=False, heavy=[[P(a), P(b)] for a, b in [(tops[0], tops[1]), (tops[2], tops[3]), (tops[0], tops[2]), (tops[1], tops[3])]])
+    # the near sides, cut low, their cut edges hatched
+    s.add(*rbox((D - 1.6, 0, 1.6), (1.6, Wd, 3), r=0.6, shade=0.4, rng=rng))
+    s.add(*rbox((0, Wd - 1.6, 1.6), (D, 1.6, 3), r=0.6, shade=0.4, rng=rng))
     return s
 
 
-# ── smallsh: the terminal ────────────────────────────────────────────────────
-# A VT100-style terminal and its keyboard on a coiled cable: the shell's prompt
-# on the screen, a job in the background, the cursor waiting.
+# ── smallsh: the Teletype ────────────────────────────────────────────────────
+# A Teletype ASR-33 on its stand, the terminal Unix grew up on: prompts typed
+# out on the paper, a job sent to the background, and paper tape punched out
+# its side.
 
 
 def smallsh():
     s = Scene(mirror=True, seed=2, bold=0.45)
     rng = s.rng
-    Wd = 36
+    Wd = 40
 
-    # rear housing, tapered, with vents
-    s.add(*rbox((0, 4, 12), (15, Wd - 8, 20), r=2.5, shade=0.5, rng=rng))
-    s.add([[P((2 + i * 1.6, 8, 32.01)), P((2 + i * 1.6, Wd - 8, 32.01))] for i in range(7)], outline=False)
-    # plinth and front bezel
-    s.add(*rbox((6, 6, 0), (14, Wd - 12, 9), r=2, shade=0.6, rng=rng))
-    s.add(*rbox((13, 0, 8), (7, Wd, 29), r=2.8, shade=0.15, rng=rng))
-    face = (20.01, 0, 0)
-    ln = [rrect_on(face, Y_, Z_, Wd / 2, 23, Wd - 5, 22, 2.8), rrect_on(face, Y_, Z_, Wd / 2, 23, Wd - 7.5, 19.5, 2.2)]
-    # the screen: prompts (a chevron, then code), a background job, the cursor
+    # the pedestal stand, with its shelf
+    s.add(*rbox((4, 6, 0), (20, Wd - 12, 2), r=1, shade=0.4, rng=rng))
+    for y in (7, Wd - 9):
+        s.add(*rbox((6, y, 2), (16, 2, 26), r=0.8, shade=0.5, rng=rng))
+    s.add(*rbox((6, 7, 12), (16, Wd - 14, 1.2), r=0.6, shade=0.3, rng=rng))
+    # paper roll behind the platen
+    s.add(*contour_cylinder((4, 6, 48), (4, Wd - 6, 48), 4.5, rings=0, bands=(0.03, 0.97), shade=0.5, rng=rng))
+    # the paper coming up behind the window, typed on
+    lean = norm((-0.15, 0, 1))
+    so = (9, 8, 44)
+    SW, SH = Wd - 16, 18
+    sheet = plane_pts(so, Y_, lean, [(0, 0), (SW, 0), (SW, SH), (0, SH), (0, 0)])
+    rows = []
     for r in range(7):
-        y = 30.5 - r * 2.3
-        ln.append(plane_pts(face, Y_, Z_, [(5, y + 0.45), (5.9, y), (5, y - 0.45)]))
-        x = 7.2
-        end = 7.2 + rng.uniform(8, 20) if r < 6 else 9
+        y = SH - 2.6 - r * 2.2
+        rows.append(plane_pts(so, Y_, lean, [(1.5, y + 0.45), (2.3, y), (1.5, y - 0.45)]))
+        x = 3.2
+        end = 3.2 + (rng.uniform(5, SW - 7) if r < 6 else 2.5)
         while x < end:
-            w = rng.uniform(0.8, 2.8)
-            ln.append(plane_pts(face, Y_, Z_, [(x, y), (min(x + w, end), y)]))
-            x += w + 0.7
-        if r == 2:
-            ln.append(plane_pts(face, Y_, Z_, [(end + 1.2, y + 0.5), (end + 1.2, y - 0.5)]))  # trailing &-ish mark
-    cur = Polygon(plane_pts(face, Y_, Z_, [(10, 16.5), (11.2, 16.5), (11.2, 15.1), (10, 15.1)]))
-    ln.append(list(cur.exterior.coords))
-    ln += hatch(cur, 60, 0.25)
-    # brightness knob and a badge plate under the screen
-    ln.append(rrect_on(face, Y_, Z_, Wd / 2, 10.3, 8, 1.4, 0.4))
-    s.add(ln, outline=False)
-    s.add(*contour_cylinder((20, Wd - 4, 10.4), (21.2, Wd - 4, 10.4), 1, rings=0, shade=0, rng=rng))
-
-    # the coiled cable from the terminal to the keyboard
-    coil = []
-    a, b = (18, Wd - 6, 1.2), (27, Wd - 6, 1.2)
-    for i in range(241):
-        t = i / 240
-        ang = t * 2 * math.pi * 9
-        p = lerp3(a, b, t)
-        coil.append(P((p[0], p[1] + 0.8 * math.cos(ang), p[2] + 0.8 * math.sin(ang))))
-    s.add([], heavy=[coil])
-
-    # keyboard: a slab with rows of keys
-    KX, KD = 27, 15
-    s.add(*rbox((KX, -2, 0), (KD, Wd + 4, 3), r=1.5, shade=0.6, rng=rng))
-    keys = []
-    for row in range(5):
-        x = KX + 1.8 + row * 2.6
-        for i in range(15):
-            y = 0 + i * (Wd / 15)
-            if row == 4 and 4 <= i <= 10:
-                if i == 4:
-                    pts = rounded_rect(x + 1, y + 7 * Wd / 30, 2.1, 7 * Wd / 15 - 0.6, 0.35, 3)
-                    keys.append(plane_pts((0, 0, 3.01), X_, Y_, pts + pts[:1]))
-                continue
-            pts = rounded_rect(x + 1, y + Wd / 30, 2.1, Wd / 15 - 0.6, 0.35, 3)
-            keys.append(plane_pts((0, 0, 3.01), X_, Y_, pts + pts[:1]))
-    s.add(keys, outline=False)
+            w = rng.uniform(0.7, 2.4)
+            rows.append(plane_pts(so, Y_, lean, [(x, y), (min(x + w, end), y)]))
+            x += w + 0.6
+        if r == 3:
+            rows.append(plane_pts(so, Y_, lean, [(end + 1, y + 0.5), (end + 1.6, y - 0.5)]))
+    s.add(rows + [sheet], Polygon(sheet))
+    # the main housing, its rounded hood and the clear window over the platen
+    s.add(*rbox((0, 0, 28), (30, Wd, 14), r=3, shade=0.6, rng=rng))
+    s.add(*rbox((3, 2, 42), (18, Wd - 4, 3), r=2.5, shade=0.3, rng=rng))
+    win = [(8.5, 7, 45.01), (8.5, Wd - 7, 45.01), (16, Wd - 7, 45.01), (16, 7, 45.01)]
+    s.add([[P(a), P(b)] for a, b in zip(win, win[1:] + win[:1])] + [[P((10, 9, 45.01)), P((12, 13, 45.01))], [P((10.5, 11, 45.01)), P((11.5, 13, 45.01))]], outline=False)
+    # the keyboard: four stepped rows of round keys on the front deck
+    s.add(*rbox((20, 2, 42), (10, Wd - 4, 0.8), r=1.5, shade=0.2, rng=rng))
+    for row in range(4):
+        x = 28.4 - row * 2.3
+        z = 42.8 + row * 0.35
+        n = 11 + (row == 1)
+        for i in range(n):
+            y = 5 + (i + (0.5 if row % 2 else 0)) * (Wd - 10) / 11.5
+            s.add(*contour_cylinder((x, y, z), (x, y, z + 0.8), 0.95, rings=0, shade=0, rng=rng))
+    # the paper tape punch on the near side, tape curling out of it
+    s.add(*rbox((10, Wd, 30), (14, 5, 12), r=1.5, shade=0.5, rng=rng))
+    tape = []
+    for i in range(40):
+        t = i / 39
+        tape.append((24 + 10 * t, Wd + 2.5 + 3 * math.sin(t * 2.5), 38 - 18 * t * t))
+    edge1 = [P(add(q, (0, -1.2, 0))) for q in tape]
+    edge2 = [P(add(q, (0, 1.2, 0))) for q in tape]
+    holes = []
+    for i in range(2, 38, 2):
+        for k in range(rng.randint(1, 4)):
+            q = add(tape[i], (0, -0.8 + k * 0.55, 0))
+            holes.append(circle3(q, X_, Y_, 0.18, 8))
+    s.add([edge1, edge2] + holes, Polygon(edge1 + edge2[::-1]).buffer(0), outline=False)
+    # the power knob and the base of the housing's front
+    s.add(*contour_cylinder((30, Wd - 5, 33), (31.3, Wd - 5, 33), 1.5, rings=0, shade=0, rng=rng))
     return s
 
 
@@ -439,59 +418,199 @@ def lerp3(a, b, t):
     return tuple(i + (j - i) * t for i, j in zip(a, b))
 
 
-# ── AccliMate: the microscope ────────────────────────────────────────────────
-# A microscope over a glass slide of code. Under the objective, three lines of
-# it are bracketed: the exact lines an answer cites.
+def bez3(a, b, c, d, t):
+    u = 1 - t
+    return tuple(u ** 3 * p + 3 * u * u * t * q + 3 * u * t * t * r + t ** 3 * w for p, q, r, w in zip(a, b, c, d))
+
+
+def prism(poly2d, z0, z1):
+    """A flat part cut from plate: a 2D outline (x, y) extruded from z0 to z1."""
+    top = [P((x, y, z1)) for x, y in poly2d]
+    bot = [P((x, y, z0)) for x, y in poly2d]
+    return [top + [top[0]]], MultiPoint(top + bot).convex_hull
+
+
+# ── AccliMate: the hard drive ────────────────────────────────────────────────
+# A drive with its lid off: platters, spindle, the actuator and its voice coil.
+# The platter's tracks are drawn as data (dashed arcs), and the head sits over
+# one exact track, marked: an answer cited to the exact lines behind it.
 
 
 def acclimate():
     s = Scene(mirror=False, seed=5, bold=0.45)
     rng = s.rng
+    D, Wd, H = 40, 58, 8  # depth (x), length (y), height
 
-    # base and pillar
-    s.add(*rbox((0, 0, 0), (30, 24, 4), r=4, shade=0.6, rng=rng))
-    s.add(*rbox((1.5, 8, 4), (7, 8, 11), r=1.5, shade=0.6, rng=rng))
-    # focus knobs, far side
-    s.add(*contour_cylinder((5, 8, 22), (5, 5, 22), 3.2, rings=6, shade=0.3, rng=rng))
-    # the arm: a curved casting from the pillar up and over the stage
-    s.add(*tube([(5, 12, 14), (3.5, 12, 26), (4, 12, 38), (9, 12, 46), (15, 12, 47)], 2.8, shading=False))
-    # illuminator under the stage
-    s.add(*contour_cylinder((17, 12, 4), (17, 12, 9), 2.4, rings=0, bands=(0.8,), shade=0.3, rng=rng))
-    # stage with its aperture and clips
-    s.add(*rbox((8, 1, 17.5), (21, 22, 2), r=1.5, shade=0.6, rng=rng))
-    st = 19.51
-    s.add([circle3((17, 12, st), X_, Y_, 2.6, 40)], outline=False)
-    # the slide: glass, with rows of code along it
-    s.add(*rbox((13, 1.5, st), (8, 21, 0.4), r=0.3, shade=0, rng=rng))
-    sl = (13, 1.5, st + 0.41)
-    rows = []
-    for r in range(7):
-        x = 14 + r * 0.95
-        ind = [0, 1, 1, 2, 2, 1, 0][r] * 1.2
-        y = 3 + ind
-        end = 20 - rng.uniform(0, 5)
-        while y < end:
-            w = rng.uniform(0.8, 2.4)
-            rows.append([P((x, y, sl[2])), P((x, min(y + w, end), sl[2]))])
-            y += w + 0.55
-    # a box around three rows under the objective: the lines an answer cites
-    br = [P((15.5, 5.2, sl[2])), P((18.35, 5.2, sl[2])), P((18.35, 14, sl[2])), P((15.5, 14, sl[2])), P((15.5, 5.2, sl[2]))]
-    s.add(rows, outline=False, heavy=[br])
-    for y in (3, 21):
-        s.add(*rbox((11, y - 0.6, st + 0.4), (7, 1.2, 0.5), r=0.4, shade=0, rng=rng))
-        s.add(*contour_cylinder((11, y, st + 0.9), (11, y, st + 1.7), 0.9, rings=0, shade=0, rng=rng))
-    # nosepiece turret and objectives, the working one pointing at the slide
-    s.add(*contour_cylinder((17, 12, 29), (17, 12, 32), 4, rings=0, bands=(0.5,), shade=0.4, rng=rng))
-    s.add(*contour_cylinder((14.5, 10, 29), (13.2, 8.5, 25), 1.2, rings=0, bands=(0.4,), shade=0.3, rng=rng))
-    s.add(*contour_cylinder((17, 12, 29), (17, 12, 22.5), 1.35, rings=0, bands=(0.3, 0.7), shade=0.3, rng=rng))
-    s.add(*contour_cylinder((19.5, 14, 29), (20.8, 15.5, 25), 1.2, rings=0, bands=(0.4,), shade=0.3, rng=rng))
-    # body tube and the eyepiece angled back toward the viewer's eye
-    s.add(*contour_cylinder((17, 12, 32), (17, 12, 45), 2.6, rings=0, bands=(0.15, 0.85), shade=0.5, rng=rng))
-    s.add(*contour_cylinder((17, 12, 45), (13, 12, 53), 2.0, rings=0, bands=(0.5,), shade=0.4, rng=rng))
-    s.add(*contour_cylinder((13, 12, 53), (12.2, 12, 54.6), 2.5, rings=2, shade=0, rng=rng))
-    # focus knobs, near side
-    s.add(*contour_cylinder((5, 16, 22), (5, 19.5, 22), 3.2, rings=6, shade=0.3, rng=rng))
-    s.add(*contour_cylinder((5, 19.5, 22), (5, 21.5, 22), 1.9, rings=3, shade=0.2, rng=rng))
+    # casting: floor and the two far walls
+    s.add(*rbox((0, 0, 0), (D, Wd, 2), r=2.5, shade=0.5, rng=rng))
+    s.add(*rbox((0, 0, 2), (2.2, Wd, H - 2), r=1, shade=0, rng=rng))
+    s.add(*rbox((0, 0, 2), (D, 2.2, H - 2), r=1, shade=0, rng=rng))
+    # voice coil magnet, bolted down, in the far corner
+    s.add(*rbox((3, Wd - 17, 2), (13, 14, 3.4), r=3, shade=0.3, rng=rng))
+    s.add(sum([screw((x, y, 5.41), X_, Y_, 0.7) for x, y in [(5.5, Wd - 15), (13.5, Wd - 5.5)]], []), outline=False)
+    # the flex cable from the actuator to the connector on the far wall
+    fc = [(3, Wd - 24, 2.4), (6, Wd - 26, 2.4), (9, Wd - 23, 2.4), (11, Wd - 21, 2.4)]
+    s.add([[P(q) for q in fc], [P(add(q, (0, 1.6, 0))) for q in fc]], outline=False)
+
+    # the breather filter and a boss on the floor
+    s.add(*rbox((D - 9, 3.5, 2), (5, 2.2, 3), r=0.5, shade=0.3, rng=rng))
+    s.add([circle3((5, 6, 2.01), X_, Y_, 1.2, 24), circle3((5, 6, 2.01), X_, Y_, 0.5, 16)], outline=False)
+
+    # platters on the spindle
+    C = (19.5, 21.5)
+    R = 17.5
+    s.add(*cylinder((C[0], C[1], 2.6), (C[0], C[1], 3.3), R, n=120))
+    s.add(*cylinder((C[0], C[1], 4.0), (C[0], C[1], 4.7), R, n=120))
+    top = 4.71
+    # the tracks: dashed arcs of data
+    tracks = []
+    for k, r in enumerate([6.5 + 0.62 * i for i in range(17)]):
+        if k == 9:
+            continue  # the cited track is drawn on its own below
+        a = start = rng.uniform(0, 2 * math.pi)
+        while a < start + 2 * math.pi:
+            w = rng.uniform(0.8, 3.5) / r  # a run of data, in radians
+            tracks.append([P((C[0] + r * math.cos(a + w * i / 6), C[1] + r * math.sin(a + w * i / 6), top)) for i in range(7)])
+            a += w + 1.2 / r
+    s.add(tracks, outline=False)
+    # spindle clamp and its screws
+    s.add(*contour_cylinder((C[0], C[1], top), (C[0], C[1], top + 1.4), 4.6, rings=0, shade=0.2, rng=rng))
+    s.add(*contour_cylinder((C[0], C[1], top + 1.4), (C[0], C[1], top + 2.0), 2.4, rings=0, shade=0, rng=rng))
+    s.add(sum([screw((C[0] + 3.4 * math.cos(t), C[1] + 3.4 * math.sin(t), top + 1.41), X_, Y_, 0.45, slot=False) for t in [k * math.pi / 3 for k in range(6)]], []), outline=False)
+
+    # the actuator: pivot, arm to the head over one track, the coil behind
+    PV = (10.5, Wd - 19)
+    Rh = 6.5 + 0.62 * 9
+    ang = math.atan2(PV[1] - C[1], PV[0] - C[0]) - 0.62
+    Hd = (C[0] + Rh * math.cos(ang), C[1] + Rh * math.sin(ang))
+    # the cited track: bold, with end marks, under the head
+    arc = lambda rr, a0, a1: [P((C[0] + rr * math.cos(ang + t), C[1] + rr * math.sin(ang + t), top + 0.01)) for t in [a0 + (a1 - a0) * i / 60 for i in range(61)]]
+    # the rest of that track, plain, then the cited span doubled and bracketed
+    rest = [arc(Rh, 1.12 + 0.3 * k, 1.12 + 0.3 * k + 0.2) for k in range(17)]
+    ticks = [[P((C[0] + (Rh - 0.9) * math.cos(ang + t), C[1] + (Rh - 0.9) * math.sin(ang + t), top + 0.01)),
+              P((C[0] + (Rh + 0.9) * math.cos(ang + t), C[1] + (Rh + 0.9) * math.sin(ang + t), top + 0.01))] for t in (-0.1, 1.0)]
+    s.add(rest, outline=False, heavy=[arc(Rh - 0.22, -0.1, 1.0), arc(Rh + 0.22, -0.1, 1.0)] + ticks)
+    s.add(*contour_cylinder((PV[0], PV[1], 2), (PV[0], PV[1], 6.4), 2.8, rings=0, bands=(0.5,), shade=0.4, rng=rng))
+    dx, dy = Hd[0] - PV[0], Hd[1] - PV[1]
+    L = math.hypot(dx, dy)
+    ux, uy = dx / L, dy / L
+    nx, ny = -uy, ux
+    arm = [(PV[0] - ux * 7 + nx * 4.5, PV[1] - uy * 7 + ny * 4.5), (PV[0] + nx * 3.2, PV[1] + ny * 3.2),
+           (Hd[0] - ux * 1 + nx * 0.8, Hd[1] - uy * 1 + ny * 0.8), (Hd[0] + ux * 0.8, Hd[1] + uy * 0.8),
+           (Hd[0] - ux * 1 - nx * 0.8, Hd[1] - uy * 1 - ny * 0.8), (PV[0] - nx * 3.2, PV[1] - ny * 3.2),
+           (PV[0] - ux * 7 - nx * 4.5, PV[1] - uy * 7 - ny * 4.5)]
+    lines, occ = prism(arm, 5.2, 5.9)
+    # lightening holes and the coil's winding in the tail
+    for f, w in ((0.35, 1.3), (0.6, 0.8)):
+        cxh, cyh = PV[0] + dx * f, PV[1] + dy * f
+        lines.append([P((cxh + ux * w * 1.6 * math.cos(t) + nx * w * math.sin(t), cyh + uy * w * 1.6 * math.cos(t) + ny * w * math.sin(t), 5.91)) for t in [2 * math.pi * i / 30 for i in range(31)]])
+    for k in range(4):
+        q = 0.6 + k * 0.5
+        lines.append([P((PV[0] - ux * (7 - q) + nx * (4.5 - q * 0.9), PV[1] - uy * (7 - q) + ny * (4.5 - q * 0.9), 5.91)),
+                      P((PV[0] - ux * (1.5 + q * 0.3) + nx * (3.0 - q * 0.5), PV[1] - uy * (1.5 + q * 0.3) + ny * (3.0 - q * 0.5), 5.91)),
+                      P((PV[0] - ux * (1.5 + q * 0.3) - nx * (3.0 - q * 0.5), PV[1] - uy * (1.5 + q * 0.3) - ny * (3.0 - q * 0.5), 5.91)),
+                      P((PV[0] - ux * (7 - q) - nx * (4.5 - q * 0.9), PV[1] - uy * (7 - q) - ny * (4.5 - q * 0.9), 5.91))])
+    s.add(lines, occ)
+    s.add(*contour_cylinder((PV[0], PV[1], 5.9), (PV[0], PV[1], 6.8), 1.5, rings=0, shade=0, rng=rng))
+    s.add(screw((PV[0], PV[1], 6.81), X_, Y_, 0.8), outline=False)
+    s.add(*box((Hd[0] - 0.6, Hd[1] - 0.6, 4.75), (1.2, 1.2, 0.45)))
+
+    # the head-parking ramp, just past the platter's edge beside the head
+    ra = math.atan2(PV[1] - C[1], PV[0] - C[0]) - 1.05
+    rp = (C[0] + (R + 1.6) * math.cos(ra), C[1] + (R + 1.6) * math.sin(ra))
+    s.add(*rbox((rp[0] - 1.1, rp[1] - 1.1, 2), (2.2, 2.2, 2.8), r=0.4, shade=0.3, rng=rng))
+
+    # the near walls, and screw holes along the rim for the lid
+    s.add(*rbox((D - 2.2, 0, 2), (2.2, Wd, H - 2), r=1, shade=0.5, rng=rng))
+    s.add(*rbox((0, Wd - 2.2, 2), (D, 2.2, H - 2), r=1, shade=0.5, rng=rng))
+    rim = []
+    for x, y in [(1.1, 1.1), (D - 1.1, 1.1), (D - 1.1, Wd - 1.1), (1.1, Wd - 1.1), (1.1, Wd / 2), (D - 1.1, Wd / 2)]:
+        rim += screw((x, y, H + 0.01), X_, Y_, 0.55, slot=False)
+    s.add(rim, outline=False)
+    return s
+
+
+# ── GPT From Scratch: the rotor machine ──────────────────────────────────────
+# An Enigma-style cipher machine, lid open: a key pressed at the front, the
+# signal through four rotors (the model's four blocks), and one lamp lit on the
+# lampboard: the next character, produced one at a time.
+
+
+def gptScratch():
+    s = Scene(mirror=True, seed=4, bold=0.45)
+    rng = s.rng
+    D, Wd, H = 34, 42, 12
+
+    # the lid, open and leaning back on its hinges
+    tilt = math.radians(14)
+    up = (-math.sin(tilt), 0, math.cos(tilt))
+    nrm = (math.cos(tilt), 0, math.sin(tilt))
+    lo = add((-1.2, 0, H), mul(nrm, -1.4))
+    s.add(*rslab(lo, Y_, up, nrm, Wd, 22, 1.4, r=1.2, shade=0.3, rng=rng))
+    face = add(lo, mul(nrm, 1.41))
+    s.add([rrect_on(face, Y_, up, Wd / 2, 11, Wd - 4, 18, 0.8)] +
+          sum([screw(add(face, add(mul(Y_, y), mul(up, z))), Y_, up, 0.5) for y, z in [(3, 3), (Wd - 3, 3), (3, 19), (Wd - 3, 19)]], []), outline=False)
+
+    # the case, with corner brackets
+    s.add(*rbox((0, 0, 0), (D, Wd, H), r=1.4, shade=0.6, rng=rng))
+    top = H + 0.01
+    s.add([rrect_on((0, 0, top), X_, Y_, D / 2, Wd / 2, D - 2.4, Wd - 2.4, 0.8)], outline=False)
+
+    # the rotor bay: four rotors, reflector and entry wheel on their spindle
+    s.add(*rbox((2, 2, H), (10, Wd - 4, 0.6), r=0.8, shade=0, rng=rng))
+    RX, RZ = 7, H + 4.2
+    s.add(*contour_cylinder((RX, 3, RZ), (RX, Wd - 3, RZ), 0.5, rings=0, shade=0, rng=rng))
+    wheels = [(5, 1.6, 3.6, "reflector")] + [(10.5 + i * 5.2, 3.0, 3.9, "rotor") for i in range(4)] + [(33, 2.0, 3.6, "entry")]
+    for y, w, r, kind in wheels:
+        s.add(*contour_cylinder((RX, y, RZ), (RX, y + w, RZ), r, rings=0, bands=(0.5,) if kind == "rotor" else (), shade=0.3, rng=rng))
+        if kind == "rotor":
+            # the alphabet ring's ticks and the knurled thumbwheel
+            lines, occ = contour_cylinder((RX, y + w, RZ), (RX, y + w + 0.9, RZ), r + 0.5, rings=0, shade=0, rng=rng)
+            s.add(lines + knurl((RX, y + w, RZ), (RX, y + w + 0.9, RZ), r + 0.5, 40), occ)
+    # the window strip each rotor shows its letter through, as a small plate
+    # keyboard: three staggered rows of round keys on stems
+    rows = [(D - 3.2, 9), (D - 6.4, 8), (D - 9.6, 9)]
+    for ri, (x, n) in enumerate(rows):
+        z = top + 0.8 + ri * 0.2
+        for i in range(n):
+            y = 5.5 + (i + (0.5 if n == 8 else 0)) * (Wd - 11) / 8.6
+            s.add([[P((x, y, top)), P((x, y, z))]], outline=False)
+            pressed = ri == 1 and i == 3
+            s.add(*contour_cylinder((x, y, z - (0.6 if pressed else 0)), (x, y, z + 0.6 - (0.6 if pressed else 0)), 1.25, rings=0, shade=0, rng=rng))
+    # lampboard: three rows of lamp windows, one lit
+    for ri, (x, n) in enumerate([(D - 13.2, 9), (D - 16.2, 8), (D - 19.2, 9)]):
+        for i in range(n):
+            y = 5.5 + (i + (0.5 if n == 8 else 0)) * (Wd - 11) / 8.6
+            c = (x, y, top)
+            lit = ri == 0 and i == 5
+            lines = [circle3(c, X_, Y_, 1.15, 24), circle3(c, X_, Y_, 0.75, 20)]
+            if lit:
+                for k in range(12):
+                    t = k * math.pi / 6
+                    lines.append([P((x + 1.5 * math.cos(t), y + 1.5 * math.sin(t), top)), P((x + 2.6 * math.cos(t), y + 2.6 * math.sin(t), top))])
+                poly = Polygon(circle3(c, X_, Y_, 0.75, 20))
+                lines += hatch(poly, 30, 0.22)
+            s.add(lines, outline=False, heavy=[circle3(c, X_, Y_, 1.15, 24)] if lit else [])
+
+    # the plugboard on the front face, with a few patch cables
+    fx = D + 0.01
+    pb = []
+    sockets = []
+    for row in range(2):
+        for i in range(13):
+            y = 3.5 + i * (Wd - 7) / 12
+            z = 3 + row * 4.2
+            for dz in (0.6, -0.6):
+                pb.append(circle3((fx, y, z + dz), Y_, Z_, 0.42, 14))
+            sockets.append((fx, y, z))
+    pb.append(rrect_on((fx, 0, 0), Y_, Z_, Wd / 2, 5.1, Wd - 3, 8.6, 0.6))
+    s.add(pb, outline=False)
+    for a, b in [(1, 15), (4, 20), (8, 22), (11, 16)]:
+        pa, pb2 = sockets[a], sockets[b]
+        mid = ((pa[0] + pb2[0]) / 2 + 5, (pa[1] + pb2[1]) / 2, min(pa[2], pb2[2]) - 5)
+        path = [bez3(pa, add(pa, (6, 0, -2)), add(pb2, (6, 0, -2)), pb2, t / 30) for t in range(31)]
+        path = [add(q, (0, 0, -6 * math.sin(math.pi * i / 30))) for i, q in enumerate(path)]
+        s.add(*tube(path, 0.4, shading=False))
     return s
 
 
