@@ -65,19 +65,45 @@ def lines_of(geom):
 
 
 class Scene:
-    def __init__(self, mirror=False, seed=1):
+    """bold: the ink width of silhouettes, in drawing units. Every solid's outline
+    is drawn as a thick stroke, traced as the thin contour around its ink the
+    way a traced drawing is, so it stays bold under the site's single stroke
+    width; interior lines stay hairlines. That weight contrast is most of what
+    separates an illustration from a diagram."""
+
+    def __init__(self, mirror=False, seed=1, bold=0.55):
         self.items = []
         self.mirror = mirror
         self.rng = random.Random(seed)
+        self.bold = bold
 
-    def add(self, lines, occluder=None, group=None):
-        """lines: screen polylines; occluder: screen polygon hiding what's behind."""
-        self.items.append((lines, occluder, group))
+    def add(self, lines, occluder=None, group=None, outline=True, heavy=()):
+        """lines: screen polylines (hairlines); occluder: screen polygon hiding
+        what's behind, whose edge is drawn bold unless outline=False; heavy:
+        extra polylines drawn bold."""
+        self.items.append((lines, occluder, group, outline, list(heavy)))
 
     def render(self):
         hidden = None
         out = []
-        for lines, occluder, group in reversed(self.items):
+        for lines, occluder, group, outline, heavy in reversed(self.items):
+            if occluder is not None and not occluder.is_empty:
+                occluder = occluder.buffer(0)
+            strong = list(heavy)
+            if outline and occluder is not None and not occluder.is_empty:
+                for g in getattr(occluder, "geoms", [occluder]):
+                    strong.append(list(g.exterior.coords))
+            ink = None
+            vis_strong = []
+            for pts in strong:
+                if len(pts) < 2:
+                    continue
+                g = LineString(pts)
+                if hidden is not None:
+                    g = g.difference(hidden)
+                vis_strong += lines_of(g)
+            if vis_strong:
+                ink = unary_union([LineString(c).buffer(self.bold / 2, quad_segs=4) for c in vis_strong if len(c) > 1])
             visible = []
             for pts in lines:
                 if len(pts) < 2:
@@ -87,10 +113,15 @@ class Scene:
                     continue
                 if hidden is not None:
                     g = g.difference(hidden)
+                if ink is not None:
+                    g = g.difference(ink)
                 visible += [c for c in lines_of(g) if LineString(c).length > 0.25]
+            if ink is not None and not ink.is_empty:
+                for poly in getattr(ink, "geoms", [ink]):
+                    visible.append(list(poly.exterior.coords))
+                    visible += [list(h.coords) for h in poly.interiors if Polygon(h).area > self.bold ** 2]
             out.append((group, visible))
             if occluder is not None and not occluder.is_empty:
-                occluder = occluder.buffer(0)
                 hidden = occluder if hidden is None else unary_union([hidden, occluder])
         out.reverse()
         return out
@@ -120,7 +151,7 @@ class Scene:
         with open(path, "w") as f:
             f.write(
                 f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{vb[0]:.2f} {vb[1]:.2f} {vb[2]:.2f} {vb[3]:.2f}">\n'
-                f'<g fill="none" stroke-width="{max(vb[2], vb[3]) / 650:.3f}" stroke-linecap="round" stroke-linejoin="round">\n'
+                f'<g fill="none" stroke-width="{max(vb[2], vb[3]) / 900:.3f}" stroke-linecap="round" stroke-linejoin="round">\n'
                 + "\n".join(body)
                 + "\n</g>\n</svg>\n"
             )
@@ -376,3 +407,133 @@ def sprite(rows, o, ex, ez, u):
         lines.append(list(poly.exterior.coords))
         lines += hatch(poly.buffer(-0.12), 60, u * 0.28)
     return lines, unary_union(polys)
+
+
+# ── Softer, manufactured forms ───────────────────────────────────────────────
+
+LIGHT = norm((-0.6, 0.25, 1.0))  # upper left, as in the engraved drawings
+
+
+def rounded_rect(cx, cy, w, d, r, n=6):
+    """Corner points of a rounded rectangle around (cx, cy), counter-clockwise."""
+    r = min(r, w / 2, d / 2)
+    pts = []
+    for (qx, qy, a0) in [(w / 2 - r, -d / 2 + r, -90), (w / 2 - r, d / 2 - r, 0), (-w / 2 + r, d / 2 - r, 90), (-w / 2 + r, -d / 2 + r, 180)]:
+        for i in range(n + 1):
+            a = math.radians(a0 + 90 * i / n)
+            pts.append((cx + qx + r * math.cos(a), cy + qy + r * math.sin(a)))
+    return pts
+
+
+def rbox(o, size, r=1.0, shade=1.0, rng=None, top_detail=None):
+    """A box with rounded vertical edges, the way a machined or moulded part is.
+    The sides get short vertical strokes crowding toward the shadow, like the
+    engraved chips; shade scales how many."""
+    x, y, z = o
+    w, d, h = size
+    ring = rounded_rect(x + w / 2, y + d / 2, w, d, r)
+    top = [P((a, b, z + h)) for a, b in ring]
+    bot = [P((a, b, z)) for a, b in ring]
+    hull = MultiPoint(top + bot).convex_hull
+    lines = [top + [top[0]]]
+    # side strokes: at each perimeter sample facing the viewer, a vertical line
+    # whose spacing follows how far the surface turns from the light
+    per = LineString(ring + [ring[0]])
+    L = per.length
+    step = max(0.35, 0.9 / max(shade, 0.05))
+    t = 0.0
+    while t < L:
+        p0 = per.interpolate(t)
+        p1 = per.interpolate(min(t + 0.05, L))
+        tx, ty = p1.x - p0.x, p1.y - p0.y
+        nrm = norm((ty, -tx, 0))
+        if dot(nrm, VIEW) > 0.05:
+            dark = 1 - max(0.0, dot(nrm, LIGHT))
+            if dark > 0.45 and rng is not None and rng.random() < dark * shade:
+                frac = 0.35 + 0.6 * dark * (rng.uniform(0.6, 1.0))
+                lines.append([P((p0.x, p0.y, z)), P((p0.x, p0.y, z + h * frac))])
+            t += step * (1.4 - dark)
+        else:
+            t += step
+    if top_detail:
+        lines += top_detail
+    return lines, hull
+
+
+def contour_cylinder(c0, c1, r, rings=12, bands=(), shade=1.0, rng=None, n=72):
+    """A cylinder shaded like the thruster: many contour rings crowding toward
+    its ends and bands, plus generator strokes on the shadow side."""
+    a, u, v = perp_frame(sub(c1, c0))
+    cap0 = circle3(c0, u, v, r, n)
+    cap1 = circle3(c1, u, v, r, n)
+    hull = MultiPoint(cap0 + cap1).convex_hull
+    facing = cap1 if dot(a, VIEW) > 0 else cap0
+    lines = [facing]
+
+    def half_ring(c, rr=r):
+        seg, segs = [], []
+        for i in range(n + 1):
+            t = 2 * math.pi * i / n
+            nrm = add(mul(u, math.cos(t)), mul(v, math.sin(t)))
+            if dot(nrm, VIEW) > 0:
+                seg.append(P(add(c, add(mul(u, rr * math.cos(t)), mul(v, rr * math.sin(t))))))
+            elif seg:
+                segs.append(seg)
+                seg = []
+        if seg:
+            segs.append(seg)
+        return [q for q in segs if len(q) > 1]
+
+    marks = sorted(set([0.0, 1.0] + list(bands)))
+    for m in bands:
+        lines += half_ring(lerp(c0, c1, m))
+        for k in (0.015, 0.03):
+            for mm in (m - k, m + k):
+                if 0 < mm < 1:
+                    lines += half_ring(lerp(c0, c1, mm))
+    for i in range(rings):
+        f = (i + 1) / (rings + 1)
+        # crowd toward both ends
+        g = 0.5 - 0.5 * math.cos(math.pi * f)
+        g = g ** 1.6 if i < rings / 2 else 1 - (1 - g) ** 1.6
+        lines += half_ring(lerp(c0, c1, g))
+    mid = math.atan2(dot(v, VIEW), dot(u, VIEW))
+    at = lambda t: add(mul(u, r * math.cos(t)), mul(v, r * math.sin(t)))
+    side = 1 if P(at(mid + math.pi / 2))[0] > P(at(mid - math.pi / 2))[0] else -1
+    k = int(10 * shade)
+    for i in range(k):
+        t = mid + side * (0.5 + (math.pi / 2 - 0.55) * (i / max(k - 1, 1)) ** 0.7)
+        f0 = rng.uniform(0.0, 0.2) if rng else 0.0
+        f1 = rng.uniform(0.8, 1.0) if rng else 1.0
+        lines.append([P(add(lerp(c0, c1, f0), at(t))), P(add(lerp(c0, c1, f1), at(t)))])
+    return lines, hull
+
+
+def bolt_circle(c, u, v, R, count, r=0.45):
+    """Bolt heads around a flange: small ellipses on the flange face."""
+    out = []
+    for k in range(count):
+        t = 2 * math.pi * k / count
+        bc = add(c, add(mul(u, R * math.cos(t)), mul(v, R * math.sin(t))))
+        out.append(circle3(bc, u, v, r, 16))
+    return out
+
+
+def tube(path3, r, n=16):
+    """A cable or hose along a 3D path: two silhouette lines and a few ring
+    marks, occluding what's behind it."""
+    pts = [P(p) for p in path3]
+    line = LineString(pts)
+    body = line.buffer(r, cap_style=1, quad_segs=4)
+    lines = []
+    L = line.length
+    # a shading line along the lower side
+    off = []
+    for i in range(0, 101):
+        a = line.interpolate(L * i / 100)
+        b = line.interpolate(min(L * i / 100 + 0.1, L))
+        dx, dy = b.x - a.x, b.y - a.y
+        ln = math.hypot(dx, dy) or 1
+        off.append((a.x - dy / ln * r * 0.45, a.y + dx / ln * r * 0.45))
+    lines.append(off)
+    return lines, body

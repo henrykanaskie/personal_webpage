@@ -14,8 +14,8 @@ from pathlib import Path
 from shapely.geometry import Polygon
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from iso import (P, Scene, add, arrow, arrow_head, bezier, box, cylinder, dashed, flat, hatch,  # noqa: E402
-                 lerp, sphere, sprite, stipple)
+from iso import (P, Scene, mul, add, arrow, arrow_head, bezier, bolt_circle, box, circle3, contour_cylinder,  # noqa: E402
+                 cylinder, dashed, flat, hatch, lerp, perp_frame, rbox, rounded_rect, sphere, sprite, stipple, tube)
 
 OUT = Path(__file__).resolve().parent.parent / "svg_data"
 
@@ -216,111 +216,170 @@ def code_rows(o, width, rows, spacing, rng, margin=3.5):
 
 
 # ── Monte Carlo Portfolio Risk Engine ────────────────────────────────────────
-# Joint price history on one tape, cut by a press into contiguous blocks,
-# tumbled in a wire drum, laid out again as new paths that fan into a sideways
-# histogram whose left tail runs past the dashed Gaussian.
+# A bench machine. Punched paper tape carrying three price histories comes off
+# a reel on its bracket, through a guillotine that cuts it into contiguous
+# blocks, into a lottery-style wire drum on a stand with a crank. A chart
+# recorder prints the result: a fan of simulated futures and, beside it, the
+# histogram of outcomes whose left tail runs past the dashed Gaussian.
 
 
 def monteCarlo():
-    s = Scene(mirror=False, seed=11)
+    s = Scene(mirror=False, seed=11, bold=0.5)
     rng = s.rng
-    TZ, TW = 14, 12  # tape height and width
-    RZ = TZ - 8
+    TZ, TW = 16, 12  # tape height and width
 
-    # reel of history: hub, two spoked flanges
-    s.add(*cylinder((0, -2, RZ), (0, TW + 2, RZ), 8.5))
-    s.add(*cylinder((0, -2.8, RZ), (0, -2, RZ), 11.5))
-    lines, occ = cylinder((0, TW + 2, RZ), (0, TW + 2.8, RZ), 11.5)
-    lines.append([P((2.4 * math.cos(math.radians(a)), TW + 2.8, RZ + 2.4 * math.sin(math.radians(a)))) for a in range(0, 361, 10)])
-    for k in range(0, 360, 60):
-        t = math.radians(k)
-        lines.append([P((2.4 * math.cos(t), TW + 2.8, RZ + 2.4 * math.sin(t))), P((10.5 * math.cos(t), TW + 2.8, RZ + 10.5 * math.sin(t)))])
-    s.add(lines, occ)
+    # the bench plate everything stands on
+    s.add(*rbox((-14, -12, -3), (136, TW + 26, 3), r=3, shade=0, rng=rng))
+    for x in (-10, 118):
+        for y in (-8, TW + 10):
+            s.add([circle3((x, y, 0.01), (1, 0, 0), (0, 1, 0), 0.9, 20)], outline=False)
 
-    # tape: three assets moving together
-    common = walk(rng, 60, 0.9)
-    series = [[c + o for c, o in zip(common, walk(rng, 60, 0.45))] for _ in range(3)]
-    X0, X1 = 2, 36
-    tape = [(X0, 0, TZ), (X1, 0, TZ), (X1, TW, TZ), (X0, TW, TZ)]
-    lines = [[P(a), P(b)] for a, b in zip(tape, tape[1:] + tape[:1])]
-    for k, ser in enumerate(series):
-        base = 2.5 + k * 3.6
-        lo, hi = min(ser), max(ser)
-        lines.append([P((X0 + 2 + (X1 - X0 - 4) * i / 59, base + 2.4 * (v - lo) / (hi - lo + 1e-9) - 1.2, TZ)) for i, v in enumerate(ser)])
-    s.add(lines, Polygon([P(p) for p in tape]))
-
-    # the press: two posts on feet, a crossbar, and the blade coming down
-    PX = 28
-    for y in (-4, TW + 1):
-        s.add(*box((PX - 4, y - 1, -1.5), (8, 5, 1.5), rng=rng))
-        s.add(*box((PX - 1.5, y, 0), (3, 3, 34), shade={"+x": (0, 1.1)}, rng=rng))
-    s.add(*box((PX - 2, -4, 34), (4, TW + 8, 3.5), shade={"+x": (0, 1.1), "+y": (90, 1.4)}, rng=rng))
-    s.add(*box((PX - 0.6, -1, TZ + 2.5), (1.2, TW + 2, 12), shade={"+x": (0, 1.2)}, rng=rng))
-    s.add(*cylinder((PX, TW / 2, TZ + 14.5), (PX, TW / 2, 34), 1.2, hatch_side=2))
-
-    # cut blocks falling toward the drum, each keeping all three lines
-    def block(x, z, w=7.5):
-        lines, occ = box((x, 0.5, z), (w, TW - 1, 0.8), shade={"+y": (90, 0.6)}, rng=rng)
+    # reel on an upright bracket
+    RZ = TZ - 1
+    s.add(*rbox((-3, TW + 3.5, 0), (6, 2.5, RZ + 2), r=0.8, shade=0.3, rng=rng))
+    s.add(*contour_cylinder((0, -1.5, RZ), (0, TW + 1.5, RZ), 7.5, rings=3, shade=0.2, rng=rng))
+    for y0, y1 in [(-2.3, -1.5), (TW + 1.5, TW + 2.3)]:
+        lines, occ = cylinder((0, y0, RZ), (0, y1, RZ), 12)
+        face = y1 if y1 > 0 else y0
+        # three windows cut through the flange, like a film reel
+        _, u, v = perp_frame((0, 1, 0))
         for k in range(3):
-            ys = walk(rng, 8, 0.5)
-            lines.append([P((x + 0.5 + (w - 1) * i / 7, 2.5 + k * 3.6 + max(-1.2, min(1.2, v)), z + 0.8)) for i, v in enumerate(ys)])
+            t0 = 2 * math.pi * k / 3 + 0.35
+            win = [add((0, face, RZ), add(mul(u, rr * math.cos(t)), mul(v, rr * math.sin(t))))
+                   for rr, ts in [(4.2, [t0 + i * 0.06 for i in range(24)]), (9.8, [t0 + 1.4 - i * 0.06 for i in range(24)])] for t in ts]
+            lines.append([P(q) for q in win + win[:1]])
+        lines.append(circle3((0, face, RZ), u, v, 2.2, 30))
         s.add(lines, occ)
+    s.add(*contour_cylinder((0, TW + 2.3, RZ), (0, TW + 4.5, RZ), 1.2, rings=0, shade=0, rng=rng))
 
-    for x, z in [(38, TZ), (46, TZ + 6)]:
-        block(x, z)
+    # the tape: sprocket holes along both edges, three assets moving together
+    common = walk(rng, 70, 0.9)
+    series = [[c + o for c, o in zip(common, walk(rng, 70, 0.45))] for _ in range(3)]
+    X0, X1 = 4, 44
+    tape = [(X0, 0, TZ), (X1, 0, TZ), (X1, TW, TZ), (X0, TW, TZ)]
+    lines = []
+    for x in range(int(X0) + 1, int(X1), 2):
+        for y in (1.0, TW - 1.0):
+            lines.append([P((x + dx * 0.45, y + dy * 0.45, TZ)) for dx, dy in [(-1, -1), (1, -1), (1, 1), (-1, 1), (-1, -1)]])
+    for k, ser in enumerate(series):
+        base = 3.2 + k * 2.8
+        lo, hi = min(ser), max(ser)
+        lines.append([P((X0 + 1 + (X1 - X0 - 2) * i / 69, base + 2.0 * (v - lo) / (hi - lo + 1e-9) - 1.0, TZ)) for i, v in enumerate(ser)])
+    # the tape leaves the reel over its top
+    lines.append([P((0, 0, RZ + 7.5)), P((X0, 0, TZ))])
+    lines.append([P((0, TW, RZ + 7.5)), P((X0, TW, TZ))])
+    s.add(lines, Polygon([P(q) for q in tape]))
 
-    # wire drum: a see-through cage on its axle, blocks tumbling inside
-    DX, DZ, R = 68, 26, 14
-    for x, z in [(DX - 4, DZ + 2), (DX + 3, DZ - 6), (DX - 2, DZ - 9)]:
-        block(x, z, 6)
-    for y in (-3, TW / 2, TW + 3):
-        s.add([[P((DX + R * math.cos(t), y, DZ + R * math.sin(t))) for t in [2 * math.pi * i / 90 for i in range(91)]]])
-    for k in range(16):
-        t = 2 * math.pi * k / 16
-        s.add([[P((DX + R * math.cos(t), -3, DZ + R * math.sin(t))), P((DX + R * math.cos(t), TW + 3, DZ + R * math.sin(t)))]])
-    s.add(*cylinder((DX, -8, DZ), (DX, TW + 8, DZ), 1.4))
-    for y in (-8, TW + 8):
-        s.add(*cylinder((DX, y - 0.8, DZ), (DX, y, DZ), 3))
+    DX, DZ, R = 66, 19, 12  # the drum, placed here so the tray can reach it
 
-    # new paths: blocks laid end to end in a new order
-    OX, OZ = 86, 18
-    for t in range(3):
-        y = TW / 2 - 4 + t * 4
-        s.add([[P((OX, y - 1.2, OZ)), P((OX + 22, y - 1.2, OZ))], [P((OX, y + 1.2, OZ)), P((OX + 22, y + 1.2, OZ))]]
-              + [[P((OX + q * 5.5, y - 1.2, OZ)), P((OX + q * 5.5, y + 1.2, OZ))] for q in range(5)])
-    # the fan of simulated futures, in a plane facing the viewer
-    start = (OX + 24, TW / 2, OZ)
-    FW = 56
-    for k in range(16):
-        z = 0.0
-        pts = []
-        for i in range(51):
-            pts.append(P(flat(start, FW * i / 50, z)))
-            shock = rng.gauss(0, 1.0)
-            if rng.random() < 0.03:
-                shock -= rng.uniform(3, 5)  # a crash: the tail
-            z += shock * 1.25
-        s.add([pts])
-    s.add(arrow([P(start), P(flat(start, 6))], 0.01)[:1])
+    # the guillotine: base, two round columns, a crosshead, the blade on its rod
+    GX = 30
+    s.add(*rbox((GX - 6, -7, 0), (12, TW + 14, 2.5), r=1.5, shade=0, rng=rng))
+    for y in (-4.5, TW + 4.5):
+        s.add(*contour_cylinder((GX, y, 2.5), (GX, y, 40), 1.6, rings=0, bands=(0.06, 0.94), shade=0.4, rng=rng))
+    s.add(*rbox((GX - 3.5, -7.5, 40), (7, TW + 15, 4.5), r=1.5, shade=0.4, rng=rng))
+    s.add(*contour_cylinder((GX, TW / 2, 44.5), (GX, TW / 2, 49), 2.6, rings=0, bands=(0.5,), shade=0.3, rng=rng))
+    s.add(*contour_cylinder((GX, TW / 2, 29), (GX, TW / 2, 40), 1.0, rings=0, shade=0.3, rng=rng))
+    blade = [(GX - 0.5, -3, TZ + 2), (GX + 0.5, -3, TZ + 2), (GX + 0.5, TW + 3, TZ + 5), (GX - 0.5, TW + 3, TZ + 5)]
+    s.add(*box((GX - 0.6, -3.2, TZ + 5), (1.2, TW + 6.4, 11), shade={"+x": (0, 1.8)}, rng=rng))
+    s.add([[P((GX + 0.6, -3.2, TZ + 5)), P((GX + 0.6, TW + 3.2, TZ + 8))]], outline=False)
+    s.add([[P((GX - 5, -7, 1.25)), P((GX - 5, TW + 7, 1.25))]], outline=False)
 
-    # sideways histogram of outcomes, facing the viewer like the fan, with a
-    # dashed Gaussian that underrates the left tail (the hatched bars)
-    H = P(flat(start, FW + 6))
+    # cut blocks: pieces of the same tape, all three lines kept
+    def block(x, y, z, w=6.5):
+        lines = []
+        for k in range(3):
+            ys = walk(rng, 9, 0.5)
+            lines.append([P((x + 0.4 + (w - 0.8) * i / 8, y + 3.2 + k * 2.8 + max(-1, min(1, v)), z)) for i, v in enumerate(ys)])
+        for xx in (x + 1.5, x + w - 1.5):
+            for yy in (y + 1, y + TW - 1):
+                lines.append([P((xx + dx * 0.45, yy + dy * 0.45, z)) for dx, dy in [(-1, -1), (1, -1), (1, 1), (-1, 1), (-1, -1)]])
+        quad = [(x, y, z), (x + w, y, z), (x + w, y + TW, z), (x, y + TW, z)]
+        s.add([[P(a), P(b)] for a, b in zip(quad, quad[1:] + quad[:1])] + lines, Polygon([P(q) for q in quad]))
+
+    # a sloped tray from the blade into the drum, with low side lips
+    tray = [(GX + 1.5, -1, TZ - 0.4), (DX - R + 1, -1, DZ - 2), (DX - R + 1, TW + 1, DZ - 2), (GX + 1.5, TW + 1, TZ - 0.4)]
+    lips = [[P(tray[0]), P(tray[1]), P(add(tray[1], (0, 0, 1.2))), P(add(tray[0], (0, 0, 1.2))), P(tray[0])],
+            [P(tray[3]), P(tray[2]), P(add(tray[2], (0, 0, 1.2))), P(add(tray[3], (0, 0, 1.2))), P(tray[3])]]
+    s.add([[P(a), P(b)] for a, b in zip(tray, tray[1:] + tray[:1])] + lips, Polygon([P(q) for q in tray]))
+    block(GX + 3, 0, TZ - 0.1)
+    block(GX + 12, 0, TZ - 1.1)
+
+    # the drum on its A-frame stand, with a crank
+    ys = (-3, TW + 3)
+    for y in (ys[0] - 2.2, ys[1] + 2.2):
+        for sx in (-1, 1):
+            s.add(*tube([(DX + sx * 8, y, 0.4), (DX, y, DZ)], 0.6))
+            s.add(*rbox((DX + sx * 8 - 1.4, y - 1.2, 0), (2.8, 2.4, 0.8), r=0.6, shade=0, rng=rng))
+        s.add(*tube([(DX - 4.2, y, DZ * 0.45), (DX + 4.2, y, DZ * 0.45)], 0.45))
+    for x, z in [(DX - 5, DZ - 4), (DX + 1, DZ - 7)]:
+        block(x, -0.5, z, 5.5)
+    _, u, v = perp_frame((0, 1, 0))
+    for y in ys:
+        s.add([circle3((DX, y, DZ), u, v, R, 90), circle3((DX, y, DZ), u, v, R - 0.8, 90)]
+              + [[P(add((DX, y, DZ), mul(add(mul(u, math.cos(t)), mul(v, math.sin(t))), rr))) for rr in (1.2, R - 0.8)]
+                 for t in [2 * math.pi * k / 6 for k in range(6)]], outline=False)
+    for k in range(18):
+        t = 2 * math.pi * k / 18
+        off = add(mul(u, R * math.cos(t)), mul(v, R * math.sin(t)))
+        s.add([[P(add((DX, ys[0], DZ), off)), P(add((DX, ys[1], DZ), off))]], outline=False)
+    # the hatch in the cage
+    s.add([[P(add((DX, y, DZ), add(mul(u, R * math.cos(t)), mul(v, R * math.sin(t))))) for t, y in
+            [(1.9, 1), (1.9, TW - 1), (2.6, TW - 1), (2.6, 1), (1.9, 1)]]], outline=False)
+    s.add(*contour_cylinder((DX, ys[0] - 3.2, DZ), (DX, ys[1] + 3.2, DZ), 1.1, rings=0, shade=0.2, rng=rng))
+    # crank
+    s.add(*tube([(DX, ys[1] + 3.2, DZ), (DX + 6, ys[1] + 3.6, DZ + 4)], 0.55))
+    s.add(*contour_cylinder((DX + 6, ys[1] + 3.6, DZ + 4), (DX + 6, ys[1] + 7.5, DZ + 4), 0.9, rings=1, shade=0.3, rng=rng))
+
+    # the chart recorder, printing the futures
+    CX = 84
+    s.add(*rbox((CX, -4, 0), (18, TW + 8, 16), r=2, shade=0.35, rng=rng))
+    # knobs and a slot on its front
+    for k in range(3):
+        s.add(*contour_cylinder((CX + 4 + k * 4, TW + 4, 4), (CX + 4 + k * 4, TW + 5.2, 4), 1.1, rings=0, shade=0, rng=rng))
+    slot = (CX + 18, TW / 2 - 7, 10.5)
+    s.add([[P(slot), P((slot[0], slot[1] + 14, slot[2]))]], outline=False)
+
+    # the printout: a sheet facing the viewer, curling at its end
+    o = (slot[0], slot[1] + 7, slot[2])
+    SW, SH = 50, 28
+    base = flat(o, 0, -slot[2] + 0.6)
+    sheet = [P(flat(base, 0, 0)), P(flat(base, SW - 6, 0))]
+    curl = bezier(P(flat(base, SW - 6, 0)), P(flat(base, SW + 1, 2)), P(flat(base, SW + 1, SH - 4)), P(flat(base, SW - 4, SH)), 30)
+    sheet += curl[1:] + [P(flat(base, 0, SH))]
+    paper = Polygon(sheet)
+    lines = []
+    # faint chart grid
+    for gx in range(6, int(SW - 8), 8):
+        lines += [[P(flat(base, gx, 1.5)), P(flat(base, gx, 3))]]
+    # the fan of simulated paths
+    start = flat(base, 3, SH * 0.58)
+    FW = SW * 0.6
+    for k in range(18):
+        z, pts = 0.0, []
+        for i in range(46):
+            pts.append(P(flat(start, FW * i / 45, z)))
+            shock = rng.gauss(0, 0.8)
+            if rng.random() < 0.028:
+                shock -= rng.uniform(3, 4.5)
+            z += shock * 0.7
+        lines.append(pts)
+    # histogram of where they ended: bars, hatched tail, dashed Gaussian
+    H = P(flat(start, FW + 4))
     bins = [1, 0, 1, 1, 2, 1, 3, 5, 8, 11, 13, 12, 9, 5, 3, 1]
-    bh, bw, mid = 3.2, 2.2, 10.5
+    bh, bw, mid = 1.5, 0.95, 10.5
     for i, c in enumerate(bins):
         if c == 0:
             continue
         y = H[1] - (i - mid) * bh
-        bar = Polygon([(H[0], y), (H[0] + c * bw, y), (H[0] + c * bw, y - bh * 0.8), (H[0], y - bh * 0.8)])
-        lines = [list(bar.exterior.coords)]
+        bar = Polygon([(H[0], y), (H[0] + c * bw, y), (H[0] + c * bw, y - bh * 0.78), (H[0], y - bh * 0.78)])
+        lines.append(list(bar.exterior.coords))
         if i < 6:
-            lines += hatch(bar.buffer(-0.2), 45, 0.55)
-        s.add(lines, bar)
-    s.add([[(H[0], H[1] - (-1 - mid) * bh), (H[0], H[1] - (len(bins) - mid) * bh)]])
-    mu, sd = 10.6, 1.9
-    g = [(H[0] + 13 * bw * math.exp(-0.5 * ((q - mu) / sd) ** 2), H[1] - (q - mid - 0.4) * bh) for q in [t / 4 for t in range(0, 66)]]
-    s.add(dashed(g, 1.6, 1.1))
+            lines += hatch(bar.buffer(-0.12), 45, 0.42)
+    lines.append([(H[0], H[1] + (mid + 1) * bh), (H[0], H[1] - (len(bins) - mid) * bh)])
+    g = [(H[0] + 13 * bw * math.exp(-0.5 * ((q - 10.6) / 1.9) ** 2), H[1] - (q - mid - 0.4) * bh) for q in [t / 4 for t in range(0, 66)]]
+    lines += dashed(g, 1.2, 0.9)
+    s.add(lines + [sheet + [sheet[0]]], paper, outline=False, heavy=[sheet + [sheet[0]]])
     return s
 
 
