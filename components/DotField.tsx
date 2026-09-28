@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { paper } from "@/lib/tokens";
 import { budTicks, buds, glassDriver, onBudsChange, releaseBuds, setRingHole, stepBuds } from "@/lib/liquid";
-import { GLSL_GLASS, fullscreenProgram, rgb, uniforms } from "@/lib/gl";
+import { GLSL_GLASS, compileFullscreen, rgb, uniforms } from "@/lib/gl";
 import { type Drawing, allDrawings, onDrawingsChange } from "@/lib/drawings";
 
 // ─── DotField ───────────────────────────────────────────────────────────────
@@ -297,433 +297,458 @@ export default function DotField() {
 
     // explicit mip levels for the drawings; without them the drawings stay DOM
     const texLod = !!gl.getExtension("EXT_shader_texture_lod");
-    const prog = fullscreenProgram(gl, FRAG(texLod));
-    if (!prog) return; // the CSS dots stay
-    // prettier-ignore
-    const u = uniforms(gl, prog, [
-      "uRes", "uDpr", "uScroll", "uGap", "uDotR", "uBg", "uDot", "uDotA", "uMouse", "uMouseOn",
-      "uRipple", "uOrigin", "uIntro", "uCards", "uCardP", "uNCards", "uBlob", "uHoleR", "uFill", "uFillA", "uDark",
-      "uDraw0", "uDraw1", "uDraw2", "uDraw3", "uDrawA", "uDrawB", "uDrawL", "uNDraw",
-      "uBudC", "uBudD", "uBudP", "uBudS", "uNBud",
-    ]);
-    const cardBuf = new Float32Array(32), cardPBuf = new Float32Array(16);
-    let panels: HTMLElement[] = [];
-    let panelsAt = -1e9;
-    const radiusOf = new WeakMap<HTMLElement, number>();
-    let lastSig = "";
-    // The swell: a blob that rises out of the nearest card's edge toward the cursor.
-    const blob = { x: 0, y: 0, vx: 0, vy: 0, r: 0, vr: 0 };
-    let holeEl: HTMLElement | null = null;
+    // The shader compiles in the background (KHR_parallel_shader_compile):
+    // compiled synchronously, this now sizeable shader froze the first load.
+    // Until it's ready the CSS dot grid is what shows.
+    const poll = compileFullscreen(gl, FRAG(texLod));
+    let stop: (() => void) | null = null;
+    let waitRaf = 0;
+    let gone = false;
+    const begin = (prog: WebGLProgram) => {
+      // prettier-ignore
+      const u = uniforms(gl, prog, [
+        "uRes", "uDpr", "uScroll", "uGap", "uDotR", "uBg", "uDot", "uDotA", "uMouse", "uMouseOn",
+        "uRipple", "uOrigin", "uIntro", "uCards", "uCardP", "uNCards", "uBlob", "uHoleR", "uFill", "uFillA", "uDark",
+        "uDraw0", "uDraw1", "uDraw2", "uDraw3", "uDrawA", "uDrawB", "uDrawL", "uNDraw",
+        "uBudC", "uBudD", "uBudP", "uBudS", "uNBud",
+      ]);
+      const cardBuf = new Float32Array(32), cardPBuf = new Float32Array(16);
+      let panels: HTMLElement[] = [];
+      let panelsAt = -1e9;
+      const radiusOf = new WeakMap<HTMLElement, number>();
+      let lastSig = "";
+      // The swell: a blob that rises out of the nearest card's edge toward the cursor.
+      const blob = { x: 0, y: 0, vx: 0, vy: 0, r: 0, vr: 0 };
+      let holeEl: HTMLElement | null = null;
 
-    // Opacity from inline styles up the tree (Framer Motion writes it there), so
-    // the frost appears with its card rather than before it.
-    const opacityOf = (el: HTMLElement) => {
-      let a = 1;
-      let e: HTMLElement | null = el;
-      for (let i = 0; i < 6 && e; i++, e = e.parentElement) {
-        const o = e.style.opacity;
-        if (o !== "") a *= parseFloat(o);
-      }
-      return a;
-    };
+      // Opacity from inline styles up the tree (Framer Motion writes it there), so
+      // the frost appears with its card rather than before it.
+      const opacityOf = (el: HTMLElement) => {
+        let a = 1;
+        let e: HTMLElement | null = el;
+        for (let i = 0; i < 6 && e; i++, e = e.parentElement) {
+          const o = e.style.opacity;
+          if (o !== "") a *= parseFloat(o);
+        }
+        return a;
+      };
 
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let w = 0, h = 0;
-    let dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const maxDpr = dpr;
-    let raf = 0, last = performance.now();
-    let slowMs = 0;
-    let lastScrollY = window.scrollY, lastActive = last;
-    let wasDark = document.documentElement.classList.contains("dark");
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      let w = 0, h = 0;
+      let dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const maxDpr = dpr;
+      let raf = 0, last = performance.now();
+      let slowMs = 0;
+      let lastScrollY = window.scrollY, lastActive = last;
+      let wasDark = document.documentElement.classList.contains("dark");
 
-    // Plain fields and plain assignments throughout: the production minifier
-    // constant-folds `[obj.a, obj.b] = f()` on objects like these into `[0, 0] = f()`.
-    const mouse = { x: -9999, y: -9999, on: 0, onV: 0 };
-    let ripple = { x: 0, y: 0, t: -1 };
-    let wave = { x: 0, y: 0, start: reduced ? -99 : last };
-    waveRef.current = (x, y) => {
-      if (reduced) return;
-      wave = { x: x ?? w / 2, y: y ?? h * 0.4, start: performance.now() };
-      wake();
-    };
+      // Plain fields and plain assignments throughout: the production minifier
+      // constant-folds `[obj.a, obj.b] = f()` on objects like these into `[0, 0] = f()`.
+      const mouse = { x: -9999, y: -9999, on: 0, onV: 0 };
+      let ripple = { x: 0, y: 0, t: -1 };
+      let wave = { x: 0, y: 0, start: reduced ? -99 : last };
+      waveRef.current = (x, y) => {
+        if (reduced) return;
+        wave = { x: x ?? w / 2, y: y ?? h * 0.4, start: performance.now() };
+        wake();
+      };
 
-    // The canvas is sized to the large viewport (100lvh, .dot-field), so iOS
-    // Safari's toolbar collapsing on scroll doesn't resize (and reallocate) it
-    // mid-scroll; it only grows, or changes on a real width change.
-    let lost = false;
-    const resize = () => {
-      dpr = Math.min(dpr, Math.min(window.devicePixelRatio || 1, 2));
-      const nw = canvas.clientWidth || window.innerWidth;
-      const nh = Math.max(canvas.clientHeight || 0, window.innerHeight);
-      if (nw === w && nh <= h) return;
-      h = nw !== w ? nh : Math.max(h, nh);
-      w = nw;
-      canvas.width = Math.max(1, Math.round(w * dpr));
-      canvas.height = Math.max(1, Math.round(h * dpr));
-      wave.x ||= w / 2;
-      wave.y ||= h * 0.4;
-      wake();
-    };
-    resize();
-    window.addEventListener("resize", resize);
+      // The canvas is sized to the large viewport (100lvh, .dot-field), so iOS
+      // Safari's toolbar collapsing on scroll doesn't resize (and reallocate) it
+      // mid-scroll; it only grows, or changes on a real width change.
+      let lost = false;
+      // Reallocating the backing store clears it, so it's only ever done right
+      // before a draw, in the same frame: a cleared canvas never reaches the screen.
+      const sizeCanvas = () => {
+        const cw = Math.max(1, Math.round(w * dpr)), ch = Math.max(1, Math.round(h * dpr));
+        if (canvas.width !== cw) canvas.width = cw;
+        if (canvas.height !== ch) canvas.height = ch;
+      };
+      const resize = () => {
+        dpr = Math.min(dpr, Math.min(window.devicePixelRatio || 1, 2));
+        const nw = canvas.clientWidth || window.innerWidth;
+        const nh = Math.max(canvas.clientHeight || 0, window.innerHeight);
+        if (nw === w && nh <= h) return;
+        h = nw !== w ? nh : Math.max(h, nh);
+        w = nw;
+        // the backing store itself is resized in the next frame, just before it
+        // draws (sizeCanvas): resized here, the cleared canvas would be on screen
+        // for a frame, and with it every card's glass, fill and shadow
+        wave.x ||= w / 2;
+        wave.y ||= h * 0.4;
+        wake();
+      };
+      resize();
+      window.addEventListener("resize", resize);
 
-    // Touch has no hover, so a finger stands in for the cursor while it's down:
-    // the dots part under it and a card's edge reaches toward it.
-    let touching = false;
-    const onMove = (e: PointerEvent) => {
-      if (e.pointerType !== "mouse" && !touching) return;
-      mouse.x = e.clientX;
-      mouse.y = e.clientY;
-      wake();
-    };
-    const onLeave = () => { mouse.x = -9999; wake(); };
-    const onUp = (e: PointerEvent) => {
-      if (e.pointerType === "mouse") return;
-      touching = false;
-      mouse.x = -9999;
-      wake();
-    };
-    const onDown = (e: PointerEvent) => {
-      if (e.pointerType !== "mouse") {
-        touching = true;
+      // Touch has no hover, so a finger stands in for the cursor while it's down:
+      // the dots part under it and a card's edge reaches toward it.
+      let touching = false;
+      const onMove = (e: PointerEvent) => {
+        if (e.pointerType !== "mouse" && !touching) return;
         mouse.x = e.clientX;
         mouse.y = e.clientY;
-      }
-      lastDown.current = { x: e.clientX, y: e.clientY, t: performance.now() };
-      const t = e.target as Element | null;
-      if (!(t && t.closest?.(CONTENT))) ripple = { x: e.clientX, y: e.clientY, t: 0 };
-      wake();
-    };
-    const onScroll = () => wake();
-    window.addEventListener("pointermove", onMove, { passive: true });
-    window.addEventListener("pointerdown", onDown, { passive: true });
-    window.addEventListener("pointerup", onUp, { passive: true });
-    window.addEventListener("pointercancel", onUp, { passive: true });
-    window.addEventListener("scroll", onScroll, { passive: true });
-    // iOS drops WebGL contexts under memory pressure or in the background. The
-    // canvas hides and the CSS dot grid underneath is simply what's seen.
-    const onLost = (e: Event) => {
-      e.preventDefault();
-      lost = true;
-      cancelAnimationFrame(raf);
-      raf = 0;
-      canvas.style.opacity = "0";
-      showAll();
-      releaseBuds();
-      document.documentElement.classList.remove("paper-gl");
-    };
-    canvas.addEventListener("webglcontextlost", onLost);
-    document.documentElement.addEventListener("pointerleave", onLeave);
-    const onVis = () => { if (!document.hidden) wake(); };
-    document.addEventListener("visibilitychange", onVis);
-    // A theme switch repaints the paper even if nothing else is moving.
-    const themeObs = new MutationObserver(() => wake());
-    // The drawings (lib/drawings): one texture each, re-uploaded when the theme
-    // or its image changes. A drawing's SVG is hidden only while it's painted here.
-    const drawTex = new Map<Drawing, { tex: WebGLTexture; theme: string; size: number; used: number }>();
-    const MAX_DRAW_TEX = 6;
-    // rasters are made one at a time, in idle moments (a drawing is ~1,200
-    // paths), and held only until they're uploaded
-    const pending = new Set<Drawing>();
-    const ready = new Map<Drawing, { theme: string; canvas: HTMLCanvasElement }>();
-    let rasterChain: Promise<void> = Promise.resolve();
-    let disposed = false;
-    const idle = () => new Promise<void>((res) => (window.requestIdleCallback ? window.requestIdleCallback(() => res(), { timeout: 300 }) : window.setTimeout(res, 50)));
-    const requestRaster = (d: Drawing, theme: string) => {
-      pending.add(d);
-      rasterChain = rasterChain.then(idle).then(async () => {
-        const c = disposed ? null : await d.raster(theme === "dark");
-        pending.delete(d);
-        if (c && !disposed) { ready.set(d, { theme, canvas: c }); wake(); }
-      });
-    };
-    const drawBufA = new Float32Array(12), drawBufB = new Float32Array(12), drawBufL = new Float32Array(4);
-    const hidden = new Set<Drawing>();
-    let lastDrawSig = "";
-    const setHidden = (d: Drawing, on: boolean) => {
-      if (on === hidden.has(d)) return;
-      if (on) hidden.add(d); else hidden.delete(d);
-      d.svg.style.visibility = on ? "hidden" : "";
-    };
-    const showAll = () => { for (const d of Array.from(hidden)) setHidden(d, false); };
-    const offDrawings = onDrawingsChange(() => wake());
-    // a bud starting (or ending) wakes the loop; it stays awake while any grows
-    const offBuds = onBudsChange(() => wake());
-    const budBuf = { c: new Float32Array(8), d: new Float32Array(8), p: new Float32Array(8), s: new Float32Array(8) };
-    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-    themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-
-    function wake() {
-      lastActive = performance.now();
-      if (!raf && !document.hidden) { last = performance.now(); raf = requestAnimationFrame(frame); }
-    }
-
-    function frame(now: number) {
-      raf = 0;
-      if (document.hidden || !gl || lost) return;
-      const scrollY = window.scrollY;
-      const scrolling = scrollY !== lastScrollY;
-      lastScrollY = scrollY;
-      const dark = document.documentElement.classList.contains("dark");
-      const themeChanged = dark !== wasDark;
-      wasDark = dark;
-      const introT = (now - wave.start) / 1000;
-      const settling = Math.abs(mouse.onV) > 1e-3 || Math.abs(mouse.on - (mouse.x > -9000 ? 1 : 0)) > 1e-3;
-      // the buds step first, so the glass drawn below is of their shape this frame
-      stepBuds(now);
-      let busy = scrolling || themeChanged || settling || ripple.t >= 0 || introT < 2.2 || now - lastActive < 250 || buds.size > 0 || budTicks.size > 0;
-
-      const dt = Math.min(0.05, (now - last) / 1000);
-      last = now;
-
-      // Adaptive resolution: if busy frames keep running long, step the pixel ratio down.
-      if (busy && dt > 0.024) slowMs += dt * 1000; else slowMs = Math.max(0, slowMs - dt * 500);
-      if (slowMs > 600 && dpr > 1) {
-        dpr = Math.max(1, dpr - 0.25);
-        slowMs = 0;
-        canvas.width = Math.round(w * dpr);
-        canvas.height = Math.round(h * dpr);
-      }
-
-      const pal = dark ? paper.dark : paper.light;
-      const glass = dark ? paper.glass.dark : paper.glass.light;
-
-      // Visible cards, nearest first.
-      if (now - panelsAt > 1000) {
-        panels = Array.from(document.querySelectorAll<HTMLElement>("[data-liquid]"));
-        panelsAt = now;
-      }
-      let n = 0;
-      let sig = "";
-      let near: { d: number; ex: number; ey: number; nx: number; ny: number; el: HTMLElement; left: number; top: number } | null = null;
-      for (const el of panels) {
-        if (n >= 8) break;
-        const r = el.getBoundingClientRect();
-        if (r.bottom < -40 || r.top > h + 40 || r.width < 1) continue;
-        let rad = radiusOf.get(el);
-        if (rad === undefined) {
-          rad = parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0;
-          radiusOf.set(el, rad);
+        wake();
+      };
+      const onLeave = () => { mouse.x = -9999; wake(); };
+      const onUp = (e: PointerEvent) => {
+        if (e.pointerType === "mouse") return;
+        touching = false;
+        mouse.x = -9999;
+        wake();
+      };
+      const onDown = (e: PointerEvent) => {
+        if (e.pointerType !== "mouse") {
+          touching = true;
+          mouse.x = e.clientX;
+          mouse.y = e.clientY;
         }
-        const a = opacityOf(el);
-        cardBuf[n * 4] = r.left; cardBuf[n * 4 + 1] = r.top; cardBuf[n * 4 + 2] = r.width; cardBuf[n * 4 + 3] = r.height;
-        cardPBuf[n * 2] = Math.min(rad, r.width / 2, r.height / 2); cardPBuf[n * 2 + 1] = a;
-        sig += `${r.left | 0},${r.top | 0},${r.width | 0},${r.height | 0},${a.toFixed(2)};`;
-        n++;
-        // distance from the cursor to this card's edge, and the edge point nearest it
-        if (mouse.x > -9000 && a > 0.9) {
-          const ex = Math.max(r.left, Math.min(r.right, mouse.x));
-          const ey = Math.max(r.top, Math.min(r.bottom, mouse.y));
-          const d = Math.hypot(mouse.x - ex, mouse.y - ey);
-          if (d > 0 && (!near || d < near.d)) near = { d, ex, ey, nx: (mouse.x - ex) / d, ny: (mouse.y - ey) / d, el, left: r.left, top: r.top };
+        lastDown.current = { x: e.clientX, y: e.clientY, t: performance.now() };
+        const t = e.target as Element | null;
+        if (!(t && t.closest?.(CONTENT))) ripple = { x: e.clientX, y: e.clientY, t: 0 };
+        wake();
+      };
+      const onScroll = () => wake();
+      window.addEventListener("pointermove", onMove, { passive: true });
+      window.addEventListener("pointerdown", onDown, { passive: true });
+      window.addEventListener("pointerup", onUp, { passive: true });
+      window.addEventListener("pointercancel", onUp, { passive: true });
+      window.addEventListener("scroll", onScroll, { passive: true });
+      // iOS drops WebGL contexts under memory pressure or in the background. The
+      // canvas hides and the CSS dot grid underneath is simply what's seen.
+      const onLost = (e: Event) => {
+        e.preventDefault();
+        lost = true;
+        cancelAnimationFrame(raf);
+        raf = 0;
+        canvas.style.opacity = "0";
+        showAll();
+        releaseBuds();
+        document.documentElement.classList.remove("paper-gl");
+      };
+      canvas.addEventListener("webglcontextlost", onLost);
+      document.documentElement.addEventListener("pointerleave", onLeave);
+      const onVis = () => { if (!document.hidden) wake(); };
+      document.addEventListener("visibilitychange", onVis);
+      // A theme switch repaints the paper even if nothing else is moving.
+      const themeObs = new MutationObserver(() => wake());
+      // The drawings (lib/drawings): one texture each, re-uploaded when the theme
+      // or its image changes. A drawing's SVG is hidden only while it's painted here.
+      const drawTex = new Map<Drawing, { tex: WebGLTexture; theme: string; size: number; used: number }>();
+      const MAX_DRAW_TEX = 6;
+      // rasters are made one at a time, in idle moments (a drawing is ~1,200
+      // paths), and held only until they're uploaded
+      const pending = new Set<Drawing>();
+      const ready = new Map<Drawing, { theme: string; canvas: HTMLCanvasElement }>();
+      let rasterChain: Promise<void> = Promise.resolve();
+      let disposed = false;
+      const idle = () => new Promise<void>((res) => (window.requestIdleCallback ? window.requestIdleCallback(() => res(), { timeout: 300 }) : window.setTimeout(res, 50)));
+      const requestRaster = (d: Drawing, theme: string) => {
+        pending.add(d);
+        rasterChain = rasterChain.then(idle).then(async () => {
+          const c = disposed ? null : await d.raster(theme === "dark");
+          pending.delete(d);
+          if (c && !disposed) { ready.set(d, { theme, canvas: c }); wake(); }
+        });
+      };
+      const drawBufA = new Float32Array(12), drawBufB = new Float32Array(12), drawBufL = new Float32Array(4);
+      const hidden = new Set<Drawing>();
+      let lastDrawSig = "";
+      const setHidden = (d: Drawing, on: boolean) => {
+        if (on === hidden.has(d)) return;
+        if (on) hidden.add(d); else hidden.delete(d);
+        d.svg.style.visibility = on ? "hidden" : "";
+      };
+      const showAll = () => { for (const d of Array.from(hidden)) setHidden(d, false); };
+      const offDrawings = onDrawingsChange(() => wake());
+      // a bud starting (or ending) wakes the loop; it stays awake while any grows
+      const offBuds = onBudsChange(() => wake());
+      const budBuf = { c: new Float32Array(8), d: new Float32Array(8), p: new Float32Array(8), s: new Float32Array(8) };
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+      themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+
+      function wake() {
+        lastActive = performance.now();
+        if (!raf && !document.hidden) { last = performance.now(); raf = requestAnimationFrame(frame); }
+      }
+
+      function frame(now: number) {
+        raf = 0;
+        if (document.hidden || !gl || lost) return;
+        const scrollY = window.scrollY;
+        const scrolling = scrollY !== lastScrollY;
+        lastScrollY = scrollY;
+        const dark = document.documentElement.classList.contains("dark");
+        const themeChanged = dark !== wasDark;
+        wasDark = dark;
+        const introT = (now - wave.start) / 1000;
+        const settling = Math.abs(mouse.onV) > 1e-3 || Math.abs(mouse.on - (mouse.x > -9000 ? 1 : 0)) > 1e-3;
+        // the buds step first, so the glass drawn below is of their shape this frame
+        stepBuds(now);
+        let busy = scrolling || themeChanged || settling || ripple.t >= 0 || introT < 2.2 || now - lastActive < 250 || buds.size > 0 || budTicks.size > 0;
+
+        const dt = Math.min(0.05, (now - last) / 1000);
+        last = now;
+
+        // Adaptive resolution: if busy frames keep running long, step the pixel ratio down.
+        if (busy && dt > 0.024) slowMs += dt * 1000; else slowMs = Math.max(0, slowMs - dt * 500);
+        if (slowMs > 600 && dpr > 1) {
+          dpr = Math.max(1, dpr - 0.25);
+          slowMs = 0;
         }
-      }
-      const moved = sig !== lastSig;
-      lastSig = sig;
 
-      // The swell reaches about halfway to the cursor and grows as it closes in.
-      // Critically damped, like everything else that moves: it rises and lets
-      // go without a wobble, and its radius can't overshoot past zero and pop
-      // back up after the cursor leaves.
-      // It lives in its card's own coordinates (blob.x, blob.y are card-local),
-      // so it scrolls with the card; in window coordinates its spring trailed a
-      // fast-scrolling card and the blob came loose as a separate bubble. It
-      // belongs to one card at a time, and moves to another only once it has
-      // shrunk away.
-      const REACH = 120;
-      if (near && near.el !== holeEl && (!holeEl || blob.r < 0.5)) {
-        if (holeEl) setRingHole(holeEl, "s", 0, 0, 0);
-        holeEl = near.el;
-        blob.r = 0; blob.vr = 0;
-      }
-      const own = holeEl ? holeEl.getBoundingClientRect() : null;
-      let tx = blob.x, ty = blob.y, tr = 0;
-      if (own && near && near.el === holeEl && near.d < REACH && !reduced) {
-        const k = 1 - near.d / REACH;
-        tr = 10 + 26 * k;
-        // never so far out that the smooth union lets go: it reaches, it doesn't drip
-        const out = Math.min(near.d * 0.6, tr * 0.6 + 8);
-        tx = near.ex - own.left + near.nx * out;
-        ty = near.ey - own.top + near.ny * out;
-        if (blob.r < 0.5) { blob.x = near.ex - own.left - near.nx * 20; blob.y = near.ey - own.top - near.ny * 20; blob.vx = blob.vy = 0; }
-      }
-      let sb = springTo(blob.x, blob.vx, tx, 14, dt);
-      blob.x = sb[0]; blob.vx = sb[1];
-      sb = springTo(blob.y, blob.vy, ty, 14, dt);
-      blob.y = sb[0]; blob.vy = sb[1];
-      sb = springTo(blob.r, blob.vr, tr, 14, dt);
-      blob.r = Math.max(0, sb[0]); blob.vr = sb[1];
-      const blobBusy = Math.abs(blob.vr) > 0.5 || Math.abs(blob.r - tr) > 0.3 || Math.hypot(blob.vx, blob.vy) > 2;
-      if (moved || blobBusy) { lastActive = now; busy = true; }
-      // where it is on screen, for the shader
-      const blobX = own ? own.left + blob.x : -9999, blobY = own ? own.top + blob.y : -9999;
+        const pal = dark ? paper.dark : paper.light;
+        const glass = dark ? paper.glass.dark : paper.glass.light;
 
-      // Open the card's rim around the swell (the shader draws the rim there instead).
-      const holeR = blob.r > 0.5 ? blob.r + 34 : 0;
-      if (holeEl) {
-        setRingHole(holeEl, "s", blob.x, blob.y, holeR);
-        if (holeR === 0 && (!near || near.el !== holeEl)) holeEl = null;
-      }
-      const sp = springTo(mouse.on, mouse.onV, mouse.x > -9000 ? 1 : 0, 9, dt);
-      mouse.on = sp[0];
-      mouse.onV = sp[1];
-      if (ripple.t >= 0) { ripple.t += dt; if (ripple.t > 1.6) ripple.t = -1; }
-
-      // The drawings on screen (at most four): where each sits, as the affine
-      // map from viewport px to its image's uv (the inverse of its screen CTM).
-      // A drawing within about a screen of view gets its raster (this theme's)
-      // ahead of time; the image is uploaded and let go.
-      let nd = 0;
-      let dsig = "";
-      const theme = dark ? "dark" : "light";
-      for (const d of allDrawings()) {
-        let on = false;
-        const m = texLod && d.svg.isConnected ? d.svg.getScreenCTM() : null;
-        if (m) {
-          const b = d.box;
-          const xs = [b.x, b.x + b.w], ys = [b.y, b.y + b.h];
-          let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
-          for (const x of xs) for (const y of ys) {
-            const px = m.a * x + m.c * y + m.e, py = m.b * x + m.d * y + m.f;
-            x0 = Math.min(x0, px); x1 = Math.max(x1, px); y0 = Math.min(y0, py); y1 = Math.max(y1, py);
+        // Visible cards, nearest first.
+        if (now - panelsAt > 1000) {
+          panels = Array.from(document.querySelectorAll<HTMLElement>("[data-liquid]"));
+          panelsAt = now;
+        }
+        let n = 0;
+        let sig = "";
+        let near: { d: number; ex: number; ey: number; nx: number; ny: number; el: HTMLElement; left: number; top: number } | null = null;
+        for (const el of panels) {
+          if (n >= 8) break;
+          const r = el.getBoundingClientRect();
+          if (r.bottom < -40 || r.top > h + 40 || r.width < 1) continue;
+          let rad = radiusOf.get(el);
+          if (rad === undefined) {
+            rad = parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0;
+            radiusOf.set(el, rad);
           }
-          const near = x1 > -w * 0.5 && x0 < w * 1.5 && y1 > -h && y0 < h * 2;
-          const inView = x1 > -40 && x0 < w + 40 && y1 > -40 && y0 < h + 40;
-          let t = drawTex.get(d);
-          if (near && (!t || t.theme !== theme)) {
-            const r = ready.get(d);
-            if (r && r.theme === theme) {
-              const tex = t?.tex ?? gl.createTexture();
-              if (tex) {
-                gl.activeTexture(gl.TEXTURE0);
-                gl.bindTexture(gl.TEXTURE_2D, tex);
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, r.canvas);
-                gl.generateMipmap(gl.TEXTURE_2D);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-                t = { tex, theme, size: r.canvas.width, used: now };
-                drawTex.set(d, t);
+          const a = opacityOf(el);
+          cardBuf[n * 4] = r.left; cardBuf[n * 4 + 1] = r.top; cardBuf[n * 4 + 2] = r.width; cardBuf[n * 4 + 3] = r.height;
+          cardPBuf[n * 2] = Math.min(rad, r.width / 2, r.height / 2); cardPBuf[n * 2 + 1] = a;
+          sig += `${r.left | 0},${r.top | 0},${r.width | 0},${r.height | 0},${a.toFixed(2)};`;
+          n++;
+          // distance from the cursor to this card's edge, and the edge point nearest it
+          if (mouse.x > -9000 && a > 0.9) {
+            const ex = Math.max(r.left, Math.min(r.right, mouse.x));
+            const ey = Math.max(r.top, Math.min(r.bottom, mouse.y));
+            const d = Math.hypot(mouse.x - ex, mouse.y - ey);
+            if (d > 0 && (!near || d < near.d)) near = { d, ex, ey, nx: (mouse.x - ex) / d, ny: (mouse.y - ey) / d, el, left: r.left, top: r.top };
+          }
+        }
+        const moved = sig !== lastSig;
+        lastSig = sig;
+
+        // The swell reaches about halfway to the cursor and grows as it closes in.
+        // Critically damped, like everything else that moves: it rises and lets
+        // go without a wobble, and its radius can't overshoot past zero and pop
+        // back up after the cursor leaves.
+        // It lives in its card's own coordinates (blob.x, blob.y are card-local),
+        // so it scrolls with the card; in window coordinates its spring trailed a
+        // fast-scrolling card and the blob came loose as a separate bubble. It
+        // belongs to one card at a time, and moves to another only once it has
+        // shrunk away.
+        const REACH = 120;
+        if (near && near.el !== holeEl && (!holeEl || blob.r < 0.5)) {
+          if (holeEl) setRingHole(holeEl, "s", 0, 0, 0);
+          holeEl = near.el;
+          blob.r = 0; blob.vr = 0;
+        }
+        const own = holeEl ? holeEl.getBoundingClientRect() : null;
+        let tx = blob.x, ty = blob.y, tr = 0;
+        if (own && near && near.el === holeEl && near.d < REACH && !reduced) {
+          const k = 1 - near.d / REACH;
+          tr = 10 + 26 * k;
+          // never so far out that the smooth union lets go: it reaches, it doesn't drip
+          const out = Math.min(near.d * 0.6, tr * 0.6 + 8);
+          tx = near.ex - own.left + near.nx * out;
+          ty = near.ey - own.top + near.ny * out;
+          if (blob.r < 0.5) { blob.x = near.ex - own.left - near.nx * 20; blob.y = near.ey - own.top - near.ny * 20; blob.vx = blob.vy = 0; }
+        }
+        let sb = springTo(blob.x, blob.vx, tx, 14, dt);
+        blob.x = sb[0]; blob.vx = sb[1];
+        sb = springTo(blob.y, blob.vy, ty, 14, dt);
+        blob.y = sb[0]; blob.vy = sb[1];
+        sb = springTo(blob.r, blob.vr, tr, 14, dt);
+        blob.r = Math.max(0, sb[0]); blob.vr = sb[1];
+        const blobBusy = Math.abs(blob.vr) > 0.5 || Math.abs(blob.r - tr) > 0.3 || Math.hypot(blob.vx, blob.vy) > 2;
+        if (moved || blobBusy) { lastActive = now; busy = true; }
+        // where it is on screen, for the shader
+        const blobX = own ? own.left + blob.x : -9999, blobY = own ? own.top + blob.y : -9999;
+
+        // Open the card's rim around the swell (the shader draws the rim there instead).
+        const holeR = blob.r > 0.5 ? blob.r + 34 : 0;
+        if (holeEl) {
+          setRingHole(holeEl, "s", blob.x, blob.y, holeR);
+          if (holeR === 0 && (!near || near.el !== holeEl)) holeEl = null;
+        }
+        const sp = springTo(mouse.on, mouse.onV, mouse.x > -9000 ? 1 : 0, 9, dt);
+        mouse.on = sp[0];
+        mouse.onV = sp[1];
+        if (ripple.t >= 0) { ripple.t += dt; if (ripple.t > 1.6) ripple.t = -1; }
+
+        // The drawings on screen (at most four): where each sits, as the affine
+        // map from viewport px to its image's uv (the inverse of its screen CTM).
+        // A drawing within about a screen of view gets its raster (this theme's)
+        // ahead of time; the image is uploaded and let go.
+        let nd = 0;
+        let dsig = "";
+        const theme = dark ? "dark" : "light";
+        for (const d of allDrawings()) {
+          let on = false;
+          const m = texLod && d.svg.isConnected ? d.svg.getScreenCTM() : null;
+          if (m) {
+            const b = d.box;
+            const xs = [b.x, b.x + b.w], ys = [b.y, b.y + b.h];
+            let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+            for (const x of xs) for (const y of ys) {
+              const px = m.a * x + m.c * y + m.e, py = m.b * x + m.d * y + m.f;
+              x0 = Math.min(x0, px); x1 = Math.max(x1, px); y0 = Math.min(y0, py); y1 = Math.max(y1, py);
+            }
+            const near = x1 > -w * 0.5 && x0 < w * 1.5 && y1 > -h && y0 < h * 2;
+            const inView = x1 > -40 && x0 < w + 40 && y1 > -40 && y0 < h + 40;
+            let t = drawTex.get(d);
+            if (near && (!t || t.theme !== theme)) {
+              const r = ready.get(d);
+              if (r && r.theme === theme) {
+                const tex = t?.tex ?? gl.createTexture();
+                if (tex) {
+                  gl.activeTexture(gl.TEXTURE0);
+                  gl.bindTexture(gl.TEXTURE_2D, tex);
+                  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, r.canvas);
+                  gl.generateMipmap(gl.TEXTURE_2D);
+                  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+                  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                  t = { tex, theme, size: r.canvas.width, used: now };
+                  drawTex.set(d, t);
+                }
+                ready.delete(d);
+                r.canvas.width = r.canvas.height = 0; // uploaded: let the image go
+              } else if (!pending.has(d)) {
+                requestRaster(d, theme);
               }
-              ready.delete(d);
-              r.canvas.width = r.canvas.height = 0; // uploaded: let the image go
-            } else if (!pending.has(d)) {
-              requestRaster(d, theme);
+            }
+            if (inView && nd < 4 && t && t.theme === theme) {
+              gl.activeTexture(gl.TEXTURE0 + nd);
+              gl.bindTexture(gl.TEXTURE_2D, t.tex);
+              t.used = now;
+              const inv = new DOMMatrix([m.a, m.b, m.c, m.d, m.e, m.f]).inverse();
+              drawBufA.set([inv.a / b.w, inv.c / b.w, (inv.e - b.x) / b.w], nd * 3);
+              drawBufB.set([inv.b / b.h, inv.d / b.h, (inv.f - b.y) / b.h], nd * 3);
+              // its own mip level: texels per device px at its current size
+              drawBufL[nd] = Math.log2(t.size / (b.w * Math.hypot(m.a, m.b) * (canvas.width / w)));
+              dsig += `${m.a.toFixed(3)},${m.e | 0},${m.f | 0};`;
+              nd++;
+              on = true;
             }
           }
-          if (inView && nd < 4 && t && t.theme === theme) {
-            gl.activeTexture(gl.TEXTURE0 + nd);
-            gl.bindTexture(gl.TEXTURE_2D, t.tex);
-            t.used = now;
-            const inv = new DOMMatrix([m.a, m.b, m.c, m.d, m.e, m.f]).inverse();
-            drawBufA.set([inv.a / b.w, inv.c / b.w, (inv.e - b.x) / b.w], nd * 3);
-            drawBufB.set([inv.b / b.h, inv.d / b.h, (inv.f - b.y) / b.h], nd * 3);
-            // its own mip level: texels per device px at its current size
-            drawBufL[nd] = Math.log2(t.size / (b.w * Math.hypot(m.a, m.b) * (canvas.width / w)));
-            dsig += `${m.a.toFixed(3)},${m.e | 0},${m.f | 0};`;
-            nd++;
-            on = true;
-          }
+          setHidden(d, on);
         }
-        setHidden(d, on);
-      }
-      // at most six textures: the least recently drawn go first
-      if (drawTex.size > MAX_DRAW_TEX) {
-        const old = Array.from(drawTex).filter(([, t]) => t.used !== now).sort((x, y) => x[1].used - y[1].used);
-        for (const [d, t] of old.slice(0, drawTex.size - MAX_DRAW_TEX)) { gl.deleteTexture(t.tex); drawTex.delete(d); }
-      }
-      for (const [d, t] of drawTex) if (!allDrawings().has(d)) { gl.deleteTexture(t.tex); drawTex.delete(d); hidden.delete(d); }
-      for (const d of ready.keys()) if (!allDrawings().has(d)) ready.delete(d);
-      // a drawing that moves without a scroll (a card rising into place) keeps the loop awake
-      if (dsig !== lastDrawSig) { lastDrawSig = dsig; lastActive = now; busy = true; }
+        // at most six textures: the least recently drawn go first
+        if (drawTex.size > MAX_DRAW_TEX) {
+          const old = Array.from(drawTex).filter(([, t]) => t.used !== now).sort((x, y) => x[1].used - y[1].used);
+          for (const [d, t] of old.slice(0, drawTex.size - MAX_DRAW_TEX)) { gl.deleteTexture(t.tex); drawTex.delete(d); }
+        }
+        for (const [d, t] of drawTex) if (!allDrawings().has(d)) { gl.deleteTexture(t.tex); drawTex.delete(d); hidden.delete(d); }
+        for (const d of ready.keys()) if (!allDrawings().has(d)) ready.delete(d);
+        // a drawing that moves without a scroll (a card rising into place) keeps the loop awake
+        if (dsig !== lastDrawSig) { lastDrawSig = dsig; lastActive = now; busy = true; }
 
-      gl.viewport(0, 0, canvas.width, canvas.height);
-      gl.uniform2f(u.uRes, w, h);
-      gl.uniform1f(u.uDpr, canvas.width / w);
-      gl.uniform2f(u.uScroll, window.scrollX, scrollY);
-      gl.uniform1f(u.uGap, paper.gap);
-      gl.uniform1f(u.uDotR, paper.dotRadius);
-      gl.uniform3f(u.uBg, ...rgb(pal.bg));
-      gl.uniform3f(u.uDot, ...rgb(pal.dot));
-      gl.uniform1f(u.uDotA, pal.dotAlpha);
-      gl.uniform2f(u.uMouse, mouse.x, mouse.y);
-      gl.uniform1f(u.uMouseOn, Math.max(0, mouse.on));
-      gl.uniform3f(u.uRipple, ripple.x, ripple.y, ripple.t);
-      gl.uniform2f(u.uOrigin, wave.x, wave.y);
-      gl.uniform1f(u.uIntro, introT);
-      gl.uniform4fv(u.uCards, cardBuf);
-      gl.uniform2fv(u.uCardP, cardPBuf);
-      gl.uniform1f(u.uNCards, n);
-      gl.uniform3f(u.uBlob, blobX, blobY, Math.max(0, blob.r));
-      gl.uniform1f(u.uHoleR, holeR);
-      gl.uniform3f(u.uFill, ...rgb(glass.fill));
-      gl.uniform1f(u.uFillA, glass.alpha);
-      gl.uniform1f(u.uDark, dark ? 1 : 0);
-      gl.uniform1i(u.uDraw0, 0);
-      gl.uniform1i(u.uDraw1, 1);
-      gl.uniform1i(u.uDraw2, 2);
-      gl.uniform1i(u.uDraw3, 3);
-      gl.uniform3fv(u.uDrawA, drawBufA);
-      gl.uniform3fv(u.uDrawB, drawBufB);
-      gl.uniform1fv(u.uDrawL, drawBufL);
-      gl.uniform1f(u.uNDraw, nd);
-      let nb = 0;
-      for (const bd of buds) {
-        if (nb >= 2) break;
-        budBuf.c.set(bd.card, nb * 4);
-        budBuf.d.set(bd.drop, nb * 4);
-        budBuf.p.set([bd.cardR, bd.dropR, Math.max(0.5, bd.k), bd.bubble], nb * 4);
-        budBuf.s.set([...bd.stub, 0], nb * 4);
-        nb++;
-      }
-      gl.uniform4fv(u.uBudC, budBuf.c);
-      gl.uniform4fv(u.uBudD, budBuf.d);
-      gl.uniform4fv(u.uBudP, budBuf.p);
-      gl.uniform4fv(u.uBudS, budBuf.s);
-      gl.uniform1f(u.uNBud, nb);
-      gl.drawArrays(gl.TRIANGLES, 0, 3);
-      canvas.style.opacity = "1";
+        sizeCanvas();
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.uniform2f(u.uRes, w, h);
+        gl.uniform1f(u.uDpr, canvas.width / w);
+        gl.uniform2f(u.uScroll, window.scrollX, scrollY);
+        gl.uniform1f(u.uGap, paper.gap);
+        gl.uniform1f(u.uDotR, paper.dotRadius);
+        gl.uniform3f(u.uBg, ...rgb(pal.bg));
+        gl.uniform3f(u.uDot, ...rgb(pal.dot));
+        gl.uniform1f(u.uDotA, pal.dotAlpha);
+        gl.uniform2f(u.uMouse, mouse.x, mouse.y);
+        gl.uniform1f(u.uMouseOn, Math.max(0, mouse.on));
+        gl.uniform3f(u.uRipple, ripple.x, ripple.y, ripple.t);
+        gl.uniform2f(u.uOrigin, wave.x, wave.y);
+        gl.uniform1f(u.uIntro, introT);
+        gl.uniform4fv(u.uCards, cardBuf);
+        gl.uniform2fv(u.uCardP, cardPBuf);
+        gl.uniform1f(u.uNCards, n);
+        gl.uniform3f(u.uBlob, blobX, blobY, Math.max(0, blob.r));
+        gl.uniform1f(u.uHoleR, holeR);
+        gl.uniform3f(u.uFill, ...rgb(glass.fill));
+        gl.uniform1f(u.uFillA, glass.alpha);
+        gl.uniform1f(u.uDark, dark ? 1 : 0);
+        gl.uniform1i(u.uDraw0, 0);
+        gl.uniform1i(u.uDraw1, 1);
+        gl.uniform1i(u.uDraw2, 2);
+        gl.uniform1i(u.uDraw3, 3);
+        gl.uniform3fv(u.uDrawA, drawBufA);
+        gl.uniform3fv(u.uDrawB, drawBufB);
+        gl.uniform1fv(u.uDrawL, drawBufL);
+        gl.uniform1f(u.uNDraw, nd);
+        let nb = 0;
+        for (const bd of buds) {
+          if (nb >= 2) break;
+          budBuf.c.set(bd.card, nb * 4);
+          budBuf.d.set(bd.drop, nb * 4);
+          budBuf.p.set([bd.cardR, bd.dropR, Math.max(0.5, bd.k), bd.bubble], nb * 4);
+          budBuf.s.set([...bd.stub, 0], nb * 4);
+          nb++;
+        }
+        gl.uniform4fv(u.uBudC, budBuf.c);
+        gl.uniform4fv(u.uBudD, budBuf.d);
+        gl.uniform4fv(u.uBudP, budBuf.p);
+        gl.uniform4fv(u.uBudS, budBuf.s);
+        gl.uniform1f(u.uNBud, nb);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        canvas.style.opacity = "1";
 
-      // With nothing moving, the last frame stays on screen and the loop sleeps
-      // until the next scroll, pointer move, click, resize or theme change.
-      // The frame it rests on is always at full resolution: the drawings are
-      // painted here, and a step down for a slow burst (a bud, a fast scroll)
-      // would otherwise leave them soft for the rest of the visit.
-      if (!busy && dpr < maxDpr) {
-        dpr = maxDpr;
-        slowMs = 0;
-        canvas.width = Math.round(w * dpr);
-        canvas.height = Math.round(h * dpr);
-        busy = true;
+        // With nothing moving, the last frame stays on screen and the loop sleeps
+        // until the next scroll, pointer move, click, resize or theme change.
+        // The frame it rests on is always at full resolution: the drawings are
+        // painted here, and a step down for a slow burst (a bud, a fast scroll)
+        // would otherwise leave them soft for the rest of the visit.
+        if (!busy && dpr < maxDpr) {
+          dpr = maxDpr;
+          slowMs = 0;
+          busy = true; // one more frame, at full resolution (resized as it draws)
+        }
+        // (a bud stepping above may already have woken the loop: never queue two frames)
+        if (busy && !raf) raf = requestAnimationFrame(frame);
       }
-      // (a bud stepping above may already have woken the loop: never queue two frames)
-      if (busy && !raf) raf = requestAnimationFrame(frame);
-    }
-    glassDriver.active = true;
-    // the cards' shadows are drawn here now (see the shader); their CSS ones step aside
-    document.documentElement.classList.add("paper-gl");
-    raf = requestAnimationFrame(frame);
+      glassDriver.active = true;
+      // the cards' shadows are drawn here now (see the shader); their CSS ones step aside
+      document.documentElement.classList.add("paper-gl");
+      raf = requestAnimationFrame(frame);
 
+      return () => {
+        cancelAnimationFrame(raf);
+        disposed = true;
+        releaseBuds();
+        document.documentElement.classList.remove("paper-gl");
+        themeObs.disconnect();
+        offDrawings();
+        offBuds();
+        showAll();
+        window.removeEventListener("resize", resize);
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerdown", onDown);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
+        window.removeEventListener("scroll", onScroll);
+        canvas.removeEventListener("webglcontextlost", onLost);
+        document.documentElement.removeEventListener("pointerleave", onLeave);
+        document.removeEventListener("visibilitychange", onVis);
+        gl.getExtension("WEBGL_lose_context")?.loseContext();
+      };
+    };
+    const wait = () => {
+      if (gone) return;
+      const r = poll();
+      if (r === "pending") { waitRaf = requestAnimationFrame(wait); return; }
+      if (r) stop = begin(r); // else a broken shader: the CSS dots stay
+    };
+    wait();
     return () => {
-      cancelAnimationFrame(raf);
-      disposed = true;
-      releaseBuds();
-      document.documentElement.classList.remove("paper-gl");
-      themeObs.disconnect();
-      offDrawings();
-      offBuds();
-      showAll();
-      window.removeEventListener("resize", resize);
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerdown", onDown);
-      window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onUp);
-      window.removeEventListener("scroll", onScroll);
-      canvas.removeEventListener("webglcontextlost", onLost);
-      document.documentElement.removeEventListener("pointerleave", onLeave);
-      document.removeEventListener("visibilitychange", onVis);
-      gl.getExtension("WEBGL_lose_context")?.loseContext();
+      gone = true;
+      cancelAnimationFrame(waitRaf);
+      if (stop) stop();
+      else gl.getExtension("WEBGL_lose_context")?.loseContext();
     };
   }, [enabled]);
 

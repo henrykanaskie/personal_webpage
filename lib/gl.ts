@@ -7,36 +7,47 @@
 export const FULLSCREEN_VERT = `attribute vec2 a; void main() { gl_Position = vec4(a, 0.0, 1.0); }`;
 
 /**
- * Compiles and links a program over FULLSCREEN_VERT, makes it current and
- * binds the covering triangle to its `a` attribute. Returns null if the shader
- * doesn't build, so the caller can fall back to whatever the DOM already shows.
+ * Compiles and links a program over FULLSCREEN_VERT without waiting on the
+ * driver: with KHR_parallel_shader_compile the compile runs in the
+ * background, and the returned poll says "pending" until it's done (a big
+ * shader compiled synchronously froze the page on load, notably where WebGL
+ * is translated for Metal). Without the extension, or with `parallel` off,
+ * the first poll waits for it. Once done, the poll returns the program, made
+ * current with the covering triangle bound to its `a` attribute, or null if
+ * it didn't build, so the caller can fall back to what the DOM already shows.
  */
-export function fullscreenProgram(gl: WebGLRenderingContext, frag: string): WebGLProgram | null {
+export function compileFullscreen(gl: WebGLRenderingContext, frag: string, parallel = true): () => WebGLProgram | null | "pending" {
   const prog = gl.createProgram();
-  if (!prog) return null;
+  if (!prog) return () => null;
   for (const [type, src] of [
     [gl.VERTEX_SHADER, FULLSCREEN_VERT],
     [gl.FRAGMENT_SHADER, frag],
   ] as const) {
     const shader = gl.createShader(type);
-    if (!shader) return null;
+    if (!shader) return () => null;
     gl.shaderSource(shader, src);
     gl.compileShader(shader);
     gl.attachShader(prog, shader);
   }
   gl.linkProgram(prog);
-  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-    // a broken shader would otherwise just skip the effect silently
-    if (process.env.NODE_ENV !== "production") console.error("shader:", gl.getProgramInfoLog(prog));
-    return null;
-  }
-  gl.useProgram(prog);
-  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-  const loc = gl.getAttribLocation(prog, "a");
-  gl.enableVertexAttribArray(loc);
-  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-  return prog;
+  const par = parallel ? (gl.getExtension("KHR_parallel_shader_compile") as { COMPLETION_STATUS_KHR: number } | null) : null;
+  let done: WebGLProgram | null | undefined;
+  return () => {
+    if (done !== undefined) return done;
+    if (par && !gl.getProgramParameter(prog, par.COMPLETION_STATUS_KHR)) return "pending";
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+      // a broken shader would otherwise just skip the effect silently
+      if (process.env.NODE_ENV !== "production") console.error("shader:", gl.getProgramInfoLog(prog));
+      return (done = null);
+    }
+    gl.useProgram(prog);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, "a");
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    return (done = prog);
+  };
 }
 
 /** Uniform locations by name, looked up once. */

@@ -28,6 +28,8 @@ The voice is confident but never loud: precision over promotion. Every interacti
   - DotField reads the drawings' textures with explicit mip levels (`EXT_shader_texture_lod`): an implicit-LOD `texture2D` gets run outside the branch that should skip it, so every pixel paid for every drawing. Without the extension the drawings stay DOM.
   - `setRingHole` writes its variables on the rim element only: on the panel, every frame of a swell restyled the whole card.
   - DotField never queues a second animation frame: a bud stepping inside its frame can wake the loop, and queueing another at the end of the frame doubled the callbacks every frame.
+  - DotField's shader compiles in the background (`compileFullscreen` in `lib/gl.ts`, `KHR_parallel_shader_compile`); the CSS dot grid shows until it's ready. Compiled synchronously, the shader froze the first load.
+  - DotField only resizes its canvas right before it draws (`sizeCanvas`): resizing clears it, and since it paints the cards' fill and shadow, a cleared frame flashed the whole screen.
 - Mobile and Safari (keep these when changing the effects above):
   - Touch has no hover, so in DotField a finger stands in for the cursor while it's down (dots part under it, a card's edge reaches toward it); the loop clears it on pointerup/pointercancel.
   - The dot field canvas is `.dot-field`, sized to `100lvh`, and only reallocates on a width change or when it grows, so iOS Safari's collapsing toolbar doesn't resize it mid-scroll. If iOS drops the WebGL context, the canvas hides and the CSS dot grid shows.
