@@ -26,6 +26,16 @@ export function coverSrc(photo: PhotoEntry): string {
   return getImageProps({ src: photo.src, alt: "", width: 1600, height: Math.round(1600 / aspect(photo)), quality: 70 }).props.src;
 }
 
+/** A chapter heading's size: long titles get a smaller viewport-relative size so they fit on one line. */
+export function chapterTitleSize(title: string): string {
+  return `clamp(1.9rem, ${Math.min(17, 150 / title.length).toFixed(1)}vw, 15rem)`;
+}
+
+/** The hairline outline that keeps a photo-filled heading readable when the photo is close to the page colour. */
+export function chapterTitleStroke(isDark: boolean): string {
+  return isDark ? "rgba(255,255,255,0.22)" : "rgba(30,27,25,0.28)";
+}
+
 /** Starts downloading and decoding an image; resolves when it's ready to paint (or failed). */
 export function preloadImage(src: string): Promise<void> {
   const img = new Image();

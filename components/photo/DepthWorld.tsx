@@ -8,7 +8,8 @@ import type { Section } from "@/app/photography/data";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import type { LightboxItem } from "./Lightbox";
 import FadeImage from "./FadeImage";
-import { MONO, aspect, coverSrc, frameClock, photoTheme, preloadImage, rgbTriplet, smoothing } from "./utils";
+import { MONO, aspect, chapterTitleSize, chapterTitleStroke, coverSrc, frameClock, photoTheme, preloadImage, rgbTriplet, smoothing } from "./utils";
+import { divePrint, diveTitle } from "./dive";
 
 const FAR = 5600; // anything further than this is lost in the dark
 const PASS = 1500; // within this distance prints start swinging aside
@@ -79,9 +80,7 @@ export default function DepthWorld({
   // The camera's current depth, for click handlers that need to know how far away something is
   const camRef = useRef(0);
   // Entering a chapter: the camera dives from where it is, through the target, and the page changes
-  const diveRef = useRef<{ from: number; to: number; start: number; dur: number; href: string; faded: boolean; pushed: boolean } | null>(
-    null,
-  );
+  const diveRef = useRef<{ from: number; to: number; start: number; dur: number } | null>(null);
   const isMobile = !!useIsMobile();
   const reduceMotion = !!useReducedMotion();
 
@@ -154,12 +153,14 @@ export default function DepthWorld({
   const plainClick = (e: React.MouseEvent) => !(e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0);
 
   /**
-   * One continuous camera move from where it is, through `z`, into `href`. Near or far, title or
-   * print, it's the same curve: it gathers speed and is still moving as it passes the target, so
-   * there's no stop before the page changes. (It used to fly, stop, then push the whole world at
-   * the lens, which stuttered and blew every print up twentyfold.)
+   * Into a chapter as one motion. What you clicked is lifted out of the scene (dive.ts) and flown
+   * into its place on the chapter page, while the camera dives on through `z` and the world
+   * dissolves around it; the page changes early, underneath, so the chapter is already opening up
+   * by the time the title (or print) lands. There's no moment where the screen is empty and nothing
+   * plays a second entrance. (It used to dive, fade to nothing, cut, and then raise the chapter's
+   * title on its own.)
    */
-  const dive = (z: number, href: string) => (e: React.MouseEvent) => {
+  const dive = (z: number, href: string, lift: (el: HTMLElement) => boolean) => (e: React.MouseEvent) => {
     if (!plainClick(e)) return;
     e.preventDefault();
     if (diveRef.current) return;
@@ -168,9 +169,16 @@ export default function DepthWorld({
       router.push(href);
       return;
     }
+    lift(e.currentTarget as HTMLElement);
     const from = camRef.current;
-    const to = z + 250; // just past it: the target slips by the lens
-    diveRef.current = { from, to, start: performance.now(), dur: 650 + Math.min(1000, Math.abs(to - from) * 0.18), href, faded: false, pushed: false };
+    const to = z + 250; // just past it: the rest of the scene slips by the lens
+    diveRef.current = { from, to, start: performance.now(), dur: 650 + Math.min(1000, Math.abs(to - from) * 0.18) };
+    const fly = flyRef.current;
+    if (fly) {
+      fly.style.transition = "opacity 0.5s ease-in";
+      fly.style.opacity = "0";
+    }
+    window.setTimeout(() => router.push(href), 320);
   };
 
   // Camera loop, running only while the world is on screen
@@ -211,16 +219,6 @@ export default function DepthWorld({
         // carries on at that speed while the page fades out
         const t = (now - dv.start) / dv.dur;
         camZ = dv.from + (dv.to - dv.from) * (t < 1 ? t * t * (2 - t) : t);
-        const fly = flyRef.current;
-        if (t > 0.68 && !dv.faded && fly) {
-          dv.faded = true;
-          fly.style.transition = "opacity 0.34s ease-in";
-          fly.style.opacity = "0";
-        }
-        if (t >= 1 && !dv.pushed) {
-          dv.pushed = true;
-          router.push(dv.href);
-        }
       } else {
         camZ += (target - camZ) * (reduceMotion ? 1 : smoothing(intro < 1 ? 0.2 : 0.075, dt));
       }
@@ -314,7 +312,7 @@ export default function DepthWorld({
       cancelAnimationFrame(raf);
       window.removeEventListener("pointermove", onMove);
     };
-  }, [planes, stops, depth, reduceMotion, router]);
+  }, [planes, stops, depth, reduceMotion]);
 
   const nearItem = items[near];
   const glow = nearItem ? rgbTriplet(nearItem.photo.palette[1] ?? nearItem.photo.color) : "120,120,160";
@@ -327,6 +325,7 @@ export default function DepthWorld({
     <section
       ref={outerRef}
       aria-label="Photography"
+      data-depth-world=""
       style={{
         position: "relative",
         height: `calc(${Math.round(depth * SCROLL_PER_UNIT)}px + 100vh)`,
@@ -404,7 +403,20 @@ export default function DepthWorld({
                     <Link
                       href={stop.href}
                       data-af=""
-                      onClick={dive(stop.z, stop.href)}
+                      onClick={dive(stop.z, stop.href, (el) => {
+                        const cover = covers.get(stop.href);
+                        return diveTitle({
+                          href: stop.href,
+                          from: el.querySelector<HTMLElement>("[data-station-title]") ?? el,
+                          rotation: p.rz,
+                          title: stop.title,
+                          titleSize: chapterTitleSize(stop.title),
+                          cover: cover ? coverSrc(cover) : null,
+                          ink: t.ink,
+                          halo,
+                          stroke: chapterTitleStroke(isDark),
+                        });
+                      })}
                       onMouseEnter={() => {
                         warm(stop.href);
                         setHoverStation(p.stop);
@@ -421,6 +433,7 @@ export default function DepthWorld({
                     >
                       {stop.num && <span style={{ ...mono, fontSize: 11, color: t.faint }}>{stop.num}</span>}
                       <span
+                        data-station-title=""
                         style={{
                           fontFamily: "var(--font-elevated)",
                           fontWeight: 300,
@@ -465,7 +478,16 @@ export default function DepthWorld({
                     type="button"
                     data-af=""
                     aria-label={`Go to ${p.item.sectionTitle}`}
-                    onClick={dive(p.z, `/photography/${p.item.sectionId}`)}
+                    onClick={dive(p.z, `/photography/${p.item.sectionId}`, (el) =>
+                      divePrint({
+                        href: `/photography/${p.item.sectionId}`,
+                        from: (el.firstElementChild as HTMLElement | null) ?? el,
+                        img: el.querySelector("img"),
+                        rotation: p.rz * 0.5,
+                        src: p.item.photo.src,
+                        aspect: aspect(p.item.photo),
+                      }),
+                    )}
                     onMouseEnter={() => {
                       warm(`/photography/${p.item.sectionId}`);
                       setHoverPrint(i);
@@ -560,7 +582,6 @@ export default function DepthWorld({
                   transform: "translate(-12.5px, -50%)",
                   display: "flex",
                   alignItems: "center",
-                  gap: 12,
                   padding: 8,
                   border: "none",
                   background: "transparent",
@@ -585,8 +606,13 @@ export default function DepthWorld({
                     ...mono,
                     fontSize: 9,
                     whiteSpace: "nowrap",
+                    // Out of the button's box: in flow, the label widened the button's tap area into a
+                    // strip over the scene on phones, which caught taps meant for prints
+                    position: "absolute",
+                    left: "calc(100% + 4px)",
+                    top: "50%",
                     opacity: showLabel ? 1 : 0,
-                    transform: showLabel ? "translateX(0)" : "translateX(-4px)",
+                    transform: showLabel ? "translate(0, -50%)" : "translate(-4px, -50%)",
                     transition: "opacity 0.3s ease, transform 0.3s ease",
                     pointerEvents: "none",
                   }}
