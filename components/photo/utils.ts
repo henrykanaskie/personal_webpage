@@ -1,3 +1,4 @@
+import { getImageProps } from "next/image";
 import type { PhotoEntry, PhotoExif } from "@/app/photography/data";
 import { photo as photoTokens } from "@/lib/tokens";
 
@@ -15,6 +16,21 @@ export function aspect(photo: PhotoEntry): number {
   if (photo.width && photo.height) return photo.width / photo.height;
   const [w, h] = photo.ratio.split("/").map(Number);
   return w / h || 1.5;
+}
+
+/**
+ * The optimised copy of a chapter's cover used to fill its photo title. Shared
+ * so the flight can preload exactly the file the chapter page will ask for.
+ */
+export function coverSrc(photo: PhotoEntry): string {
+  return getImageProps({ src: photo.src, alt: "", width: 1600, height: Math.round(1600 / aspect(photo)), quality: 70 }).props.src;
+}
+
+/** Starts downloading and decoding an image; resolves when it's ready to paint (or failed). */
+export function preloadImage(src: string): Promise<void> {
+  const img = new Image();
+  img.src = src;
+  return img.decode().catch(() => {});
 }
 
 /**

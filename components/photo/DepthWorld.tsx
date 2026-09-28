@@ -8,7 +8,7 @@ import type { Section } from "@/app/photography/data";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import type { LightboxItem } from "./Lightbox";
 import FadeImage from "./FadeImage";
-import { MONO, aspect, frameClock, photoTheme, rgbTriplet, smoothing } from "./utils";
+import { MONO, aspect, coverSrc, frameClock, photoTheme, preloadImage, rgbTriplet, smoothing } from "./utils";
 
 const FAR = 5600; // anything further than this is lost in the dark
 const PASS = 1500; // within this distance prints start swinging aside
@@ -78,7 +78,10 @@ export default function DepthWorld({
   const [hoverPrint, setHoverPrint] = useState<number | null>(null);
   // The camera's current depth, for click handlers that need to know how far away something is
   const camRef = useRef(0);
-  const enteringRef = useRef(false);
+  // Entering a chapter: the camera dives from where it is, through the target, and the page changes
+  const diveRef = useRef<{ from: number; to: number; start: number; dur: number; href: string; faded: boolean; pushed: boolean } | null>(
+    null,
+  );
   const isMobile = !!useIsMobile();
   const reduceMotion = !!useReducedMotion();
 
@@ -139,48 +142,35 @@ export default function DepthWorld({
     window.scrollTo({ top: scrollFor(stops[stop].z - ARRIVE), behavior: reduceMotion ? "auto" : "smooth" });
   };
 
-  // The camera surges forward through whatever is ahead, then the page changes
-  const surgeInto = (href: string) => {
-    const fly = flyRef.current;
-    if (fly && !reduceMotion) {
-      fly.style.transition = "transform 0.75s cubic-bezier(0.55, 0, 0.9, 0.35), opacity 0.75s ease-in";
-      fly.style.transform = "translateZ(950px)";
-      fly.style.opacity = "0";
-    }
-    setTimeout(() => router.push(href), reduceMotion ? 0 : 680);
+  // Each chapter's cover fills its title on arrival; warming it early means the title never pops in
+  const covers = useMemo(() => new Map(sections.map((sec) => [`/photography/${sec.id}`, sec.photos[0]])), [sections]);
+  const warm = (href: string) => {
+    router.prefetch(href);
+    const cover = covers.get(href);
+    if (cover) preloadImage(coverSrc(cover));
   };
 
   // Plain clicks only: modifier clicks and middle clicks keep their normal new-tab behaviour
   const plainClick = (e: React.MouseEvent) => !(e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0);
 
-  // A chapter title: from far away, fly to it first, then go through it
-  const enterStation = (i: number) => (e: React.MouseEvent) => {
+  /**
+   * One continuous camera move from where it is, through `z`, into `href`. Near or far, title or
+   * print, it's the same curve: it gathers speed and is still moving as it passes the target, so
+   * there's no stop before the page changes. (It used to fly, stop, then push the whole world at
+   * the lens, which stuttered and blew every print up twentyfold.)
+   */
+  const dive = (z: number, href: string) => (e: React.MouseEvent) => {
     if (!plainClick(e)) return;
     e.preventDefault();
-    if (enteringRef.current) return;
-    enteringRef.current = true;
-    const target = stops[i].z - ARRIVE;
-    if (reduceMotion || Math.abs(target - camRef.current) < 1400) {
-      surgeInto(stops[i].href);
+    if (diveRef.current) return;
+    warm(href);
+    if (reduceMotion) {
+      router.push(href);
       return;
     }
-    flyTo(i);
-    const start = performance.now();
-    const waitForArrival = () => {
-      // Enter once the camera is nearly there; never wait forever
-      if (Math.abs(target - camRef.current) < 140 || performance.now() - start > 1800) surgeInto(stops[i].href);
-      else requestAnimationFrame(waitForArrival);
-    };
-    requestAnimationFrame(waitForArrival);
-  };
-
-  // A print: go straight into its chapter
-  const enterPrint = (href: string) => (e: React.MouseEvent) => {
-    if (!plainClick(e)) return;
-    e.preventDefault();
-    if (enteringRef.current) return;
-    enteringRef.current = true;
-    surgeInto(href);
+    const from = camRef.current;
+    const to = z + 250; // just past it: the target slips by the lens
+    diveRef.current = { from, to, start: performance.now(), dur: 650 + Math.min(1000, Math.abs(to - from) * 0.18), href, faded: false, pushed: false };
   };
 
   // Camera loop, running only while the world is on screen
@@ -215,7 +205,25 @@ export default function DepthWorld({
       const introOffset = -1500 * Math.pow(1 - intro, 3);
       const target = progress() * depth + introOffset;
       const prev = camZ;
-      camZ += (target - camZ) * (reduceMotion ? 1 : smoothing(intro < 1 ? 0.2 : 0.075, dt));
+      const dv = diveRef.current;
+      if (dv) {
+        // s(t) = t^2 (2 - t): starts from rest, ends still moving (s'(1) = 1), and past t = 1 it
+        // carries on at that speed while the page fades out
+        const t = (now - dv.start) / dv.dur;
+        camZ = dv.from + (dv.to - dv.from) * (t < 1 ? t * t * (2 - t) : t);
+        const fly = flyRef.current;
+        if (t > 0.68 && !dv.faded && fly) {
+          dv.faded = true;
+          fly.style.transition = "opacity 0.34s ease-in";
+          fly.style.opacity = "0";
+        }
+        if (t >= 1 && !dv.pushed) {
+          dv.pushed = true;
+          router.push(dv.href);
+        }
+      } else {
+        camZ += (target - camZ) * (reduceMotion ? 1 : smoothing(intro < 1 ? 0.2 : 0.075, dt));
+      }
       camRef.current = camZ;
       velocity += ((camZ - prev) / Math.max(dt, 1)) * 1000 * 0.1 - velocity * 0.1;
       const kl = reduceMotion ? 0 : smoothing(0.05, dt);
@@ -306,7 +314,7 @@ export default function DepthWorld({
       cancelAnimationFrame(raf);
       window.removeEventListener("pointermove", onMove);
     };
-  }, [planes, stops, depth, reduceMotion]);
+  }, [planes, stops, depth, reduceMotion, router]);
 
   const nearItem = items[near];
   const glow = nearItem ? rgbTriplet(nearItem.photo.palette[1] ?? nearItem.photo.color) : "120,120,160";
@@ -396,9 +404,9 @@ export default function DepthWorld({
                     <Link
                       href={stop.href}
                       data-af=""
-                      onClick={enterStation(p.stop)}
+                      onClick={dive(stop.z, stop.href)}
                       onMouseEnter={() => {
-                        router.prefetch(stop.href);
+                        warm(stop.href);
                         setHoverStation(p.stop);
                       }}
                       onMouseLeave={() => setHoverStation(null)}
@@ -457,9 +465,9 @@ export default function DepthWorld({
                     type="button"
                     data-af=""
                     aria-label={`Go to ${p.item.sectionTitle}`}
-                    onClick={enterPrint(`/photography/${p.item.sectionId}`)}
+                    onClick={dive(p.z, `/photography/${p.item.sectionId}`)}
                     onMouseEnter={() => {
-                      router.prefetch(`/photography/${p.item.sectionId}`);
+                      warm(`/photography/${p.item.sectionId}`);
                       setHoverPrint(i);
                     }}
                     onMouseLeave={() => setHoverPrint(null)}

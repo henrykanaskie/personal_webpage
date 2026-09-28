@@ -2,14 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { getImageProps } from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { useIsDark } from "@/hooks/useIsDark";
 import type { Section, PhotoEntry } from "../data";
 import DevelopTile from "@/components/photo/DevelopTile";
 import FadeImage from "@/components/photo/FadeImage";
 import Lightbox, { LightboxItem } from "@/components/photo/Lightbox";
-import { MONO, EASE_OUT, aspect, photoTheme } from "@/components/photo/utils";
+import { MONO, EASE_OUT, aspect, coverSrc, photoTheme, preloadImage } from "@/components/photo/utils";
 
 export interface ChapterLink {
   id: string;
@@ -70,9 +69,21 @@ export default function CategoryPageClient({ section, next }: { section: Section
   const photos = section.photos;
   const cover = photos[0];
   // Optimised, resized copy for the photo-filled title instead of the 2400px original
-  const coverUrl = cover
-    ? getImageProps({ src: cover.src, alt: "", width: 1600, height: Math.round(1600 / aspect(cover)), quality: 70 }).props.src
-    : undefined;
+  const coverUrl = cover ? coverSrc(cover) : undefined;
+  // The title is filled with the cover photo, so it rises only once that photo can paint; without
+  // this it showed as a dim outline and then popped. The flight preloads it, so this is usually instant.
+  const [coverReady, setCoverReady] = useState(!coverUrl);
+  useEffect(() => {
+    if (!coverUrl) return;
+    let live = true;
+    const done = () => live && setCoverReady(true);
+    preloadImage(coverUrl).then(done);
+    const fallback = window.setTimeout(done, 900);
+    return () => {
+      live = false;
+      window.clearTimeout(fallback);
+    };
+  }, [coverUrl]);
 
   useEffect(() => {
     // Enough columns that the tallest print still fits on screen
@@ -125,7 +136,7 @@ export default function CategoryPageClient({ section, next }: { section: Section
           <div style={{ overflow: "hidden", margin: "-0.14em 0 -0.18em" }}>
             <motion.h1
               initial={{ y: "100%", opacity: 0 }}
-              animate={{ y: "0%", opacity: 1 }}
+              animate={coverReady ? { y: "0%", opacity: 1 } : { y: "100%", opacity: 0 }}
               transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
               style={{
                 margin: 0,
