@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
+import { frame as motionFrame, cancelFrame, type FrameData } from "framer-motion";
 import { paper } from "@/lib/tokens";
 import { budTicks, buds, glassDriver, onBudsChange, releaseBuds, setRingHole, stepBuds } from "@/lib/liquid";
 import { GLSL_GLASS, compileFullscreen, rgb, uniforms } from "@/lib/gl";
@@ -360,7 +361,16 @@ export default function DotField() {
       let w = 0, h = 0;
       let dpr = Math.min(window.devicePixelRatio || 1, 2);
       const maxDpr = dpr;
+      // The loop runs in Framer Motion's own frame, after it has rendered
+      // (postRender), not on a separate requestAnimationFrame: callbacks of the
+      // same frame run in the order they were queued, and DotField's often ran
+      // first, reading every card where Framer was about to move it from. The
+      // frost, fill and shadow it paints trailed a rising card by a frame.
+      // \`raf\` is just "a frame is queued".
       let raf = 0, last = performance.now();
+      const onFrame = (d: FrameData) => frame(d.timestamp);
+      const queue = () => { motionFrame.postRender(onFrame); return 1; };
+      const unqueue = () => cancelFrame(onFrame);
       let slowMs = 0;
       let lastScrollY = window.scrollY, lastActive = last;
       let wasDark = document.documentElement.classList.contains("dark");
@@ -442,7 +452,7 @@ export default function DotField() {
       const onLost = (e: Event) => {
         e.preventDefault();
         lost = true;
-        cancelAnimationFrame(raf);
+        unqueue();
         raf = 0;
         canvas.style.opacity = "0";
         showAll();
@@ -495,7 +505,7 @@ export default function DotField() {
 
       function wake() {
         lastActive = performance.now();
-        if (!raf && !document.hidden) { last = performance.now(); raf = requestAnimationFrame(frame); }
+        if (!raf && !document.hidden) { last = performance.now(); raf = queue(); }
       }
 
       function frame(now: number) {
@@ -753,15 +763,15 @@ export default function DotField() {
           busy = true; // one more frame, at full resolution (resized as it draws)
         }
         // (a bud stepping above may already have woken the loop: never queue two frames)
-        if (busy && !raf) raf = requestAnimationFrame(frame);
+        if (busy && !raf) raf = queue();
       }
       glassDriver.active = true;
       // the cards' shadows are drawn here now (see the shader); their CSS ones step aside
       document.documentElement.classList.add("paper-gl");
-      raf = requestAnimationFrame(frame);
+      raf = queue();
 
       return () => {
-        cancelAnimationFrame(raf);
+        unqueue();
         disposed = true;
         releaseBuds();
         document.documentElement.classList.remove("paper-gl");
