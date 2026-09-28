@@ -271,6 +271,14 @@ body {
   background: var(--card-fill);
   box-shadow: var(--glass-drop);
 }
+/* While DotField draws the paper, it paints the liquid cards' fill and casts
+   their shadow itself, from the whole glass outline (a swell, a bud): the
+   box's own fill and shadow met the swell at the card's straight edge, a line
+   through the swell. */
+html.paper-gl .glass-panel[data-liquid] {
+  background: transparent;
+  box-shadow: none;
+}
 
 /* ─── Drafting details ─────────────────────────────────────────────────────── */
 

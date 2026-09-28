@@ -196,7 +196,8 @@ void main() {
   if (dc < -30.0 && ca > 0.99 && (uBlob.z < 0.5 || length(p - uBlob.xy) > uBlob.z + 70.0)) {
     // the same glass as the rim path below, flat here (past the lens bevel),
     // with the tail of the rim's inner light, so there's no step at the tier
-    gl_FragColor = vec4(mix(glassSurface(p, uScroll, dc, vec2(0.0)), vec3(1.0), glassGlow(dc)), 1.0);
+    vec3 deep = mix(glassSurface(p, uScroll, dc, vec2(0.0)), uFill, uFillA);
+    gl_FragColor = vec4(mix(deep, vec3(1.0), glassGlow(dc)), 1.0);
     return;
   }
   vec3 col = mix(uBg, uDot, dots(p) * uDotA);
@@ -210,6 +211,20 @@ void main() {
     float dl = liquid(p, dc);
     float gw, gw1, gw2;
     float dg = glassD(p, dc, gw);
+    // The cards' drop shadow (--glass-drop), cast by the whole glass outline,
+    // swells and buds included. Cast by the card's box (CSS), it lay over a
+    // swell's base and stopped dead at the card's straight edge: a line
+    // through the swell. Same offset, blur, spread and colour as the CSS one,
+    // and like it, only outside the glass.
+    if (dg > -1.0 && dg < 70.0 && ca > 0.01) {
+      float off = mix(18.0, 24.0, uDark), sigma = mix(18.0, 24.0, uDark), spread = mix(20.0, 24.0, uDark);
+      vec2 ps = p - vec2(0.0, off);
+      float ts, gws;
+      float ds = glassD(ps, cards(ps, ts), gws) + spread;
+      float a = mix(0.3, 0.7, uDark) * smoothstep(1.6 * sigma, -1.6 * sigma, ds);
+      float outside = smoothstep(-0.7 / uDpr, 0.7 / uDpr, dg);
+      col = mix(col, mix(vec3(0.157, 0.141, 0.118), vec3(0.0), uDark), a * ca * outside);
+    }
     if (dg < 2.5 && ca > 0.01) {
       float aa = 0.7 / uDpr;
       // rim normal of the glass, and how close to the rim we are
@@ -222,14 +237,12 @@ void main() {
       // bud as it grows), and lifted, as through a bubble; the rim's inner light over them
       vec3 frost = glassSurface(p, uScroll, dg, n);
       float inLiquid = 1.0 - smoothstep(-aa, aa, dg);
-      // The swell's fill tucks 0.75px under the card: the DOM fill snaps to
-      // device pixels on its own, and without the overlap a sliver of bare
-      // paper shows between them as a line across the swell's base. Outside
-      // the swell the card's lip hairline covers the overlap.
-      float outCard = smoothstep(-aa, aa, dc + 0.75);
-      // where the liquid reaches past the DOM card, paint the card's fill too
-      vec3 swell = mix(frost, uFill, uFillA);
-      vec3 inside = mix(mix(frost, swell, outCard), vec3(1.0), glassGlow(dg));
+      // The fill is painted here for the whole glass, card and swell alike (the
+      // liquid cards' own CSS background steps aside, html.paper-gl): one
+      // surface from one painter, so nothing marks where the card's box ends.
+      // Two fills met there before, and wherever they overlapped or missed by
+      // a device pixel, a hairline showed through the swell.
+      vec3 inside = mix(mix(frost, uFill, uFillA), vec3(1.0), glassGlow(dg));
       col = mix(col, inside, inLiquid * ca * gw);
       // the rim's hole (same falloff as .ring-mask): 0 in the hole around a
       // swell, 1 away from it
@@ -397,6 +410,7 @@ export default function DotField() {
       canvas.style.opacity = "0";
       showAll();
       releaseBuds();
+      document.documentElement.classList.remove("paper-gl");
     };
     canvas.addEventListener("webglcontextlost", onLost);
     document.documentElement.addEventListener("pointerleave", onLeave);
@@ -511,16 +525,27 @@ export default function DotField() {
       // Critically damped, like everything else that moves: it rises and lets
       // go without a wobble, and its radius can't overshoot past zero and pop
       // back up after the cursor leaves.
+      // It lives in its card's own coordinates (blob.x, blob.y are card-local),
+      // so it scrolls with the card; in window coordinates its spring trailed a
+      // fast-scrolling card and the blob came loose as a separate bubble. It
+      // belongs to one card at a time, and moves to another only once it has
+      // shrunk away.
       const REACH = 120;
+      if (near && near.el !== holeEl && (!holeEl || blob.r < 0.5)) {
+        if (holeEl) setRingHole(holeEl, "s", 0, 0, 0);
+        holeEl = near.el;
+        blob.r = 0; blob.vr = 0;
+      }
+      const own = holeEl ? holeEl.getBoundingClientRect() : null;
       let tx = blob.x, ty = blob.y, tr = 0;
-      if (near && near.d < REACH && !reduced) {
+      if (own && near && near.el === holeEl && near.d < REACH && !reduced) {
         const k = 1 - near.d / REACH;
         tr = 10 + 26 * k;
         // never so far out that the smooth union lets go: it reaches, it doesn't drip
         const out = Math.min(near.d * 0.6, tr * 0.6 + 8);
-        tx = near.ex + near.nx * out;
-        ty = near.ey + near.ny * out;
-        if (blob.r < 0.5) { blob.x = near.ex - near.nx * 20; blob.y = near.ey - near.ny * 20; blob.vx = blob.vy = 0; }
+        tx = near.ex - own.left + near.nx * out;
+        ty = near.ey - own.top + near.ny * out;
+        if (blob.r < 0.5) { blob.x = near.ex - own.left - near.nx * 20; blob.y = near.ey - own.top - near.ny * 20; blob.vx = blob.vy = 0; }
       }
       let sb = springTo(blob.x, blob.vx, tx, 14, dt);
       blob.x = sb[0]; blob.vx = sb[1];
@@ -530,18 +555,14 @@ export default function DotField() {
       blob.r = Math.max(0, sb[0]); blob.vr = sb[1];
       const blobBusy = Math.abs(blob.vr) > 0.5 || Math.abs(blob.r - tr) > 0.3 || Math.hypot(blob.vx, blob.vy) > 2;
       if (moved || blobBusy) { lastActive = now; busy = true; }
+      // where it is on screen, for the shader
+      const blobX = own ? own.left + blob.x : -9999, blobY = own ? own.top + blob.y : -9999;
 
       // Open the card's rim around the swell (the shader draws the rim there instead).
       const holeR = blob.r > 0.5 ? blob.r + 34 : 0;
-      if (near && near.el !== holeEl && holeEl) setRingHole(holeEl, "s", 0, 0, 0);
-      if (near) {
-        holeEl = near.el;
-        setRingHole(near.el, "s", blob.x - near.left, blob.y - near.top, holeR);
-      } else if (holeEl) {
-        // the cursor left: keep following the swell as it settles back on the last card
-        const r = holeEl.getBoundingClientRect();
-        setRingHole(holeEl, "s", blob.x - r.left, blob.y - r.top, holeR);
-        if (holeR === 0) holeEl = null;
+      if (holeEl) {
+        setRingHole(holeEl, "s", blob.x, blob.y, holeR);
+        if (holeR === 0 && (!near || near.el !== holeEl)) holeEl = null;
       }
       const sp = springTo(mouse.on, mouse.onV, mouse.x > -9000 ? 1 : 0, 9, dt);
       mouse.on = sp[0];
@@ -634,7 +655,7 @@ export default function DotField() {
       gl.uniform4fv(u.uCards, cardBuf);
       gl.uniform2fv(u.uCardP, cardPBuf);
       gl.uniform1f(u.uNCards, n);
-      gl.uniform3f(u.uBlob, blob.x, blob.y, Math.max(0, blob.r));
+      gl.uniform3f(u.uBlob, blobX, blobY, Math.max(0, blob.r));
       gl.uniform1f(u.uHoleR, holeR);
       gl.uniform3f(u.uFill, ...rgb(glass.fill));
       gl.uniform1f(u.uFillA, glass.alpha);
@@ -680,12 +701,15 @@ export default function DotField() {
       if (busy && !raf) raf = requestAnimationFrame(frame);
     }
     glassDriver.active = true;
+    // the cards' shadows are drawn here now (see the shader); their CSS ones step aside
+    document.documentElement.classList.add("paper-gl");
     raf = requestAnimationFrame(frame);
 
     return () => {
       cancelAnimationFrame(raf);
       disposed = true;
       releaseBuds();
+      document.documentElement.classList.remove("paper-gl");
       themeObs.disconnect();
       offDrawings();
       offBuds();

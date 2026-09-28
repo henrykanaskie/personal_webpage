@@ -276,6 +276,7 @@ uniform float uBubble; // 0 card material, 1 see-through bubble
 uniform float uBubA;
 uniform float uRim;   // the canvas's rim round the whole shape, in as the card's own rim hides
 uniform float uAlpha, uDark;
+uniform float uShadow; // 0 while DotField casts the shadow of the whole glass outline, the bud's included
 uniform float uGap, uDotR, uDotA;
 uniform vec3 uBg, uDot, uFill;
 uniform float uFillA;
@@ -313,7 +314,7 @@ void main() {
   vec2 ps = p - vec2(0.0, 10.0);
   float ds = scene(ps);
   float added = clamp((card(ps) - ds) / 10.0, 0.0, 1.0);
-  float sh = smoothstep(34.0, -12.0, ds) * added * outside * (1.0 - inL);
+  float sh = smoothstep(34.0, -12.0, ds) * added * outside * (1.0 - inL) * uShadow;
   outc = vec4(0.0, 0.0, 0.0, 1.0) * sh * (0.05 + 0.16 * uDark);
 
   vec2 g = vec2(scene(p + vec2(1.0, 0.0)) - d, scene(p + vec2(0.0, 1.0)) - d);
@@ -745,6 +746,7 @@ export function LiquidBud({
       // the card's rim opens round the bud, and closes again as the canvas fades
       if (panel) setRingHole(panel, "b", hole.x - card.x, hole.y - card.y, hole.r * fade);
       gl.uniform1f(U("uAlpha"), fade);
+      gl.uniform1f(U("uShadow"), glassDriver.active ? 0 : 1);
       gl.uniform1f(U("uDark"), dark ? 1 : 0);
       gl.uniform1f(U("uGap"), paper.gap);
       gl.uniform1f(U("uDotR"), paper.dotRadius);
