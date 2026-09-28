@@ -4,13 +4,55 @@
     "precision": 1
   },
   "drawings": {
-    "bee": { "keep": 75, "precision": null },
-    "cpu": { "keep": 75, "precision": null },
-    "daimler": { "keep": 100, "precision": null },
-    "drones": { "keep": 75, "precision": null },
-    "fpga": { "keep": 75, "precision": null },
-    "nn": { "keep": 75, "precision": null },
-    "thruster": { "keep": 75, "precision": null },
-    "rocket": { "keep": 210, "precision": null }
+    "bee": {
+      "keep": 75,
+      "precision": null
+    },
+    "cpu": {
+      "keep": 75,
+      "precision": null
+    },
+    "daimler": {
+      "keep": 100,
+      "precision": null
+    },
+    "drones": {
+      "keep": 75,
+      "precision": null
+    },
+    "fpga": {
+      "keep": 75,
+      "precision": null
+    },
+    "nn": {
+      "keep": 75,
+      "precision": null
+    },
+    "thruster": {
+      "keep": 75,
+      "precision": null
+    },
+    "rocket": {
+      "keep": 210,
+      "precision": null
+    },
+    "acclimate": {
+      "keep": 428
+    },
+    "spriteRoom": {
+      "keep": 456
+    },
+    "monteCarlo": {
+      "keep": 373
+    },
+    "gptScratch": {
+      "keep": 871
+    },
+    "capMatch": {
+      "keep": 331
+    },
+    "smallsh": {
+      "keep": 285
+    }
   }
 }

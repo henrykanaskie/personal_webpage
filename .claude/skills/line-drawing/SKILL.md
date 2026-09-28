@@ -112,6 +112,13 @@ Hand the user the prompt and these steps:
 3. Trace it to SVG with the same tracer and settings as the existing drawings
    (stroked outlines, few tones). Save it as `svgs/svg_data/<name>.svg`.
 
+Or draw it in code instead: `svgs/draw/scenes.py` holds one function per
+drawing, built from the isometric kit in `svgs/draw/iso.py` (solids,
+cylinders, hatching, stipple, pixel sprites, hidden-line removal). Code-drawn
+art is clean and diagrammatic rather than engraved, and a fraction of the
+size; it suits plate concepts best. `python3 svgs/draw/scenes.py <name>`
+writes `svgs/svg_data/<name>.svg`, then continue below.
+
 ## 6. Trim and check
 
 ```
