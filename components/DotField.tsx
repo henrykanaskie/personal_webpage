@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { paper } from "@/lib/tokens";
-import { setRingHole } from "@/lib/liquid";
+import { buds, onBudsChange, setRingHole } from "@/lib/liquid";
 import { GLSL_GLASS, fullscreenProgram, rgb, uniforms } from "@/lib/gl";
 import { type Drawing, allDrawings, onDrawingsChange } from "@/lib/drawings";
 
@@ -16,6 +16,8 @@ import { type Drawing, allDrawings, onDrawingsChange } from "@/lib/drawings";
 //   - a click on bare paper sends a ripple through the dots
 //   - under every card ([data-liquid]) the dots are seen through the info
 //     bubbles' glass: blurred, lensed at the rim, lifted (glassSurface, lib/gl)
+//   - a bubble budding off a card is glass drawn here too (BudShape in
+//     lib/liquid), so the drawings bend through the bulge as it grows
 //   - the line drawings, once drawn, are painted here too (lib/drawings), so
 //     the glass frosts and bends them exactly as it does the dots
 //   - a card is liquid: as the cursor comes near, its edge swells and reaches
@@ -61,6 +63,12 @@ uniform sampler2D uDraw0, uDraw1, uDraw2, uDraw3;
 uniform vec3 uDrawA[4];
 uniform vec3 uDrawB[4];
 uniform float uNDraw;
+// the buds (lib/liquid BudShape): card, drop, (card radius, drop radius, union reach, freed), stub
+uniform vec4 uBudC[2];
+uniform vec4 uBudD[2];
+uniform vec4 uBudP[2];
+uniform vec4 uBudS[2];
+uniform float uNBud;
 uniform float uDrawL[4];   // each drawing's own mip level at this size (texels per device px)
 ${GLSL_GLASS}
 // One drawing at p, premultiplied, sharp or blurred (below). Only pixels
@@ -102,6 +110,36 @@ float cards(vec2 p, out float alpha) {
 float liquid(vec2 p, float dc) {
   if (uBlob.z < 0.5) return dc;
   return smin(dc, length(p - uBlob.xy) - uBlob.z, 38.0);
+}
+// The buds: the same field LiquidBud's canvas draws (card, recoil stub and
+// drop under a smooth union). gw is how much of the glass here is drawn by
+// this canvas: all of it, except the freed drop, which the droplet's own DOM
+// lens has taken over.
+float budGlass(vec2 p, out float gw) {
+  float d = 1e5;
+  gw = 1.0;
+  for (int i = 0; i < 2; i++) {
+    if (float(i) >= uNBud) break;
+    vec4 C = uBudC[i], D = uBudD[i], P = uBudP[i], S = uBudS[i];
+    float c = sdBox(p, C.xy + C.zw * 0.5, C.zw * 0.5, P.x);
+    if (S.z > 0.3) c = smin(c, length(p - S.xy) - S.z, 22.0);
+    float sc = c, freed = 0.0;
+    if (D.z > 0.3) {
+      float dd = sdBox(p, D.xy, D.zw, P.y);
+      sc = smin(c, dd, P.z);
+      freed = P.w * smoothstep(1.0, -1.0, dd - c);
+    }
+    if (sc < d) { d = sc; gw = 1.0 - freed; }
+  }
+  return d;
+}
+// The whole glass outline: the cards with their swell, and the buds.
+float glassD(vec2 p, float dc, out float gw) {
+  float dl = liquid(p, dc);
+  if (uNBud < 0.5) { gw = 1.0; return dl; }
+  float db = budGlass(p, gw);
+  if (dl <= db) gw = 1.0;
+  return min(dl, db);
 }
 
 float dots(vec2 p) {
@@ -164,19 +202,23 @@ void main() {
   col = col * (1.0 - dr.a) + dr.rgb;
 
   if (uNCards > 0.5) {
+    // dl: the cards and their swell (whose rim this canvas draws); dg: the
+    // whole glass outline, buds included (a bud's rim is its own canvas's)
     float dl = liquid(p, dc);
-    if (dl < 2.5 && ca > 0.01) {
+    float gw, gw1, gw2;
+    float dg = glassD(p, dc, gw);
+    if (dg < 2.5 && ca > 0.01) {
       float aa = 0.7 / uDpr;
-      // rim normal of the liquid, and how close to the rim we are
+      // rim normal of the glass, and how close to the rim we are
       float t1, t2;
-      float gx = liquid(p + vec2(1.0, 0.0), cards(p + vec2(1.0, 0.0), t1)) - dl;
-      float gy = liquid(p + vec2(0.0, 1.0), cards(p + vec2(0.0, 1.0), t2)) - dl;
+      float gx = glassD(p + vec2(1.0, 0.0), cards(p + vec2(1.0, 0.0), t1), gw1) - dg;
+      float gy = glassD(p + vec2(0.0, 1.0), cards(p + vec2(0.0, 1.0), t2), gw2) - dg;
       vec2 n = normalize(vec2(gx, gy) + 1e-5);
-      // the dots under the glass: blurred, lensed at the rim of the liquid
-      // outline (so the refraction follows a swell), and lifted, as through
-      // a bubble; the rim's inner light over them
-      vec3 frost = glassSurface(p, uScroll, dl, n);
-      float inLiquid = 1.0 - smoothstep(-aa, aa, dl);
+      // the page under the glass (the dots and the drawings): blurred, lensed
+      // at the rim of the glass outline (so the refraction follows a swell or a
+      // bud as it grows), and lifted, as through a bubble; the rim's inner light over them
+      vec3 frost = glassSurface(p, uScroll, dg, n);
+      float inLiquid = 1.0 - smoothstep(-aa, aa, dg);
       // The swell's fill tucks 0.75px under the card: the DOM fill snaps to
       // device pixels on its own, and without the overlap a sliver of bare
       // paper shows between them as a line across the swell's base. Outside
@@ -184,8 +226,8 @@ void main() {
       float outCard = smoothstep(-aa, aa, dc + 0.75);
       // where the liquid reaches past the DOM card, paint the card's fill too
       vec3 swell = mix(frost, uFill, uFillA);
-      vec3 inside = mix(mix(frost, swell, outCard), vec3(1.0), glassGlow(dl));
-      col = mix(col, inside, inLiquid * ca);
+      vec3 inside = mix(mix(frost, swell, outCard), vec3(1.0), glassGlow(dg));
+      col = mix(col, inside, inLiquid * ca * gw);
       // the rim's hole (same falloff as .ring-mask): 0 in the hole around a
       // swell, 1 away from it
       float ringVis = uHoleR > 0.5 ? clamp((length(p - uBlob.xy) - uHoleR) / 14.0, 0.0, 1.0) : 1.0;
@@ -246,6 +288,7 @@ export default function DotField() {
       "uRes", "uDpr", "uScroll", "uGap", "uDotR", "uBg", "uDot", "uDotA", "uMouse", "uMouseOn",
       "uRipple", "uOrigin", "uIntro", "uCards", "uCardP", "uNCards", "uBlob", "uHoleR", "uFill", "uFillA", "uDark",
       "uDraw0", "uDraw1", "uDraw2", "uDraw3", "uDrawA", "uDrawB", "uDrawL", "uNDraw",
+      "uBudC", "uBudD", "uBudP", "uBudS", "uNBud",
     ]);
     const cardBuf = new Float32Array(32), cardPBuf = new Float32Array(16);
     let panels: HTMLElement[] = [];
@@ -369,6 +412,9 @@ export default function DotField() {
     };
     const showAll = () => { for (const d of Array.from(hidden)) setHidden(d, false); };
     const offDrawings = onDrawingsChange(() => wake());
+    // a bud starting (or ending) wakes the loop; it stays awake while any grows
+    const offBuds = onBudsChange(() => wake());
+    const budBuf = { c: new Float32Array(8), d: new Float32Array(8), p: new Float32Array(8), s: new Float32Array(8) };
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
     themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 
@@ -388,7 +434,7 @@ export default function DotField() {
       wasDark = dark;
       const introT = (now - wave.start) / 1000;
       const settling = Math.abs(mouse.onV) > 1e-3 || Math.abs(mouse.on - (mouse.x > -9000 ? 1 : 0)) > 1e-3;
-      let busy = scrolling || themeChanged || settling || ripple.t >= 0 || introT < 2.2 || now - lastActive < 250;
+      let busy = scrolling || themeChanged || settling || ripple.t >= 0 || introT < 2.2 || now - lastActive < 250 || buds.size > 0;
 
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
@@ -564,6 +610,20 @@ export default function DotField() {
       gl.uniform3fv(u.uDrawB, drawBufB);
       gl.uniform1fv(u.uDrawL, drawBufL);
       gl.uniform1f(u.uNDraw, nd);
+      let nb = 0;
+      for (const bd of buds) {
+        if (nb >= 2) break;
+        budBuf.c.set(bd.card, nb * 4);
+        budBuf.d.set(bd.drop, nb * 4);
+        budBuf.p.set([bd.cardR, bd.dropR, Math.max(0.5, bd.k), bd.bubble], nb * 4);
+        budBuf.s.set([...bd.stub, 0], nb * 4);
+        nb++;
+      }
+      gl.uniform4fv(u.uBudC, budBuf.c);
+      gl.uniform4fv(u.uBudD, budBuf.d);
+      gl.uniform4fv(u.uBudP, budBuf.p);
+      gl.uniform4fv(u.uBudS, budBuf.s);
+      gl.uniform1f(u.uNBud, nb);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       canvas.style.opacity = "1";
 
@@ -577,6 +637,7 @@ export default function DotField() {
       cancelAnimationFrame(raf);
       themeObs.disconnect();
       offDrawings();
+      offBuds();
       showAll();
       window.removeEventListener("resize", resize);
       window.removeEventListener("pointermove", onMove);

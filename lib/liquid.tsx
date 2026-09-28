@@ -197,6 +197,31 @@ export function setRingHole(panel: HTMLElement, which: "s" | "b", x: number, y: 
   ring.style.setProperty(`--${which}r`, on ? `${r.toFixed(1)}px` : "0px");
 }
 
+// ─── Buds on the paper ──────────────────────────────────────────────────────
+// A bud's glass is drawn by DotField, not by the bud's own canvas: DotField
+// paints the line drawings (lib/drawings), so only it can frost and bend them
+// through the growing shape. Each frame a bud publishes its shape here in
+// viewport px (the same signed distance field its canvas uses), and DotField
+// makes it part of the glass; the bud's canvas keeps what sits on top of the
+// glass (the rim, the film, the shadow, and the freed drop's fill).
+
+export type BudShape = {
+  card: [number, number, number, number]; // x, y, w, h
+  drop: [number, number, number, number]; // cx, cy, half-w, half-h
+  cardR: number;
+  dropR: number;
+  k: number; // smooth union reach
+  bubble: number; // 0 before the break, 1 once the drop is free (its DOM lens takes over)
+  stub: [number, number, number]; // x, y, radius of the recoil on the card's side
+};
+export const buds = new Set<BudShape>();
+const budListeners = new Set<() => void>();
+export function onBudsChange(f: () => void) {
+  budListeners.add(f);
+  return () => budListeners.delete(f);
+}
+const budsChanged = () => budListeners.forEach((f) => f());
+
 // ─── LiquidBud ──────────────────────────────────────────────────────────────
 // The info bubble is born out of the side of its card, the way a soap film
 // buds: the card's own edge swells, and keeps swelling, into a dome; the dome
@@ -258,14 +283,8 @@ void main() {
   float dc = card(p);
   float aa = 0.8 / uDpr;
   float outside = smoothstep(-aa, aa, dc);            // the card is DOM
-  // Near the bud the canvas also repaints a thin band just inside the card's
-  // edge, so the frosted dots there bend with the liquid's outline rather than
-  // the card's: no seam where the card ends and the growth begins. Away from
-  // the bud the two outlines are the same, so the band fades out unseen.
-  float w = uHole.z > 0.5 ? 1.0 - clamp((length(p - uHole.xy) - uHole.z) / 30.0, 0.0, 1.0) : 0.0;
-  float band = smoothstep(-18.0, -10.0, dc) * w;
   float inL = 1.0 - smoothstep(-aa, aa, d);
-  float cover = inL * max(outside, band);
+  float cover = inL * outside;
   vec4 outc = vec4(0.0);
 
   // a soft contact shadow under the growth and the bubble, like the card's own
@@ -285,18 +304,16 @@ void main() {
   vec3 film = edgeFilm(n);
 
   if (cover > 0.0) {
-    // the card's glass, exactly as the card is drawn (DotField's glass under
-    // the card fill), which is the settled bubble's glass: lensed at the rim
-    // of the growing shape, so the refraction follows the bulge as it forms
-    vec3 col = glassSurface(p, uPage, d, n);
-    col = mix(col, uFill, uFillA);
-    col = mix(col, vec3(1.0), glassGlow(d));
-    vec4 cardM = vec4(col, 1.0);
-    // bubble material: a light see-through fill, the film glowing toward the rim
+    // The glass itself (frost, lens, fill) is DotField's, under this canvas
+    // (BudShape): it paints the drawings, so it bends them through the bulge
+    // as it forms. Here only what lies on the glass: the film glowing toward
+    // the rim where the surface is stretched thin, and, once the drop is free
+    // (DotField leaves it to the droplet's DOM lens), the bubble's light fill.
     float f = pow(1.0 - clamp(-d / 14.0, 0.0, 1.0), 2.0);
     float fa = f * (0.1 + 0.04 * uDark);
-    vec4 bubM = vec4(vec3(uBubA) + film * fa, uBubA + fa);
-    outc = mix(outc, mix(cardM, bubM, stretch), cover);
+    float fill = uBubA * isDrop;
+    vec4 bubM = vec4(vec3(fill) + film * fa, fill + fa);
+    outc = mix(outc, bubM, cover * stretch);
   }
 
   // The edge. Cards and bubbles share one glass edge, so around the bud the
@@ -569,6 +586,7 @@ export function LiquidBud({
     let t0 = performance.now();
     let last = t0, raf = 0, fade = 1, fading = false, fadeAt = 0;
 
+    const shape: BudShape = { card: [0, 0, 0, 0], drop: [0, 0, 0, 0], cardR: 0, dropR: 0, k: 1, bubble: 0, stub: [0, 0, 0] };
     let started = false;
     const frame = (now: number) => {
       const st = budState(b);
@@ -669,6 +687,15 @@ export function LiquidBud({
       }
 
       const cr = canvas.getBoundingClientRect();
+      // the shape, in viewport px, for DotField to draw the glass of
+      shape.card = [card.x + cr.left, card.y + cr.top, card.w, card.h];
+      shape.drop = [cx + cr.left, cy + cr.top, hw, hh];
+      shape.cardR = cardRadius;
+      shape.dropR = dropR;
+      shape.k = k;
+      shape.bubble = broken ? clamp01((t - brokeAt) / 220) : 0;
+      shape.stub = [ex + cr.left, ey + cr.top, Math.max(0, stub.x)];
+      if (!buds.has(shape)) { buds.add(shape); budsChanged(); }
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
@@ -699,7 +726,7 @@ export function LiquidBud({
       gl.drawArrays(gl.TRIANGLES, 0, 3);
 
       if (fade > 0) raf = requestAnimationFrame(frame);
-      else setGone(true);
+      else { buds.delete(shape); budsChanged(); setGone(true); }
     };
     raf = requestAnimationFrame(frame);
     return () => {
@@ -707,6 +734,7 @@ export function LiquidBud({
       if (panel) setRingHole(panel as HTMLElement, "b", 0, 0, 0);
       droplet?.remove();
       dropletSvg?.remove();
+      if (buds.delete(shape)) budsChanged();
       returnBudGL(b);
     };
   }, [box, bubbleRef, cardRadius, bubbleRadius]);
