@@ -4,3 +4,7 @@ node_modules/
 .env.local
 *.svg
 *.tsbuildinfo
+
+# Line drawing sources are tracked; previews are local
+!svgs/svg_data/*.svg
+svgs/preview/
