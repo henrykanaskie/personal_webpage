@@ -2,7 +2,7 @@
 
 import { memo, useEffect, useId, useRef, useState } from "react";
 import { useIsDark } from "@/hooks/useIsDark";
-import { type Drawing, rasterDrawing, registerDrawing, updatedDrawing } from "@/lib/drawings";
+import { rasterDrawing, registerDrawing } from "@/lib/drawings";
 
 interface AnimatedSvgProps {
   paths: string[];
@@ -103,12 +103,10 @@ function AnimatedSvg({ paths, size = 240, strokeWidth = 0.8, drawn, rotate = 0, 
   const tex = wire?.url ?? null;
 
   // Once it has finished drawing itself, the drawing is handed to the paper
-  // (lib/drawings): rasterised for this theme and then the other, so DotField's
-  // glass can frost and bend it and a theme switch never waits on a raster.
-  // The SVG stays until DotField is actually painting it.
+  // (lib/drawings), so DotField's glass can frost and bend it. DotField asks
+  // for a raster when it needs one; the SVG stays until it's painting it.
   const svgRef = useRef<SVGSVGElement>(null);
   const gRef = useRef<SVGGElement>(null);
-  const entry = useRef<Drawing | null>(null);
   const unregister = useRef<(() => void) | null>(null);
   const [settled, setSettled] = useState(false);
   useEffect(() => {
@@ -118,44 +116,22 @@ function AnimatedSvg({ paths, size = 240, strokeWidth = 0.8, drawn, rotate = 0, 
   }, [drawn, settled, duration]);
   useEffect(() => {
     const svg = svgRef.current, g = gRef.current;
-    if (!settled || !svg || !g) return;
-    // this theme first, then the other, each when the page is idle
-    const order = dark ? (["dark", "light"] as const) : (["light", "dark"] as const);
-    let cancelled = false;
-    let idle = 0;
-    const next = (i: number) => {
-      if (cancelled || i >= order.length) return;
-      const theme = order[i];
-      if (entry.current?.images[theme]) return next(i + 1);
-      idle = window.requestIdleCallback ? window.requestIdleCallback(() => void run(i), { timeout: 1500 }) : window.setTimeout(() => void run(i), 300);
-    };
-    const run = async (i: number) => {
-      const theme = order[i];
-      if (!entry.current) {
-        const bb = g.getBBox();
-        // room past the last stroke for the glass's blur and lens to fade into
-        const pad = strokeWidth * 2 + 6;
-        entry.current = { svg, box: { x: bb.x - pad, y: bb.y - pad, w: bb.width + pad * 2, h: bb.height + pad * 2 }, images: {}, version: 0 };
-      }
-      const e = entry.current;
-      const m = svg.getScreenCTM();
-      const scale = m ? Math.hypot(m.a, m.b) : 3;
-      const img = await rasterDrawing(svg, e.box, scale * Math.min(window.devicePixelRatio || 1, 2), wireTexture(theme === "dark"));
-      if (cancelled) return;
-      if (img) {
-        e.images[theme] = img;
-        e.version++;
-        if (!unregister.current) unregister.current = registerDrawing(e);
-        else updatedDrawing();
-      }
-      next(i + 1);
-    };
-    next(0);
-    return () => {
-      cancelled = true;
-      if (idle) (window.cancelIdleCallback ?? window.clearTimeout)(idle);
-    };
-  }, [settled, dark, strokeWidth]);
+    if (!settled || !svg || !g || unregister.current) return;
+    const bb = g.getBBox();
+    // room past the last stroke for the glass's blur and lens to fade into
+    const pad = strokeWidth * 2 + 6;
+    const box = { x: bb.x - pad, y: bb.y - pad, w: bb.width + pad * 2, h: bb.height + pad * 2 };
+    unregister.current = registerDrawing({
+      svg,
+      box,
+      raster: (dark) => {
+        // about one texel per device pixel at the drawing's size right now
+        const m = svg.getScreenCTM();
+        const scale = m ? Math.hypot(m.a, m.b) : 3;
+        return rasterDrawing(svg, box, scale * Math.min(window.devicePixelRatio || 1, 2), wireTexture(dark));
+      },
+    });
+  }, [settled, strokeWidth]);
   useEffect(() => () => unregister.current?.(), []);
 
   return (

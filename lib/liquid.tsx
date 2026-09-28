@@ -222,6 +222,24 @@ export function onBudsChange(f: () => void) {
 }
 const budsChanged = () => budListeners.forEach((f) => f());
 
+// A bud steps inside DotField's frame, just before DotField draws, so the
+// glass (DotField's) and the rim (the bud's own canvas) come from the same
+// state in the same frame. On separate animation frames the glass trailed the
+// rim by a frame whenever DotField happened to run first. Without DotField
+// (no WebGL, or its context lost) a bud runs on its own frames.
+type BudTick = (now: number) => void;
+export const budTicks = new Set<BudTick>();
+export const glassDriver = { active: false };
+/** DotField calls this once a frame, before it reads `buds`. */
+export function stepBuds(now: number) {
+  for (const tick of Array.from(budTicks)) tick(now);
+}
+/** DotField stopped driving (context lost, unmounted): the buds go back to their own frames. */
+export function releaseBuds() {
+  glassDriver.active = false;
+  for (const tick of Array.from(budTicks)) { budTicks.delete(tick); requestAnimationFrame(tick); }
+}
+
 // ─── LiquidBud ──────────────────────────────────────────────────────────────
 // The info bubble is born out of the side of its card, the way a soap film
 // buds: the card's own edge swells, and keeps swelling, into a dome; the dome
@@ -289,7 +307,13 @@ void main() {
 
   // a soft contact shadow under the growth and the bubble, like the card's own
   // (wide and faint: a tight one reads as an outline around the droplet)
-  float sh = smoothstep(34.0, -12.0, scene(p - vec2(0.0, 10.0))) * outside * (1.0 - inL);
+  // Cast only by what the bud adds beyond the card: the card casts its own
+  // (CSS) shadow, and a second one round its whole edge appeared, darkening
+  // the card's outline, the moment this canvas came up.
+  vec2 ps = p - vec2(0.0, 10.0);
+  float ds = scene(ps);
+  float added = clamp((card(ps) - ds) / 10.0, 0.0, 1.0);
+  float sh = smoothstep(34.0, -12.0, ds) * added * outside * (1.0 - inL);
   outc = vec4(0.0, 0.0, 0.0, 1.0) * sh * (0.05 + 0.16 * uDark);
 
   vec2 g = vec2(scene(p + vec2(1.0, 0.0)) - d, scene(p + vec2(0.0, 1.0)) - d);
@@ -588,10 +612,16 @@ export function LiquidBud({
 
     const shape: BudShape = { card: [0, 0, 0, 0], drop: [0, 0, 0, 0], cardR: 0, dropR: 0, k: 1, bubble: 0, stub: [0, 0, 0] };
     let started = false;
+    // the next step: inside DotField's frame when it's drawing the glass, else our own
+    const schedule = () => {
+      if (glassDriver.active) { budTicks.add(frame); budsChanged(); }
+      else raf = requestAnimationFrame(frame);
+    };
     const frame = (now: number) => {
+      budTicks.delete(frame);
       const st = budState(b);
       if (st === "failed" || gl.isContextLost()) { finish(); return; }
-      if (st === "compiling") { raf = requestAnimationFrame(frame); return; }
+      if (st === "compiling") { schedule(); return; }
       if (!started) { started = true; t0 = last = now; } // the bud's clock starts once it can draw
       const dt = Math.min(0.034, (now - last) / 1000);
       last = now;
@@ -725,12 +755,13 @@ export function LiquidBud({
       gl.uniform1f(U("uFillA"), glass.alpha);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
 
-      if (fade > 0) raf = requestAnimationFrame(frame);
+      if (fade > 0) schedule();
       else { buds.delete(shape); budsChanged(); setGone(true); }
     };
-    raf = requestAnimationFrame(frame);
+    schedule();
     return () => {
       cancelAnimationFrame(raf);
+      budTicks.delete(frame);
       if (panel) setRingHole(panel as HTMLElement, "b", 0, 0, 0);
       droplet?.remove();
       dropletSvg?.remove();

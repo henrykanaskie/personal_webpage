@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { paper } from "@/lib/tokens";
-import { buds, onBudsChange, setRingHole } from "@/lib/liquid";
+import { budTicks, buds, glassDriver, onBudsChange, releaseBuds, setRingHole, stepBuds } from "@/lib/liquid";
 import { GLSL_GLASS, fullscreenProgram, rgb, uniforms } from "@/lib/gl";
 import { type Drawing, allDrawings, onDrawingsChange } from "@/lib/drawings";
 
@@ -76,7 +76,10 @@ ${GLSL_GLASS}
 vec4 drawOne(sampler2D t, vec3 A, vec3 B, float base, vec2 p, float blur) {
   vec2 uv = vec2(dot(A, vec3(p, 1.0)), dot(B, vec3(p, 1.0)));
   if (uv.x < -0.02 || uv.y < -0.02 || uv.x > 1.02 || uv.y > 1.02) return vec4(0.0);
-  if (blur < 0.01) return TEXL(t, uv, max(0.0, base));
+  // sharp: the full-resolution image (the texture holds up to 2x the screen's
+  // pixels, from rounding to a power of two, so its own level would blend in
+  // the next, softer one)
+  if (blur < 0.01) return TEXL(t, uv, max(0.0, base - 1.0));
   // Four reads on the diagonals at sigma/sqrt2, each from a mip level about
   // as soft (a trilinear read at level L spreads about 2^L / 2 texels), so
   // they merge into one Gaussian of sigma = blur css px (the bubbles' frost):
@@ -314,6 +317,7 @@ export default function DotField() {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let w = 0, h = 0;
     let dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const maxDpr = dpr;
     let raf = 0, last = performance.now();
     let slowMs = 0;
     let lastScrollY = window.scrollY, lastActive = last;
@@ -392,6 +396,7 @@ export default function DotField() {
       raf = 0;
       canvas.style.opacity = "0";
       showAll();
+      releaseBuds();
     };
     canvas.addEventListener("webglcontextlost", onLost);
     document.documentElement.addEventListener("pointerleave", onLeave);
@@ -401,7 +406,23 @@ export default function DotField() {
     const themeObs = new MutationObserver(() => wake());
     // The drawings (lib/drawings): one texture each, re-uploaded when the theme
     // or its image changes. A drawing's SVG is hidden only while it's painted here.
-    const drawTex = new Map<Drawing, { tex: WebGLTexture; key: string }>();
+    const drawTex = new Map<Drawing, { tex: WebGLTexture; theme: string; size: number; used: number }>();
+    const MAX_DRAW_TEX = 6;
+    // rasters are made one at a time, in idle moments (a drawing is ~1,200
+    // paths), and held only until they're uploaded
+    const pending = new Set<Drawing>();
+    const ready = new Map<Drawing, { theme: string; canvas: HTMLCanvasElement }>();
+    let rasterChain: Promise<void> = Promise.resolve();
+    let disposed = false;
+    const idle = () => new Promise<void>((res) => (window.requestIdleCallback ? window.requestIdleCallback(() => res(), { timeout: 300 }) : window.setTimeout(res, 50)));
+    const requestRaster = (d: Drawing, theme: string) => {
+      pending.add(d);
+      rasterChain = rasterChain.then(idle).then(async () => {
+        const c = disposed ? null : await d.raster(theme === "dark");
+        pending.delete(d);
+        if (c && !disposed) { ready.set(d, { theme, canvas: c }); wake(); }
+      });
+    };
     const drawBufA = new Float32Array(12), drawBufB = new Float32Array(12), drawBufL = new Float32Array(4);
     const hidden = new Set<Drawing>();
     let lastDrawSig = "";
@@ -434,7 +455,9 @@ export default function DotField() {
       wasDark = dark;
       const introT = (now - wave.start) / 1000;
       const settling = Math.abs(mouse.onV) > 1e-3 || Math.abs(mouse.on - (mouse.x > -9000 ? 1 : 0)) > 1e-3;
-      let busy = scrolling || themeChanged || settling || ripple.t >= 0 || introT < 2.2 || now - lastActive < 250 || buds.size > 0;
+      // the buds step first, so the glass drawn below is of their shape this frame
+      stepBuds(now);
+      let busy = scrolling || themeChanged || settling || ripple.t >= 0 || introT < 2.2 || now - lastActive < 250 || buds.size > 0 || budTicks.size > 0;
 
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
@@ -527,14 +550,15 @@ export default function DotField() {
 
       // The drawings on screen (at most four): where each sits, as the affine
       // map from viewport px to its image's uv (the inverse of its screen CTM).
+      // A drawing within about a screen of view gets its raster (this theme's)
+      // ahead of time; the image is uploaded and let go.
       let nd = 0;
       let dsig = "";
       const theme = dark ? "dark" : "light";
       for (const d of allDrawings()) {
-        const img = d.images[theme];
-        const m = texLod && nd < 4 && img && d.svg.isConnected ? d.svg.getScreenCTM() : null;
         let on = false;
-        if (m && img) {
+        const m = texLod && d.svg.isConnected ? d.svg.getScreenCTM() : null;
+        if (m) {
           const b = d.box;
           const xs = [b.x, b.x + b.w], ys = [b.y, b.y + b.h];
           let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
@@ -542,41 +566,54 @@ export default function DotField() {
             const px = m.a * x + m.c * y + m.e, py = m.b * x + m.d * y + m.f;
             x0 = Math.min(x0, px); x1 = Math.max(x1, px); y0 = Math.min(y0, py); y1 = Math.max(y1, py);
           }
-          if (x1 > -40 && x0 < w + 40 && y1 > -40 && y0 < h + 40) {
-            const key = `${theme}:${d.version}`;
-            let t = drawTex.get(d);
-            if (!t || t.key !== key) {
+          const near = x1 > -w * 0.5 && x0 < w * 1.5 && y1 > -h && y0 < h * 2;
+          const inView = x1 > -40 && x0 < w + 40 && y1 > -40 && y0 < h + 40;
+          let t = drawTex.get(d);
+          if (near && (!t || t.theme !== theme)) {
+            const r = ready.get(d);
+            if (r && r.theme === theme) {
               const tex = t?.tex ?? gl.createTexture();
               if (tex) {
-                gl.activeTexture(gl.TEXTURE0 + nd);
+                gl.activeTexture(gl.TEXTURE0);
                 gl.bindTexture(gl.TEXTURE_2D, tex);
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, r.canvas);
                 gl.generateMipmap(gl.TEXTURE_2D);
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-                t = { tex, key };
+                t = { tex, theme, size: r.canvas.width, used: now };
                 drawTex.set(d, t);
               }
+              ready.delete(d);
+              r.canvas.width = r.canvas.height = 0; // uploaded: let the image go
+            } else if (!pending.has(d)) {
+              requestRaster(d, theme);
             }
-            if (t) {
-              gl.activeTexture(gl.TEXTURE0 + nd);
-              gl.bindTexture(gl.TEXTURE_2D, t.tex);
-              const inv = new DOMMatrix([m.a, m.b, m.c, m.d, m.e, m.f]).inverse();
-              drawBufA.set([inv.a / b.w, inv.c / b.w, (inv.e - b.x) / b.w], nd * 3);
-              // its own mip level: texels per device px at its current size
-              drawBufL[nd] = Math.log2(img.width / (b.w * Math.hypot(m.a, m.b) * (canvas.width / w)));
-              drawBufB.set([inv.b / b.h, inv.d / b.h, (inv.f - b.y) / b.h], nd * 3);
-              dsig += `${m.a.toFixed(3)},${m.e | 0},${m.f | 0};`;
-              nd++;
-              on = true;
-            }
+          }
+          if (inView && nd < 4 && t && t.theme === theme) {
+            gl.activeTexture(gl.TEXTURE0 + nd);
+            gl.bindTexture(gl.TEXTURE_2D, t.tex);
+            t.used = now;
+            const inv = new DOMMatrix([m.a, m.b, m.c, m.d, m.e, m.f]).inverse();
+            drawBufA.set([inv.a / b.w, inv.c / b.w, (inv.e - b.x) / b.w], nd * 3);
+            drawBufB.set([inv.b / b.h, inv.d / b.h, (inv.f - b.y) / b.h], nd * 3);
+            // its own mip level: texels per device px at its current size
+            drawBufL[nd] = Math.log2(t.size / (b.w * Math.hypot(m.a, m.b) * (canvas.width / w)));
+            dsig += `${m.a.toFixed(3)},${m.e | 0},${m.f | 0};`;
+            nd++;
+            on = true;
           }
         }
         setHidden(d, on);
       }
+      // at most six textures: the least recently drawn go first
+      if (drawTex.size > MAX_DRAW_TEX) {
+        const old = Array.from(drawTex).filter(([, t]) => t.used !== now).sort((x, y) => x[1].used - y[1].used);
+        for (const [d, t] of old.slice(0, drawTex.size - MAX_DRAW_TEX)) { gl.deleteTexture(t.tex); drawTex.delete(d); }
+      }
       for (const [d, t] of drawTex) if (!allDrawings().has(d)) { gl.deleteTexture(t.tex); drawTex.delete(d); hidden.delete(d); }
+      for (const d of ready.keys()) if (!allDrawings().has(d)) ready.delete(d);
       // a drawing that moves without a scroll (a card rising into place) keeps the loop awake
       if (dsig !== lastDrawSig) { lastDrawSig = dsig; lastActive = now; busy = true; }
 
@@ -629,12 +666,26 @@ export default function DotField() {
 
       // With nothing moving, the last frame stays on screen and the loop sleeps
       // until the next scroll, pointer move, click, resize or theme change.
-      if (busy) raf = requestAnimationFrame(frame);
+      // The frame it rests on is always at full resolution: the drawings are
+      // painted here, and a step down for a slow burst (a bud, a fast scroll)
+      // would otherwise leave them soft for the rest of the visit.
+      if (!busy && dpr < maxDpr) {
+        dpr = maxDpr;
+        slowMs = 0;
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
+        busy = true;
+      }
+      // (a bud stepping above may already have woken the loop: never queue two frames)
+      if (busy && !raf) raf = requestAnimationFrame(frame);
     }
+    glassDriver.active = true;
     raf = requestAnimationFrame(frame);
 
     return () => {
       cancelAnimationFrame(raf);
+      disposed = true;
+      releaseBuds();
       themeObs.disconnect();
       offDrawings();
       offBuds();
