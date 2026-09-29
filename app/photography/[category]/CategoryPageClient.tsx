@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { getImageProps } from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { useIsDark } from "@/hooks/useIsDark";
 import type { Section, PhotoEntry } from "../data";
 import DevelopTile from "@/components/photo/DevelopTile";
 import FadeImage from "@/components/photo/FadeImage";
 import Lightbox, { LightboxItem } from "@/components/photo/Lightbox";
-import { MONO, EASE_OUT, aspect, photoTheme } from "@/components/photo/utils";
+import { MONO, EASE_OUT, aspect, chapterTitleSize, chapterTitleStroke, coverSrc, photoTheme, preloadImage } from "@/components/photo/utils";
+import { diveArriving } from "@/components/photo/dive";
 
 export interface ChapterLink {
   id: string;
@@ -70,12 +70,28 @@ export default function CategoryPageClient({ section, next }: { section: Section
   const photos = section.photos;
   const cover = photos[0];
   // Optimised, resized copy for the photo-filled title instead of the 2400px original
-  const coverUrl = cover
-    ? getImageProps({ src: cover.src, alt: "", width: 1600, height: Math.round(1600 / aspect(cover)), quality: 70 }).props.src
-    : undefined;
-
+  const coverUrl = cover ? coverSrc(cover) : undefined;
+  // Arriving from the flight, the title you clicked is flown into this heading's place (dive.ts), so
+  // the heading is already where it belongs and doesn't play its own entrance on top of that
+  const [arriving] = useState(() => diveArriving(`/photography/${section.id}`));
+  // The title is filled with the cover photo, so it rises only once that photo can paint; without
+  // this it showed as a dim outline and then popped. The flight preloads it, so this is usually instant.
+  const [coverReady, setCoverReady] = useState(!coverUrl);
   useEffect(() => {
-    // Enough columns that the tallest print still fits on screen
+    if (!coverUrl) return;
+    let live = true;
+    const done = () => live && setCoverReady(true);
+    preloadImage(coverUrl).then(done);
+    const fallback = window.setTimeout(done, 900);
+    return () => {
+      live = false;
+      window.clearTimeout(fallback);
+    };
+  }, [coverUrl]);
+
+  useLayoutEffect(() => {
+    // Enough columns that the tallest print still fits on screen (before the first paint: deciding
+    // after it re-laid out the grid, 3 columns to 2 on phones, right after arriving)
     const maxHW = photos.reduce((m, p) => Math.max(m, 1 / aspect(p)), 1);
     const check = () => {
       const vw = window.innerWidth;
@@ -100,8 +116,7 @@ export default function CategoryPageClient({ section, next }: { section: Section
     [order, section.id, section.title],
   );
 
-  // Long titles get a smaller viewport-relative size so they fit on one line
-  const titleSize = `clamp(1.9rem, ${Math.min(17, 150 / section.title.length).toFixed(1)}vw, 15rem)`;
+  const titleSize = chapterTitleSize(section.title);
 
   return (
     <>
@@ -124,8 +139,8 @@ export default function CategoryPageClient({ section, next }: { section: Section
               out past the glyphs' ascenders and descenders; negative margins keep the spacing the same */}
           <div style={{ overflow: "hidden", margin: "-0.14em 0 -0.18em" }}>
             <motion.h1
-              initial={{ y: "100%", opacity: 0 }}
-              animate={{ y: "0%", opacity: 1 }}
+              initial={arriving ? false : { y: "100%", opacity: 0 }}
+              animate={arriving || coverReady ? { y: "0%", opacity: 1 } : { y: "100%", opacity: 0 }}
               transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
               style={{
                 margin: 0,
@@ -142,8 +157,7 @@ export default function CategoryPageClient({ section, next }: { section: Section
                 WebkitBackgroundClip: "text",
                 backgroundClip: "text",
                 backgroundPosition: "50% 45%",
-                // A hairline outline keeps the word readable when the photo is close to the page colour
-                WebkitTextStroke: `1px ${isDark ? "rgba(255,255,255,0.22)" : "rgba(30,27,25,0.28)"}`,
+                WebkitTextStroke: `1px ${chapterTitleStroke(isDark)}`,
               }}
             >
               {section.title}

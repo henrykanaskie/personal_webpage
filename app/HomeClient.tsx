@@ -129,11 +129,6 @@ function PhotoSide({
         </h1>
       </div>
 
-      {/* Hairline divider */}
-      <div
-        style={{ position: "absolute", top: "calc(50% + 48px)", left: "50%", transform: "translateX(-50%)", width: 32, height: 1, background: t.rule }}
-      />
-
       {/* Chapters, mirroring the CS half's sections: hidden on mobile */}
       {!isMobile && (
         <div

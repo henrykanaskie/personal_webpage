@@ -119,8 +119,6 @@ export default function MiniFlight({
     };
   }, [layout, reduceMotion, isMobile]);
 
-  const border = isDark ? "#ebe7e0" : "#fffdf9";
-
   return (
     <div
       ref={rootRef}
@@ -147,10 +145,11 @@ export default function MiniFlight({
             width: `calc(var(--mini) * ${layout[i].size.toFixed(3)})`,
             opacity: 0,
             willChange: "transform, opacity",
-            padding: "3.5%",
-            background: border,
+            // Bare photographs, no mat: a white frame read as a stack of borders, and its percentage
+            // padding resolved against the whole panel, so small prints sat in oversized white cards
             borderRadius: 2,
-            boxShadow: "0 14px 24px -14px rgba(0,0,0,0.55)",
+            overflow: "hidden",
+            boxShadow: isDark ? "0 16px 28px -16px rgba(0,0,0,0.7)" : "0 14px 24px -16px rgba(40,30,20,0.35)",
           }}
         >
           <div style={{ position: "relative", width: "100%", aspectRatio: String(p.aspect), background: p.color }}>

@@ -34,8 +34,9 @@ export default function PageTransition({
   }, []);
 
   // Single AnimatePresence for all routes.
-  //   - Photography: the old page snaps away so photo-to-photo navigation has no
-  //     double-load feel, and the new page fades in.
+  //   - Photography: the old page dissolves into the darkroom and the new one
+  //     fades up out of it. (It used to vanish in a single frame, which read as
+  //     a jump; the new page's mount work now lands on a quiet, empty screen.)
   //   - Everything else: the page lifts and fades quickly while the dot field
   //     (a separate, persistent layer) stays put and replays its configure wave
   //     from the click, so the paper never blinks between pages. The new page
@@ -55,7 +56,7 @@ export default function PageTransition({
         }}
         exit={
           photo
-            ? { opacity: 0, transition: { duration: 0 } }
+            ? { opacity: 0, transition: { duration: 0.22, ease: [0.4, 0, 1, 1] } }
             : { opacity: 0, y: -10, transition: { duration: 0.24, ease: [0.4, 0, 1, 1] } }
         }
       >

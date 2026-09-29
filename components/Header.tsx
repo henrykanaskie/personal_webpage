@@ -233,7 +233,7 @@ export default function Header() {
     return () => mediaQuery.removeEventListener("change", handleChange);
   }, []);
 
-  // The switch itself happens under the halftone curtain (lib/themeTransition),
+  // The switch itself is the plate assembly (lib/themeTransition),
   // which starts from the toggle that was pressed.
   const toggleDarkMode = (e: React.MouseEvent<HTMLElement>) => {
     const newDark = !isDark;
