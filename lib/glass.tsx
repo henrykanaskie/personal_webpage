@@ -14,6 +14,9 @@ export function GlassLayers({
 } = {}) {
   return (
     <>
+      {/* the browser's glass (the bubbles' fill and frost, globals.css), on its
+          own layer so it can open around a swell with the rim */}
+      <div className="glass-back" />
       {/* the rim and the specular line sit in a mask the liquid swells can
           open (.ring-mask), so nothing on the edge crosses a swell */}
       <div className="ring-mask" style={{ zIndex: 1 }}>

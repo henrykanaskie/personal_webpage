@@ -263,23 +263,27 @@ void main() {
     }
     if (dg < 2.5 && ca > 0.01) {
       float aa = 0.7 / uDpr;
-      // The glass past the card's box (a swell, a bud): the same frost and
-      // lens over the dots and the drawings, the card's fill and the rim's
-      // inner light, meeting the browser's glass at the box's edge.
+      // The glass this canvas paints: past the card's box (a swell, a bud),
+      // and inside it wherever the browser's glass has opened around a swell
+      // (.glass-back's hole, the same as the rim's): the same frost and lens
+      // over the dots and the drawings, the card's fill and the rim's inner
+      // light, from the whole liquid outline, so card and swell are one
+      // glass there and the browser's frost cross-fades into it over the
+      // hole's soft edge. Met at the box's straight edge, the two left a
+      // faint line across the swell.
+      // The browser's glass is cut cleanly at the hole's outer edge
+      // (.glass-back), so this glass is whole inside it; only the rim's inner
+      // light fades, with the card's edge ring (whose light fades out over
+      // the same 14px), so the light is counted once everywhere.
       float inLiquid = 1.0 - smoothstep(-aa, aa, dg);
       float pastBox = smoothstep(-aa, aa, dc);
-      if (inLiquid * pastBox > 0.0) {
+      float holeCut = uHoleR > 0.5 ? 1.0 - smoothstep(uHoleR + 13.5, uHoleR + 14.5, length(p - uBlob.xy)) : 0.0;
+      float w = inLiquid * max(pastBox, holeCut) * ca * gw;
+      if (w > 0.0) {
         vec3 frost = glassSurface(p, uScroll, dg, n);
-        vec3 inside = mix(mix(frost, uFill, uFillA), vec3(1.0), glassGlow(dg));
-        col = mix(col, inside, inLiquid * pastBox * ca * gw);
+        vec3 inside = mix(mix(frost, uFill, uFillA), vec3(1.0), glassGlow(dg) * max(pastBox, 1.0 - ringVis));
+        col = mix(col, inside, w);
       }
-      // Inside the box, the rim's inner light is the card's edge ring's
-      // (CSS), which the hole around a swell cuts away; there it's painted
-      // here instead, under the card (the browser's frost takes it in), from
-      // the whole liquid outline, so it runs on unbroken into the swell's.
-      // Without it the glass stepped up where the swell began (14 levels on
-      // the dark sheet, measured).
-      col = mix(col, vec3(1.0), glassGlow(dg) * (1.0 - pastBox) * (1.0 - ringVis) * ca);
       // The rim of the whole liquid outline, just outside it: along the swell,
       // and along the card's edge inside the hole opened in the card's own rim,
       // so the border molds into the swell.
