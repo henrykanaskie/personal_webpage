@@ -451,40 +451,23 @@ html:not(.lens) .glass-bubble::before {
   }
 }
 
-/* The theme morph (lib/themeTransition.ts): the old page is held as a snapshot
-   and the new one shows through the growing dots of a halftone wave. No
-   crossfade: the snapshot stays opaque until the dots have eaten it. */
-html.vt-halftone::view-transition-old(root),
-html.vt-halftone::view-transition-new(root) {
+/* The theme assembly (lib/themeTransition.ts): the old page is held as a
+   snapshot and the new one shows through plates sliding into place. No
+   crossfade: the snapshot stays opaque until the plates have covered it. The
+   HUD (seams, sparks, reticle) is its own live group above both. Without the
+   paint worklet, the mask is a per-frame stylesheet the script writes. */
+html.vt-assembly::view-transition-old(root),
+html.vt-assembly::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
 }
 html.vt-paint::view-transition-new(root) {
-  -webkit-mask-image: paint(halftone);
-  mask-image: paint(halftone);
+  -webkit-mask-image: paint(assembly);
+  mask-image: paint(assembly);
 }
-/* Without the paint worklet (Safari, Firefox): a ring of dots on the page's
-   grid at the wave front, and the new page solid behind it. */
-html.vt-css::view-transition-new(root) {
-  --vt-in: calc((var(--vt-t) - var(--vt-grow)) / var(--vt-spread) * var(--vt-maxd) * 1px);
-  --vt-out: calc(var(--vt-t) / var(--vt-spread) * var(--vt-maxd) * 1px);
-  --vt-dot: calc(3px + 9px * min(1, var(--vt-t) / var(--vt-grow)));
-  -webkit-mask-image:
-    radial-gradient(circle at var(--vt-x) var(--vt-y), #000 var(--vt-in), transparent calc(var(--vt-in) + 1px)),
-    radial-gradient(circle at 12px 12px, #000 var(--vt-dot), transparent calc(var(--vt-dot) + 1px)),
-    radial-gradient(circle at var(--vt-x) var(--vt-y), #000 var(--vt-out), transparent calc(var(--vt-out) + 1px));
-  mask-image:
-    radial-gradient(circle at var(--vt-x) var(--vt-y), #000 var(--vt-in), transparent calc(var(--vt-in) + 1px)),
-    radial-gradient(circle at 12px 12px, #000 var(--vt-dot), transparent calc(var(--vt-dot) + 1px)),
-    radial-gradient(circle at var(--vt-x) var(--vt-y), #000 var(--vt-out), transparent calc(var(--vt-out) + 1px));
-  -webkit-mask-size: 100% 100%, 24px 24px, 100% 100%;
-  mask-size: 100% 100%, 24px 24px, 100% 100%;
-  -webkit-mask-repeat: no-repeat, repeat, no-repeat;
-  mask-repeat: no-repeat, repeat, no-repeat;
-  -webkit-mask-position: 0 0, calc(var(--vt-ox) - 12px) calc(var(--vt-oy) - 12px), 0 0;
-  mask-position: 0 0, calc(var(--vt-ox) - 12px) calc(var(--vt-oy) - 12px), 0 0;
-  -webkit-mask-composite: source-over, source-in, source-over;
-  mask-composite: add, intersect, add;
+html.vt-assembly::view-transition-group(vt-hud),
+html.vt-assembly::view-transition-new(vt-hud) {
+  animation: none;
 }
 
 /* Split screen: photography chapter links brighten and underline on hover */
