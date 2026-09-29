@@ -74,31 +74,49 @@ uniform float uNBud;
 uniform float uDrawL[4];   // each drawing's own mip level at this size (texels per device px)
 uniform float uDrawO[4];   // and its opacity (its wrapper fades with its card)
 ${GLSL_GLASS}
-// One drawing at p, premultiplied, sharp or blurred (below). Only pixels
-// inside a drawing's box read its texture at all.
-vec4 drawOne(sampler2D t, vec3 A, vec3 B, float base, vec2 p, float blur) {
-  vec2 uv = vec2(dot(A, vec3(p, 1.0)), dot(B, vec3(p, 1.0)));
-  if (uv.x < -0.02 || uv.y < -0.02 || uv.x > 1.02 || uv.y > 1.02) return vec4(0.0);
-  // sharp: the full-resolution image (the texture holds up to 2x the screen's
-  // pixels, from rounding to a power of two, so its own level would blend in
-  // the next, softer one)
-  if (blur < 0.01) return TEXL(t, uv, max(0.0, base - 1.0));
-  // Four reads on the diagonals at sigma/sqrt2, each from a mip level about
-  // as soft (a trilinear read at level L spreads about 2^L / 2 texels), so
-  // they merge into one Gaussian of sigma = blur css px (the bubbles' frost):
-  // no ghosted double lines, no mip blockiness.
+// One drawing at p, premultiplied. Only pixels inside a drawing's box read
+// its texture at all. Sharp and frosted reads are separate functions, so each
+// call site carries only the reads it uses (the shader's size is what the GPU
+// compiles before the first frame).
+vec2 drawUV(vec3 A, vec3 B, vec2 p) { return vec2(dot(A, vec3(p, 1.0)), dot(B, vec3(p, 1.0))); }
+bool offBox(vec2 uv) { return uv.x < -0.02 || uv.y < -0.02 || uv.x > 1.02 || uv.y > 1.02; }
+// sharp: the full-resolution image (the texture holds up to 2x the screen's
+// pixels, from rounding to a power of two, so its own level would blend in
+// the next, softer one)
+vec4 drawSharp(sampler2D t, vec3 A, vec3 B, float base, vec2 p) {
+  vec2 uv = drawUV(A, B, p);
+  if (offBox(uv)) return vec4(0.0);
+  return TEXL(t, uv, max(0.0, base - 1.0));
+}
+// Frosted: four reads on the diagonals at sigma/sqrt2, each from a mip level
+// about as soft (a trilinear read at level L spreads about 2^L / 2 texels),
+// so they merge into one Gaussian of sigma = blur css px (the bubbles'
+// frost): no ghosted double lines, no mip blockiness.
+vec4 drawFrost(sampler2D t, vec3 A, vec3 B, float base, vec2 p, float blur) {
+  vec2 uv = drawUV(A, B, p);
+  if (offBox(uv)) return vec4(0.0);
   vec2 ex = vec2(A.x, B.x) * blur * 0.707, ey = vec2(A.y, B.y) * blur * 0.707;
   float lod = max(0.0, base + log2(blur * 1.414 * uDpr));
   return (TEXL(t, uv + ex + ey, lod) + TEXL(t, uv + ex - ey, lod)
     + TEXL(t, uv - ex + ey, lod) + TEXL(t, uv - ex - ey, lod)) * 0.25;
 }
 vec4 over(vec4 top, vec4 under) { return top + under * (1.0 - top.a); }
+// the drawings on bare paper, sharp
+vec4 drawingsSharp(vec2 p) {
+  vec4 c = vec4(0.0);
+  if (uNDraw > 0.5) c = drawSharp(uDraw0, uDrawA[0], uDrawB[0], uDrawL[0], p) * uDrawO[0];
+  if (uNDraw > 1.5) c = over(drawSharp(uDraw1, uDrawA[1], uDrawB[1], uDrawL[1], p) * uDrawO[1], c);
+  if (uNDraw > 2.5) c = over(drawSharp(uDraw2, uDrawA[2], uDrawB[2], uDrawL[2], p) * uDrawO[2], c);
+  if (uNDraw > 3.5) c = over(drawSharp(uDraw3, uDrawA[3], uDrawB[3], uDrawL[3], p) * uDrawO[3], c);
+  return c;
+}
+// the drawings as the glass sees them (glassSurface in lib/gl.ts)
 vec4 drawings(vec2 p, float blur) {
   vec4 c = vec4(0.0);
-  if (uNDraw > 0.5) c = drawOne(uDraw0, uDrawA[0], uDrawB[0], uDrawL[0], p, blur) * uDrawO[0];
-  if (uNDraw > 1.5) c = over(drawOne(uDraw1, uDrawA[1], uDrawB[1], uDrawL[1], p, blur) * uDrawO[1], c);
-  if (uNDraw > 2.5) c = over(drawOne(uDraw2, uDrawA[2], uDrawB[2], uDrawL[2], p, blur) * uDrawO[2], c);
-  if (uNDraw > 3.5) c = over(drawOne(uDraw3, uDrawA[3], uDrawB[3], uDrawL[3], p, blur) * uDrawO[3], c);
+  if (uNDraw > 0.5) c = drawFrost(uDraw0, uDrawA[0], uDrawB[0], uDrawL[0], p, blur) * uDrawO[0];
+  if (uNDraw > 1.5) c = over(drawFrost(uDraw1, uDrawA[1], uDrawB[1], uDrawL[1], p, blur) * uDrawO[1], c);
+  if (uNDraw > 2.5) c = over(drawFrost(uDraw2, uDrawA[2], uDrawB[2], uDrawL[2], p, blur) * uDrawO[2], c);
+  if (uNDraw > 3.5) c = over(drawFrost(uDraw3, uDrawA[3], uDrawB[3], uDrawL[3], p, blur) * uDrawO[3], c);
   return c;
 }
 // The cards alone (what the DOM draws) and the liquid (cards plus the swell).
@@ -194,74 +212,85 @@ void main() {
   // moves. So the card work is tiered. Deep inside a card (well past the rim
   // band) the page is just the glass, flat: no rim normal, no edge, and none of
   // the cursor/ripple dot work underneath, since the card covers it.
+  // The glass (glassSurface) is called from one place only: the GPU compiler
+  // pastes a function into every place that calls it, and the glass with its
+  // drawing reads is most of what it builds before the first frame.
   float ca = 0.0;
   float dc = 1e5;
   if (uNCards > 0.5) dc = cards(p, ca);
-  if (dc < -30.0 && ca > 0.99 && (uBlob.z < 0.5 || length(p - uBlob.xy) > uBlob.z + 70.0)) {
-    // the same glass as the rim path below, flat here (past the lens bevel),
-    // with the tail of the rim's inner light, so there's no step at the tier
-    vec3 deep = mix(glassSurface(p, uScroll, dc, vec2(0.0)), uFill, uFillA);
-    gl_FragColor = vec4(mix(deep, vec3(1.0), glassGlow(dc)), 1.0);
-    return;
+  bool deep = dc < -30.0 && ca > 0.99 && (uBlob.z < 0.5 || length(p - uBlob.xy) > uBlob.z + 70.0);
+  vec3 col = vec3(0.0);
+  // dl: the cards and their swell (whose rim this canvas draws); dg: the
+  // whole glass outline, buds included (a bud's rim is its own canvas's);
+  // n: the glass's outward normal at its rim (none deep inside: flat glass)
+  float dl = dc, dg = dc, gw = 1.0;
+  vec2 n = vec2(0.0);
+  bool onGlass = deep;
+  if (!deep) {
+    col = mix(uBg, uDot, dots(p) * uDotA);
+    // the drawings on bare paper, sharp
+    vec4 dr = drawingsSharp(p);
+    col = col * (1.0 - dr.a) + dr.rgb;
+    if (uNCards > 0.5) {
+      dl = liquid(p, dc);
+      dg = glassD(p, dc, gw);
+      // The cards' drop shadow (--glass-drop), cast by the whole glass outline,
+      // swells and buds included. Cast by the card's box (CSS), it lay over a
+      // swell's base and stopped dead at the card's straight edge: a line
+      // through the swell. Same offset, blur, spread and colour as the CSS one,
+      // and like it, only outside the glass.
+      if (dg > -1.0 && dg < 70.0 && ca > 0.01) {
+        float off = mix(18.0, 24.0, uDark), sigma = mix(18.0, 24.0, uDark), spread = mix(20.0, 24.0, uDark);
+        vec2 ps = p - vec2(0.0, off);
+        float ts, gws;
+        float ds = glassD(ps, cards(ps, ts), gws) + spread;
+        float a = mix(0.3, 0.7, uDark) * smoothstep(1.6 * sigma, -1.6 * sigma, ds);
+        float outside = smoothstep(-0.7 / uDpr, 0.7 / uDpr, dg);
+        col = mix(col, mix(vec3(0.157, 0.141, 0.118), vec3(0.0), uDark), a * ca * outside);
+      }
+      if (dg < 2.5 && ca > 0.01) {
+        onGlass = true;
+        // rim normal of the glass
+        float t1, t2, gw1, gw2;
+        float gx = glassD(p + vec2(1.0, 0.0), cards(p + vec2(1.0, 0.0), t1), gw1) - dg;
+        float gy = glassD(p + vec2(0.0, 1.0), cards(p + vec2(0.0, 1.0), t2), gw2) - dg;
+        n = normalize(vec2(gx, gy) + 1e-5);
+      }
+    }
   }
-  vec3 col = mix(uBg, uDot, dots(p) * uDotA);
-  // the drawings on bare paper, sharp
-  vec4 dr = drawings(p, 0.0);
-  col = col * (1.0 - dr.a) + dr.rgb;
-
-  if (uNCards > 0.5) {
-    // dl: the cards and their swell (whose rim this canvas draws); dg: the
-    // whole glass outline, buds included (a bud's rim is its own canvas's)
-    float dl = liquid(p, dc);
-    float gw, gw1, gw2;
-    float dg = glassD(p, dc, gw);
-    // The cards' drop shadow (--glass-drop), cast by the whole glass outline,
-    // swells and buds included. Cast by the card's box (CSS), it lay over a
-    // swell's base and stopped dead at the card's straight edge: a line
-    // through the swell. Same offset, blur, spread and colour as the CSS one,
-    // and like it, only outside the glass.
-    if (dg > -1.0 && dg < 70.0 && ca > 0.01) {
-      float off = mix(18.0, 24.0, uDark), sigma = mix(18.0, 24.0, uDark), spread = mix(20.0, 24.0, uDark);
-      vec2 ps = p - vec2(0.0, off);
-      float ts, gws;
-      float ds = glassD(ps, cards(ps, ts), gws) + spread;
-      float a = mix(0.3, 0.7, uDark) * smoothstep(1.6 * sigma, -1.6 * sigma, ds);
-      float outside = smoothstep(-0.7 / uDpr, 0.7 / uDpr, dg);
-      col = mix(col, mix(vec3(0.157, 0.141, 0.118), vec3(0.0), uDark), a * ca * outside);
+  if (onGlass) {
+    // the page under the glass (the dots and the drawings): blurred, lensed
+    // at the rim of the glass outline (so the refraction follows a swell or a
+    // bud as it grows), and lifted, as through a bubble; the rim's inner light
+    // over them. Deep inside a card that's all there is (flat, past the lens
+    // bevel, with the tail of the rim's light, so there's no step at the tier).
+    // The fill is painted here for the whole glass, card and swell alike (the
+    // liquid cards' own CSS background steps aside, html.paper-gl): one
+    // surface from one painter, so nothing marks where the card's box ends.
+    // Two fills met there before, and wherever they overlapped or missed by
+    // a device pixel, a hairline showed through the swell.
+    vec3 frost = glassSurface(p, uScroll, dg, n);
+    vec3 inside = mix(mix(frost, uFill, uFillA), vec3(1.0), glassGlow(dg));
+    if (deep) {
+      gl_FragColor = vec4(inside, 1.0);
+      return;
     }
-    if (dg < 2.5 && ca > 0.01) {
-      float aa = 0.7 / uDpr;
-      // rim normal of the glass, and how close to the rim we are
-      float t1, t2;
-      float gx = glassD(p + vec2(1.0, 0.0), cards(p + vec2(1.0, 0.0), t1), gw1) - dg;
-      float gy = glassD(p + vec2(0.0, 1.0), cards(p + vec2(0.0, 1.0), t2), gw2) - dg;
-      vec2 n = normalize(vec2(gx, gy) + 1e-5);
-      // the page under the glass (the dots and the drawings): blurred, lensed
-      // at the rim of the glass outline (so the refraction follows a swell or a
-      // bud as it grows), and lifted, as through a bubble; the rim's inner light over them
-      vec3 frost = glassSurface(p, uScroll, dg, n);
-      float inLiquid = 1.0 - smoothstep(-aa, aa, dg);
-      // The fill is painted here for the whole glass, card and swell alike (the
-      // liquid cards' own CSS background steps aside, html.paper-gl): one
-      // surface from one painter, so nothing marks where the card's box ends.
-      // Two fills met there before, and wherever they overlapped or missed by
-      // a device pixel, a hairline showed through the swell.
-      vec3 inside = mix(mix(frost, uFill, uFillA), vec3(1.0), glassGlow(dg));
-      col = mix(col, inside, inLiquid * ca * gw);
-      // the rim's hole (same falloff as .ring-mask): 0 in the hole around a
-      // swell, 1 away from it
-      float ringVis = uHoleR > 0.5 ? clamp((length(p - uBlob.xy) - uHoleR) / 14.0, 0.0, 1.0) : 1.0;
-      // The rim of the whole liquid outline, just outside it: along the swell,
-      // and along the card's edge inside the hole opened in the card's own rim,
-      // so the border molds into the swell.
-      float lineW = max(smoothstep(0.5, 1.5, dc) * (1.0 - smoothstep(-0.5, 0.5, dl - 1.5)), 1.0 - ringVis);
-      // the glass edge (--edge-lip, --edge-film in globals.css): a white
-      // hairline, brighter on top, with the thin film just inside it
-      float line = (1.0 - smoothstep(0.0, 1.0, abs(dl - 0.4))) * lineW;
-      float band = smoothstep(-6.0, -0.5, dl) * (1.0 - smoothstep(-0.5, 0.5, dl)) * lineW;
-      col = mix(col, edgeFilm(n), band * ca * edgeFilmA(uDark));
-      col = mix(col, vec3(1.0), line * ca * edgeLip(n, uDark));
-    }
+    float aa = 0.7 / uDpr;
+    float inLiquid = 1.0 - smoothstep(-aa, aa, dg);
+    col = mix(col, inside, inLiquid * ca * gw);
+    // the rim's hole (same falloff as .ring-mask): 0 in the hole around a
+    // swell, 1 away from it
+    float ringVis = uHoleR > 0.5 ? clamp((length(p - uBlob.xy) - uHoleR) / 14.0, 0.0, 1.0) : 1.0;
+    // The rim of the whole liquid outline, just outside it: along the swell,
+    // and along the card's edge inside the hole opened in the card's own rim,
+    // so the border molds into the swell.
+    float lineW = max(smoothstep(0.5, 1.5, dc) * (1.0 - smoothstep(-0.5, 0.5, dl - 1.5)), 1.0 - ringVis);
+    // the glass edge (--edge-lip, --edge-film in globals.css): a white
+    // hairline, brighter on top, with the thin film just inside it
+    float line = (1.0 - smoothstep(0.0, 1.0, abs(dl - 0.4))) * lineW;
+    float band = smoothstep(-6.0, -0.5, dl) * (1.0 - smoothstep(-0.5, 0.5, dl)) * lineW;
+    col = mix(col, edgeFilm(n), band * ca * edgeFilmA(uDark));
+    col = mix(col, vec3(1.0), line * ca * edgeLip(n, uDark));
   }
   gl_FragColor = vec4(col, 1.0);
 }
@@ -287,6 +316,54 @@ const MARGIN = 160;
 // the crossfade from the CSS glass to the canvas's (matches .dot-field in globals.css)
 const REVEAL_MS = 600;
 
+// ─── Warm-up ───────────────────────────────────────────────────────────────
+// The shader is compiled, and drawn once into a single pixel, as soon as this
+// module loads: the canvas is in the server's HTML, so this runs before React
+// has hydrated the page, while the cards are still invisible. Two costs move
+// out of sight that way: the compile, which used to wait for hydration (over a
+// second in development), and the driver finishing the shader on its first
+// draw (over a second on a cold load, since it builds all of it at once).
+// Started from the effect, both landed after the page had appeared, and the
+// frost arrived seconds late.
+type Warm = {
+  canvas: HTMLCanvasElement;
+  gl: WebGLRenderingContext;
+  texLod: boolean;
+  poll: () => WebGLProgram | null | "pending";
+};
+let warm: Warm | null = null;
+function warmUp(canvas: HTMLCanvasElement): Warm | null {
+  if (warm?.canvas === canvas && !warm.gl.isContextLost()) return warm;
+  const gl = canvas.getContext("webgl", { antialias: false, alpha: false, premultipliedAlpha: false, powerPreference: "low-power" });
+  if (!gl || gl.isContextLost()) return null;
+  // explicit mip levels for the drawings; without them the drawings stay DOM
+  const texLod = !!gl.getExtension("EXT_shader_texture_lod");
+  // The shader compiles in the background (KHR_parallel_shader_compile):
+  // compiled synchronously, it froze the first load. Until it's ready the CSS
+  // dot grid is what shows.
+  const poll = compileFullscreen(gl, FRAG(texLod));
+  const w: Warm = { canvas, gl, texLod, poll };
+  warm = w;
+  const tick = () => {
+    if (warm !== w) return;
+    const prog = poll();
+    if (prog === "pending") {
+      requestAnimationFrame(tick);
+      return;
+    }
+    if (!prog) return;
+    // its first use, into one pixel of a canvas nobody can see yet (opacity 0)
+    gl.viewport(0, 0, 1, 1);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  };
+  requestAnimationFrame(tick);
+  return w;
+}
+if (typeof document !== "undefined") {
+  const c = document.querySelector<HTMLCanvasElement>("canvas.dot-field");
+  if (c) warmUp(c);
+}
+
 export default function DotField() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pathname = usePathname();
@@ -306,15 +383,10 @@ export default function DotField() {
     const el = canvasRef.current;
     if (!enabled || !el) return;
     const canvas: HTMLCanvasElement = el;
-    const gl = canvas.getContext("webgl", { antialias: false, alpha: false, premultipliedAlpha: false, powerPreference: "low-power" });
-    if (!gl) return;
-
-    // explicit mip levels for the drawings; without them the drawings stay DOM
-    const texLod = !!gl.getExtension("EXT_shader_texture_lod");
-    // The shader compiles in the background (KHR_parallel_shader_compile):
-    // compiled synchronously, this now sizeable shader froze the first load.
-    // Until it's ready the CSS dot grid is what shows.
-    const poll = compileFullscreen(gl, FRAG(texLod));
+    // usually already compiling (and warmed up) since this module loaded
+    const w = warmUp(canvas);
+    if (!w) return;
+    const { gl, texLod, poll } = w;
     let stop: (() => void) | null = null;
     let waitRaf = 0;
     let gone = false;
@@ -822,8 +894,12 @@ export default function DotField() {
     return () => {
       gone = true;
       cancelAnimationFrame(waitRaf);
-      if (stop) stop();
-      else gl.getExtension("WEBGL_lose_context")?.loseContext();
+      // Not started yet: the warm context stays for the next mount (React
+      // mounts effects twice in development). Started: it's torn down.
+      if (stop) {
+        stop();
+        if (warm?.canvas === canvas) warm = null;
+      }
     };
   }, [enabled]);
 

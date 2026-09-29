@@ -93,26 +93,27 @@ float glassDot(vec2 p, vec2 off) {
   const float S2 = 5.12; // 2 sigma^2, sigma 1.6
   return min(1.0, uDotR * uDotR / S2) * exp(-dot(q, q) / S2);
 }
-// The line drawings on the paper (lib/drawings), premultiplied; blur softens
-// them (0 for sharp; DotField reads it as a mip bias). Each shader defines it: DotField paints the
-// drawings; LiquidBud has none.
+// The line drawings on the paper (lib/drawings), premultiplied, blurred by
+// the glass's 1.6px. Each shader defines it: DotField paints the drawings;
+// LiquidBud has none.
 vec4 drawings(vec2 p, float blur);
-// The page as the glass sees it at p: the blurred dots, with the drawings
-// over them, blurred by the same 1.6px.
-vec3 glassPage(vec2 p, vec2 off) {
-  vec3 c = mix(uBg, uDot, glassDot(p, off) * uDotA);
-  vec4 dr = drawings(p, 1.6); // (as a mip bias: roughly the 1.6px blur)
-  return c * (1.0 - dr.a) + dr.rgb;
-}
-// d: signed distance to the glass outline (negative inside); n: outward normal
+// d: signed distance to the glass outline (negative inside); n: outward normal.
+// The page as the glass sees it: the dots blurred (analytically), the
+// drawings over them blurred by the same 1.6px, all bent through the lens.
+// Each colour of the dots is bent a little more than the last (dispersion);
+// the drawings are read once, at the middle colour's offset. This function
+// is pasted whole into every place that calls it, and so is everything it
+// calls: reading the drawings per colour put three more copies of the
+// drawings' texture reads into the shader for each call, and the GPU has to
+// build all of them before the first frame (seconds, on a cold load).
 vec3 glassSurface(vec2 p, vec2 off, float d, vec2 n) {
   float u = 1.0 - clamp(-d / 22.0, 0.0, 1.0);
   float tilt = 1.0 - sqrt(max(0.0, 1.0 - u * u));
-  vec2 v = -n * tilt * 18.9;
-  // flat across the middle: one sample; only the bevel splits the colours
-  vec3 col = tilt < 1e-3
-    ? glassPage(p, off)
-    : vec3(glassPage(p + v, off).r, glassPage(p + v * 1.07, off).g, glassPage(p + v * 1.14, off).b);
+  vec2 v = -n * tilt * 18.9; // zero across the flat middle
+  vec3 dots = vec3(glassDot(p + v, off), glassDot(p + v * 1.07, off), glassDot(p + v * 1.14, off));
+  vec3 col = mix(uBg, uDot, dots * uDotA);
+  vec4 dr = drawings(p + v * 1.07, 1.6);
+  col = col * (1.0 - dr.a) + dr.rgb;
   float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
   col = mix(vec3(l), col, 1.25);
   return col * mix(1.02, 1.12, uDark);
