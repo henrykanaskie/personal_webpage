@@ -1,22 +1,26 @@
 // ─── Drawings on the paper ──────────────────────────────────────────────────
 // The line drawings are drawn by the DOM while they draw themselves (a CSS
-// stroke transition), then handed to DotField: each one is rasterised once
-// per theme into an image covering its paths, and DotField paints it into
-// the paper as a texture, exactly where the SVG sits (its screen CTM, so
+// stroke transition), then handed to DotField: each one is rasterised, when
+// it comes near the screen, into an image covering its paths, and DotField
+// paints it into the paper as a texture, exactly where the SVG sits (its screen CTM, so
 // rotations and flips come along). From then on the drawing is part of what
 // the glass sees: a card's frost blurs it, a card's rim and a swell bend it,
 // with the same lens as the dots. The SVG itself is hidden only while
 // DotField is actually painting it, so without WebGL (or when there are more
-// drawings on screen than it takes) the DOM copy is what you see.
+// drawings on screen than it takes, or before its raster is ready) the DOM
+// copy is what you see.
 
 export type Drawing = {
   svg: SVGSVGElement;
-  /** User-space rect the images cover (the SVG's own units). */
+  /** User-space rect the rasters cover (the SVG's own units). */
   box: { x: number; y: number; w: number; h: number };
-  /** One raster per theme, power-of-two sized for mipmaps. */
-  images: { light?: HTMLCanvasElement; dark?: HTMLCanvasElement };
-  /** Bumped whenever an image changes, so textures are re-uploaded. */
-  version: number;
+  /**
+   * Rasterises the drawing in a theme. DotField asks for it only when the
+   * drawing comes near the screen (or the theme changes while it's there),
+   * uploads it, and lets the image go: a canvas per drawing per theme was
+   * close to half a gigabyte on the CS page.
+   */
+  raster: (dark: boolean) => Promise<HTMLCanvasElement | null>;
 };
 
 const drawings = new Set<Drawing>();
@@ -33,13 +37,9 @@ export function registerDrawing(d: Drawing) {
   };
 }
 
-export function updatedDrawing() {
-  changed();
-}
-
 export const allDrawings = () => drawings;
 
-/** Called when the set or an image changes (DotField wakes to draw it). */
+/** Called when the set changes (DotField wakes to draw it). */
 export function onDrawingsChange(f: () => void) {
   listeners.add(f);
   return () => listeners.delete(f);
@@ -51,14 +51,13 @@ const pow2 = (n: number) => Math.pow(2, Math.ceil(Math.log2(Math.max(1, n))));
  * Rasterises an SVG's drawing (its <defs> and the group of paths) into a
  * power-of-two canvas covering `box`, at about `pxPerUnit` pixels per SVG
  * unit. The CSS that animates the strokes doesn't reach an SVG loaded as an
- * image, so this is the drawing fully drawn. Both themes are rasterised as
- * soon as it's drawn, so a theme switch never waits on one.
+ * image, so this is the drawing fully drawn.
  */
 export async function rasterDrawing(
   svg: SVGSVGElement,
   box: Drawing["box"],
   pxPerUnit: number,
-  /** The stroke pattern's image to use, for rasterising the other theme ahead of time. */
+  /** The stroke pattern's image to use (the theme's). */
   patternHref?: string,
 ): Promise<HTMLCanvasElement | null> {
   const W = Math.min(2048, pow2(box.w * pxPerUnit));

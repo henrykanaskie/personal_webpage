@@ -16,7 +16,7 @@ import {
   useInfoBubble,
   type VaporOrigin,
 } from "./InfoBubble";
-import { useGlassLens, LiquidBud } from "@/lib/liquid";
+import { useGlassLens, LiquidBud, useBud } from "@/lib/liquid";
 import { GlassCard } from "@/lib/glass";
 import { rise, settle, leave } from "@/lib/motion";
 
@@ -134,9 +134,10 @@ const BubbleShell = memo(function BubbleShell({
 }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
   const lens = useGlassLens(bubbleRef, { radius: 40, frost: BUBBLE_FROST });
-  // Hidden at its resting spot until LiquidBud has grown the droplet onto it.
-  const [budDone, setBudDone] = useState(false);
   const isInView = useInView(bubbleRef, { once: false, amount: 0.4 });
+  // Invisible at its resting spot until LiquidBud flies it there from the
+  // card's side; then shown while it (or its card) is in view.
+  const bud = useBud(isInView || !!parentInView);
   const showBelow = isMobile;
 
   useEffect(() => {
@@ -165,7 +166,7 @@ const BubbleShell = memo(function BubbleShell({
   return (
     <>
       {lens.filter}
-      <LiquidBud bubbleRef={bubbleRef} bubbleRadius={40} onDone={() => setBudDone(true)} />
+      <LiquidBud bubbleRef={bubbleRef} bubbleRadius={40} glass={bud.glass} content={bud.content} onDone={bud.onDone} />
       <motion.div
         ref={bubbleRef}
         style={{
@@ -178,6 +179,7 @@ const BubbleShell = memo(function BubbleShell({
           pointerEvents: "auto",
           transformOrigin: showBelow ? "center top" : isRight ? "left center" : "right center",
           zIndex: 9999999,
+          opacity: bud.glass,
           ...lens.style,
         }}
         className="glass-bubble"
@@ -198,13 +200,13 @@ const BubbleShell = memo(function BubbleShell({
           if ((e.target as Element).closest("a")) return;
           if (isTap(start, e.changedTouches[0])) pop();
         }}
-        initial={{ ...rest, opacity: 0 }}
-        animate={{ ...rest, ...motionProps.scale, opacity: budDone && (isInView || parentInView) ? 1 : 0 }}
+        initial={rest}
+        animate={{ ...rest, ...motionProps.scale }}
         transition={motionProps.transition}
         exit={motionProps.exit}
         whileHover={motionProps.whileHover}
       >
-        {children}
+        <motion.div style={{ opacity: bud.content }}>{children}</motion.div>
       </motion.div>
     </>
   );

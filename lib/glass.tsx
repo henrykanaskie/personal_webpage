@@ -1,8 +1,9 @@
 // ─── GlassLayers ────────────────────────────────────────────────────────────
 // Decorates a .glass-panel: the glass edge (the same lip and thin film as the
 // bubbles, .edge-ring) and a specular line along the top edge, both inside the
-// rim mask. The glass itself (frost and lens, over the dots and the line
-// drawings) is DotField's. No sheen: the bubbles have none.
+// rim mask. The frost is the browser's, the bubbles' (.glass-live in
+// globals.css); the lens at the rim is DotField's, painted into what it draws
+// under the card. No sheen: the bubbles have none.
 
 export function GlassLayers({
   specularInset = "8%",
@@ -13,6 +14,9 @@ export function GlassLayers({
 } = {}) {
   return (
     <>
+      {/* the browser's glass (the bubbles' fill and frost, globals.css), on its
+          own layer so it can open around a swell with the rim */}
+      <div className="glass-back" />
       {/* the rim and the specular line sit in a mask the liquid swells can
           open (.ring-mask), so nothing on the edge crosses a swell */}
       <div className="ring-mask" style={{ zIndex: 1 }}>
