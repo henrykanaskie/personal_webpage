@@ -2,43 +2,365 @@
 
 import { paper, photo } from "./tokens";
 
-// ─── Theme transition: the halftone morph ───────────────────────────────────
-// Switching between light and dark is done with the page's own dot grid.
+// ─── Theme transition: the assembly ─────────────────────────────────────────
+// Switching between light and dark builds the new sheet out of plates, like
+// armour closing over a frame. The page is cut into plates along the seams
+// between the grid's dots (so the plates are the paper's own cells, grouped),
+// and from the toggle:
 //
-// Where the browser has View Transitions, it's one wave: the theme swaps at
-// once, the old page is held as a snapshot on top, and from the toggle the
-// grid's dots grow through that snapshot, each dot a window onto the page in
-// its new theme, until they close up and the old page is gone. The new theme
-// is always right behind the wave; nothing is ever covered by a blank sheet.
-// In Chromium the mask is a paint worklet drawing exactly that halftone (every
-// dot on the page's grid, growing on its own delay); elsewhere it's CSS masks:
-// a dotted wave front with the new page solid behind it.
+//   1. a reticle locks onto the toggle and hairlines run out from it;
+//   2. as the wave reaches each plate, its outline is traced from the corner
+//      nearest the toggle, two welding points running round it in the glass
+//      edge's thin film (pink left, cyan right, violet top, gold below);
+//   3. the plate slides into place, a single shutter from the side facing the
+//      toggle or a pair of leaves meeting in the middle, its chrome leading
+//      edge catching the light, and stops dead (no overshoot);
+//   4. it locks: the seam flashes, brackets clamp its corners, and the seam
+//      fades into the new page.
 //
-// Without View Transitions it falls back to the curtain: the dots swell in the
-// new sheet's colour until they cover the page, the theme swaps under the
-// cover, and the same wave shrinks them back to dots in the new ink. That runs
-// on a 2D canvas over everything, so it works in every browser.
+// Where the browser has View Transitions the theme swaps at once, the old page
+// is held as a snapshot, and each plate is a window onto the new theme, so the
+// new page is always right behind the plates, never a blank sheet. The window
+// is a paint worklet mask in Chromium and a per-frame stack of CSS mask layers
+// elsewhere (the same geometry, from `reveal` below). The seams, sparks and
+// reticle are a canvas carried above both snapshots under its own
+// view-transition-name, so it stays live while the snapshots are held.
 //
-// Either way the dots sit exactly on the page's grid (the `paper` token), so
-// the transition is the paper itself rather than something over it.
+// Without View Transitions it falls back to the curtain: the plates assemble
+// in the new sheet's colour until they cover the page, the theme swaps under
+// the cover, and the plates fade away in the same wave.
 
 const GAP = paper.gap;
-const R_FULL = GAP * Math.SQRT1_2 + 0.75; // a dot this big covers its whole cell
-// Slow enough to watch: the wave visibly travels and each dot visibly swells
-// and closes up, so the page reads as morphing from one sheet into the other.
-const SPREAD = 0.75; // seconds for the wave to cross the screen
-const GROW = 0.45; // seconds each dot takes to close up
-const HOLD = 0.1; // curtain only: a beat fully covered while the theme swaps
-const SHRINK = 0.5; // curtain only: seconds each dot takes to shrink back
-// The morph is a single wave, so it gets a little more time per stage.
-const M_SPREAD = 1.0;
-const M_GROW = 0.6;
+const LEAD = 0.12; // seconds the reticle has to itself before the wave leaves
+const SPREAD = 0.9; // seconds for the wave to cross the screen
+const TRACE = 0.28; // seconds to trace a plate's outline
+const SLIDE = 0.34; // seconds for a plate to slide home
+const LOCK = 0.42; // seconds for the lock flash to fade
+const JITTER = 0.08; // plates don't all move in step, like separate servos
+const MIN_CELLS = 3; // the smallest plate side, in grid cells
+const FADE = 0.3; // curtain only: seconds each cover plate takes to fade
+
+// A plate: [x, y, w, h, delay, kind, axis, sign] in viewport px and seconds.
+// kind 0 is a shutter, 1 a pair of leaves; axis 0 slides along x, 1 along y;
+// sign +1 comes in from the left/top, -1 from the right/bottom.
+type Plate = number[];
 
 let running = false;
 
 const hex = (h: string) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
-const easeInOut = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
+const easeOut = (k: number) => 1 - Math.pow(1 - k, 3);
+
+// The part of a plate that has slid home at time t, as flat [x, y, w, h]
+// rects (none, one, or two for leaves). Written with nothing from outside its
+// own body, because the paint worklet gets a copy of its source.
+function reveal(p: number[], t: number, trace: number, slide: number): number[] {
+  const k = (t - p[4] - trace) / slide;
+  if (k <= 0) return [];
+  if (k >= 1) return [p[0], p[1], p[2], p[3]];
+  // a servo: pulls away, runs, and brakes hard into place
+  const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+  const x = p[0], y = p[1], w = p[2], h = p[3];
+  const len = p[6] === 0 ? w : h;
+  if (p[5] === 1) {
+    const s = (len * e) / 2;
+    return p[6] === 0 ? [x, y, s, h, x + w - s, y, s, h] : [x, y, w, s, x, y + h - s, w, s];
+  }
+  const s = len * e;
+  const o = p[7] > 0 ? 0 : len - s;
+  return p[6] === 0 ? [x + o, y, s, h] : [x, y + o, w, s];
+}
+
+// A small seeded generator, so a layout is one coherent cut of the sheet.
+function rng(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Cut the viewport into plates along the seams between the page's dots.
+function layout(x: number, y: number, w: number, h: number): { plates: Plate[]; last: number } {
+  const sx = window.scrollX, sy = window.scrollY;
+  // the dots sit at ox + c * GAP (page-anchored); the seams halfway between
+  const gx = GAP / 2 - (((sx % GAP) + GAP) % GAP) - GAP / 2;
+  const gy = GAP / 2 - (((sy % GAP) + GAP) % GAP) - GAP / 2;
+  const cols = Math.ceil((w - gx) / GAP), rows = Math.ceil((h - gy) / GAP);
+  const maxD = Math.max(Math.hypot(x, y), Math.hypot(w - x, y), Math.hypot(x, h - y), Math.hypot(w - x, h - y)) || 1;
+  const rand = rng((Math.random() * 2 ** 32) | 0);
+  const plates: Plate[] = [];
+  let last = 0;
+
+  const leaf = (c: number, r: number, cw: number, rh: number) => {
+    const px = gx + c * GAP, py = gy + r * GAP, pw = cw * GAP, ph = rh * GAP;
+    const dx = px + pw / 2 - x, dy = py + ph / 2 - y;
+    const delay = LEAD + (Math.hypot(dx, dy) / maxD) * SPREAD + rand() * JITTER;
+    // slide outward, away from the toggle, mostly along the way the wave runs
+    const axis = Math.abs(dx) * (0.6 + rand() * 0.8) > Math.abs(dy) ? 0 : 1;
+    const sign = (axis === 0 ? dx : dy) >= 0 ? 1 : -1;
+    const kind = rand() < 0.3 ? 1 : 0;
+    plates.push([px, py, pw, ph, delay, kind, axis, sign]);
+    last = Math.max(last, delay);
+  };
+  const split = (c: number, r: number, cw: number, rh: number) => {
+    const canX = cw >= 2 * MIN_CELLS, canY = rh >= 2 * MIN_CELLS;
+    const big = cw > 11 || rh > 8;
+    if ((!canX && !canY) || (!big && rand() < 0.4)) return leaf(c, r, cw, rh);
+    const alongX = canX && (!canY || cw * (0.7 + rand() * 0.6) >= rh);
+    const len = alongX ? cw : rh;
+    const cut = MIN_CELLS + Math.floor(rand() * (len - 2 * MIN_CELLS + 1));
+    if (alongX) {
+      split(c, r, cut, rh);
+      split(c + cut, r, cw - cut, rh);
+    } else {
+      split(c, r, cw, cut);
+      split(c, r + cut, cw, rh - cut);
+    }
+  };
+  split(0, 0, cols, rows);
+  return { plates, last };
+}
+
+// ─── The HUD ────────────────────────────────────────────────────────────────
+// Seams, welding points, chrome leading edges, lock flashes and the reticle.
+// The same drawing serves the morph and the curtain.
+
+// The glass edge's thin film, by side: top violet, right cyan, bottom gold,
+// left pink (lib/gl.ts edgeFilm). On a light sheet it's pressed toward the
+// graphite ink so it reads; on a dark one it's lifted toward white.
+const FILM = [
+  [185, 160, 255],
+  [120, 205, 255],
+  [255, 220, 140],
+  [255, 150, 205],
+];
+function filmInk(side: number, onLight: boolean, a: number) {
+  const f = FILM[side];
+  const m = onLight ? [48, 50, 60] : [230, 234, 245];
+  const k = onLight ? 0.5 : 0.3;
+  const c = (i: number) => Math.round(f[i] + (m[i] - f[i]) * k);
+  return `rgba(${c(0)},${c(1)},${c(2)},${a})`;
+}
+
+function makeHud(opts: { x: number; y: number; w: number; h: number; plates: Plate[]; toDark: boolean }) {
+  const { x, y, w, h, plates, toDark } = opts;
+  const canvas = document.createElement("canvas");
+  canvas.setAttribute("aria-hidden", "true");
+  Object.assign(canvas.style, {
+    position: "fixed",
+    inset: "0",
+    width: "100%",
+    height: "100%",
+    zIndex: "2147483000",
+    pointerEvents: "none",
+    contain: "strict",
+  } as CSSStyleDeclaration);
+  const ctx = canvas.getContext("2d");
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  ctx?.scale(dpr, dpr);
+  // the old sheet is under the seams while they're traced, the new one under
+  // the lock flash
+  const oldLight = toDark, newLight = !toDark;
+  const bright = oldLight ? "rgba(40,42,50," : "rgba(240,244,255,";
+
+  // The corners clockwise from top left; side i runs from corner i to i + 1.
+  const corners = (p: Plate) => [
+    [p[0], p[1]],
+    [p[0] + p[2], p[1]],
+    [p[0] + p[2], p[1] + p[3]],
+    [p[0], p[1] + p[3]],
+  ];
+
+  // Draw `len` px of the outline from corner s, clockwise (dir 1) or not
+  // (dir -1), each side in its own film colour. Returns the head.
+  const tracePath = (c: number[][], s: number, dir: number, len: number, a: number) => {
+    let at = c[s];
+    for (let i = 0; i < 2 && len > 0; i++) {
+      const side = dir > 0 ? (s + i) % 4 : (s - i + 3) % 4;
+      const to = c[dir > 0 ? (s + i + 1) % 4 : (s - i + 3) % 4];
+      const seg = Math.hypot(to[0] - at[0], to[1] - at[1]);
+      const f = Math.min(1, len / seg);
+      const end = [at[0] + (to[0] - at[0]) * f, at[1] + (to[1] - at[1]) * f];
+      ctx!.strokeStyle = filmInk(side, oldLight, a);
+      ctx!.beginPath();
+      ctx!.moveTo(at[0], at[1]);
+      ctx!.lineTo(end[0], end[1]);
+      ctx!.stroke();
+      len -= seg;
+      at = end;
+    }
+    return at;
+  };
+
+  const spark = (px: number, py: number, a: number) => {
+    ctx!.fillStyle = `${bright}${0.16 * a})`;
+    ctx!.beginPath();
+    ctx!.arc(px, py, 4.5, 0, Math.PI * 2);
+    ctx!.fill();
+    ctx!.fillStyle = oldLight ? `rgba(20,22,30,${0.9 * a})` : `rgba(255,255,255,${0.95 * a})`;
+    ctx!.beginPath();
+    ctx!.arc(px, py, 1.6, 0, Math.PI * 2);
+    ctx!.fill();
+  };
+
+  // The chrome lip on a sliding plate's leading edge: a bright line with a
+  // dark one just ahead of it, and a sheen on the plate behind.
+  const edge = (rx: number, ry: number, rw: number, rh: number, axis: number, forward: boolean, a: number) => {
+    const depth = Math.min(axis === 0 ? rw : rh, 20);
+    if (depth < 1) return;
+    let g: CanvasGradient;
+    if (axis === 0) {
+      const ex = forward ? rx + rw : rx;
+      g = ctx!.createLinearGradient(ex - (forward ? depth : -depth), 0, ex, 0);
+    } else {
+      const ey = forward ? ry + rh : ry;
+      g = ctx!.createLinearGradient(0, ey - (forward ? depth : -depth), 0, ey);
+    }
+    g.addColorStop(0, "rgba(255,255,255,0)");
+    g.addColorStop(1, `rgba(255,255,255,${(newLight ? 0.35 : 0.07) * a})`);
+    ctx!.fillStyle = g;
+    ctx!.fillRect(rx, ry, rw, rh);
+    const line = (off: number, style: string) => {
+      ctx!.strokeStyle = style;
+      ctx!.beginPath();
+      if (axis === 0) {
+        const ex = (forward ? rx + rw : rx) + (forward ? off : -off);
+        ctx!.moveTo(ex, ry);
+        ctx!.lineTo(ex, ry + rh);
+      } else {
+        const ey = (forward ? ry + rh : ry) + (forward ? off : -off);
+        ctx!.moveTo(rx, ey);
+        ctx!.lineTo(rx + rw, ey);
+      }
+      ctx!.stroke();
+    };
+    ctx!.lineWidth = 1.5;
+    line(-0.75, `rgba(255,255,255,${0.9 * a})`);
+    ctx!.lineWidth = 1;
+    line(0.5, `rgba(10,12,18,${0.45 * a})`);
+  };
+
+  const brackets = (p: Plate, a: number) => {
+    const c = corners(p);
+    const L = Math.min(8, p[2] / 4, p[3] / 4);
+    ctx!.lineWidth = 1.5;
+    ctx!.strokeStyle = newLight ? `rgba(30,32,40,${0.75 * a})` : `rgba(255,255,255,${0.9 * a})`;
+    ctx!.beginPath();
+    for (let i = 0; i < 4; i++) {
+      const [cx, cy] = c[i];
+      const sx = i === 0 || i === 3 ? 1 : -1, sy = i < 2 ? 1 : -1;
+      ctx!.moveTo(cx + sx * L, cy + sy * 1);
+      ctx!.lineTo(cx + sx * 1, cy + sy * 1);
+      ctx!.lineTo(cx + sx * 1, cy + sy * L);
+    }
+    ctx!.stroke();
+  };
+
+  const reticle = (t: number) => {
+    if (t > 0.95) return;
+    const a = t < 0.5 ? 1 : 1 - (t - 0.5) / 0.45;
+    const g = easeOut(clamp01(t / 0.28));
+    ctx!.lineWidth = 1;
+    // hairlines out along both axes, like a sight finding its target
+    const reach = easeOut(clamp01(t / 0.45)) * Math.max(w, h);
+    ctx!.strokeStyle = `${bright}${0.28 * a})`;
+    ctx!.beginPath();
+    ctx!.moveTo(x - reach, y);
+    ctx!.lineTo(x - 30, y);
+    ctx!.moveTo(x + 30, y);
+    ctx!.lineTo(x + reach, y);
+    ctx!.moveTo(x, y - reach);
+    ctx!.lineTo(x, y - 30);
+    ctx!.moveTo(x, y + 30);
+    ctx!.lineTo(x, y + reach);
+    ctx!.stroke();
+    // an inner ring that closes down onto the toggle, an outer one in four
+    // arcs turning the other way, and four ticks
+    ctx!.strokeStyle = `${bright}${0.8 * a})`;
+    ctx!.beginPath();
+    ctx!.arc(x, y, 40 - 22 * g, 0, Math.PI * 2);
+    ctx!.stroke();
+    const r2 = 36 * g, spin = -t * 2.4;
+    ctx!.lineWidth = 1.5;
+    ctx!.beginPath();
+    for (let i = 0; i < 4; i++) {
+      const a0 = spin + (i * Math.PI) / 2 + 0.25;
+      ctx!.moveTo(x + r2 * Math.cos(a0), y + r2 * Math.sin(a0));
+      ctx!.arc(x, y, r2, a0, a0 + Math.PI / 2 - 0.5);
+    }
+    ctx!.stroke();
+    ctx!.lineWidth = 1;
+    ctx!.beginPath();
+    for (let i = 0; i < 4; i++) {
+      const a0 = spin + (i * Math.PI) / 2;
+      ctx!.moveTo(x + (r2 + 3) * Math.cos(a0), y + (r2 + 3) * Math.sin(a0));
+      ctx!.lineTo(x + (r2 + 9) * Math.cos(a0), y + (r2 + 9) * Math.sin(a0));
+    }
+    ctx!.stroke();
+  };
+
+  // The whole HUD at time t (seconds). `cover`, curtain only, fills each
+  // plate's slid-home part in the new sheet's colour first.
+  const draw = (t: number, cover?: (p: Plate, r: number[]) => void) => {
+    if (!ctx) return;
+    ctx.clearRect(0, 0, w, h);
+    for (const p of plates) {
+      const tp = t - p[4];
+      if (tp <= 0) continue;
+      const r = reveal(p, t, TRACE, SLIDE);
+      if (cover) cover(p, r);
+      const q = clamp01(tp / TRACE);
+      const k = clamp01((tp - TRACE) / SLIDE);
+      const l = clamp01((tp - TRACE - SLIDE) / LOCK);
+      if (l >= 1) continue;
+      const c = corners(p);
+
+      // 2. the seam: traced both ways from the corner nearest the toggle
+      const cx = p[0] + p[2] / 2, cy = p[1] + p[3] / 2;
+      const s = x < cx ? (y < cy ? 0 : 3) : y < cy ? 1 : 2;
+      const half = (p[2] + p[3]) * easeOut(q);
+      ctx.lineWidth = 1;
+      const seamA = 0.6 * (1 - l);
+      const h1 = tracePath(c, s, 1, half, seamA);
+      const h2 = tracePath(c, s, -1, half, seamA);
+      if (q < 1) {
+        spark(h1[0], h1[1], 1);
+        spark(h2[0], h2[1], 1);
+      }
+
+      // 3. sliding home, the chrome lip on each leading edge
+      if (k > 0 && k < 1) {
+        const ax = p[6];
+        if (p[5] === 1) {
+          edge(r[0], r[1], r[2], r[3], ax, true, 1);
+          edge(r[4], r[5], r[6], r[7], ax, false, 1);
+        } else {
+          edge(r[0], r[1], r[2], r[3], ax, p[7] > 0, 1);
+        }
+      }
+
+      // 4. the lock: the seam flashes, the brackets clamp, all of it fades
+      if (k >= 1) {
+        const f = (1 - l) * (1 - l);
+        ctx.fillStyle = `rgba(255,255,255,${(newLight ? 0.1 : 0.05) * f * f})`;
+        ctx.fillRect(p[0], p[1], p[2], p[3]);
+        ctx.lineWidth = 1.25;
+        ctx.strokeStyle = newLight ? `rgba(30,32,40,${0.55 * f})` : `rgba(255,255,255,${0.7 * f})`;
+        ctx.strokeRect(p[0] + 0.5, p[1] + 0.5, p[2] - 1, p[3] - 1);
+        brackets(p, f);
+      }
+    }
+    reticle(t);
+  };
+
+  return { canvas, ctx, draw };
+}
 
 export function runThemeTransition({
   x,
@@ -47,7 +369,7 @@ export function runThemeTransition({
   photoSide,
   apply,
 }: {
-  /** Where the wave starts (the toggle's centre), viewport px. */
+  /** Where the assembly starts (the toggle's centre), viewport px. */
   x: number;
   y: number;
   toDark: boolean;
@@ -61,127 +383,52 @@ export function runThemeTransition({
     return;
   }
   if ("startViewTransition" in document) {
-    morph(x, y, apply);
+    morph(x, y, toDark, apply);
     return;
   }
   curtain(x, y, toDark, photoSide, apply);
 }
 
+// ─── The curtain ────────────────────────────────────────────────────────────
+
 function curtain(x: number, y: number, toDark: boolean, photoSide: boolean, apply: () => void) {
-
-  // The sheet it becomes, and (on the CS side) the dot it ends as.
   const bg = photoSide ? hex(toDark ? photo.background.dark : photo.background.light) : [...(toDark ? paper.dark.bg : paper.light.bg)];
-  const pal = toDark ? paper.dark : paper.light;
-  const endR = photoSide ? 0 : paper.dotRadius;
-  // the ink the old sheet had, for the fine ring on each growing dot
-  const ring = toDark ? "rgba(255,255,255,0.22)" : "rgba(20,18,15,0.18)";
-
-  const canvas = document.createElement("canvas");
-  canvas.setAttribute("aria-hidden", "true");
-  Object.assign(canvas.style, {
-    position: "fixed",
-    inset: "0",
-    width: "100%",
-    height: "100%",
-    zIndex: "2147483000",
-    pointerEvents: "none",
-  } as CSSStyleDeclaration);
-  document.body.appendChild(canvas);
-  const ctx = canvas.getContext("2d");
-  if (!ctx) {
-    canvas.remove();
+  const bgCss = `rgb(${bg[0]},${bg[1]},${bg[2]})`;
+  const w = window.innerWidth, h = window.innerHeight;
+  const { plates, last } = layout(x, y, w, h);
+  const hud = makeHud({ x, y, w, h, plates, toDark });
+  if (!hud.ctx) {
     apply();
     return;
   }
+  const ctx = hud.ctx;
+  document.body.appendChild(hud.canvas);
   running = true;
 
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const w = window.innerWidth, h = window.innerHeight;
-  canvas.width = Math.round(w * dpr);
-  canvas.height = Math.round(h * dpr);
-  ctx.scale(dpr, dpr);
-
-  // The page's grid, in viewport coordinates (the dots are page-anchored).
-  const sx = window.scrollX, sy = window.scrollY;
-  const ox = GAP / 2 - (((sx % GAP) + GAP) % GAP), oy = GAP / 2 - (((sy % GAP) + GAP) % GAP);
-  const cols = Math.ceil(w / GAP) + 2, rows = Math.ceil(h / GAP) + 2;
-  const maxD = Math.max(Math.hypot(x, y), Math.hypot(w - x, y), Math.hypot(x, h - y), Math.hypot(w - x, h - y)) || 1;
-  const cells: { cx: number; cy: number; delay: number }[] = [];
-  for (let r = -1; r < rows; r++) {
-    for (let c = -1; c < cols; c++) {
-      const cx = ox + c * GAP, cy = oy + r * GAP;
-      cells.push({ cx, cy, delay: (Math.hypot(cx - x, cy - y) / maxD) * SPREAD });
-    }
-  }
-
-  const T_COVER = SPREAD + GROW;
-  const T_REVEAL = T_COVER + HOLD;
-  const T_END = T_REVEAL + SPREAD + SHRINK;
-  const bgCss = `rgb(${bg[0]},${bg[1]},${bg[2]})`;
+  // covered once every plate is home; then the plates fade in the same wave
+  const T_SWAP = last + TRACE + SLIDE + 0.05;
+  const T_END = T_SWAP + SPREAD + JITTER + FADE;
   let swapped = false;
   const t0 = performance.now();
 
   const frame = (now: number) => {
     const t = (now - t0) / 1000;
-    ctx.clearRect(0, 0, w, h);
-
-    if (t < T_REVEAL) {
-      // swell: each dot grows, on its own delay, until the cells close up
-      ctx.fillStyle = bgCss;
-      ctx.beginPath();
-      const ringed: [number, number, number, number][] = [];
-      for (const c of cells) {
-        const k = clamp01((t - c.delay) / GROW);
-        if (k <= 0) continue;
-        const r = R_FULL * easeInOut(k);
-        ctx.moveTo(c.cx + r, c.cy);
-        ctx.arc(c.cx, c.cy, r, 0, Math.PI * 2);
-        if (k < 1) ringed.push([c.cx, c.cy, r, Math.sin(Math.PI * k)]);
-      }
-      ctx.fill();
-      // a hairline in the old ink around each dot while it grows: a halftone,
-      // printed, rather than a fill
-      ctx.lineWidth = 1;
-      for (const [cx, cy, r, a] of ringed) {
-        ctx.globalAlpha = a;
-        ctx.strokeStyle = ring;
-        ctx.beginPath();
-        ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-      if (t >= T_COVER && !swapped) {
-        swapped = true;
-        apply();
-      }
-    } else {
-      // shrink: the same wave again, each dot back down to an ordinary dot in
-      // the new ink, uncovering the page around it
-      for (const c of cells) {
-        const k = clamp01((t - T_REVEAL - c.delay) / SHRINK);
-        const e = easeInOut(k);
-        const r = R_FULL + (endR - R_FULL) * e;
-        if (r <= 0.05) continue;
-        // the last stretch turns from the sheet colour to the dot's own ink,
-        // then lets go, so it lands on the real dot underneath
-        const ink = clamp01((k - 0.6) / 0.4);
-        const a = k >= 1 ? 0 : 1 - ink * (photoSide ? 0 : 0.35);
-        if (a <= 0) continue;
-        const cr = bg[0] + (pal.dot[0] - bg[0]) * ink * pal.dotAlpha;
-        const cg = bg[1] + (pal.dot[1] - bg[1]) * ink * pal.dotAlpha;
-        const cb = bg[2] + (pal.dot[2] - bg[2]) * ink * pal.dotAlpha;
-        ctx.globalAlpha = a;
-        ctx.fillStyle = `rgb(${cr | 0},${cg | 0},${cb | 0})`;
-        ctx.beginPath();
-        ctx.arc(c.cx, c.cy, r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.globalAlpha = 1;
+    if (t >= T_SWAP && !swapped) {
+      swapped = true;
+      apply();
     }
-
+    hud.draw(t, (p, r) => {
+      const a = swapped ? 1 - clamp01((t - T_SWAP - (p[4] - LEAD)) / FADE) : 1;
+      if (a <= 0) return;
+      ctx.globalAlpha = a;
+      ctx.fillStyle = bgCss;
+      // a hair wider than the plate, so neighbours leave no seam of old page
+      for (let i = 0; i < r.length; i += 4) ctx.fillRect(r[i] - 0.5, r[i + 1] - 0.5, r[i + 2] + 1, r[i + 3] + 1);
+      ctx.globalAlpha = 1;
+    });
     if (t < T_END) requestAnimationFrame(frame);
     else {
-      canvas.remove();
+      hud.canvas.remove();
       running = false;
     }
   };
@@ -193,10 +440,10 @@ function curtain(x: number, y: number, toDark: boolean, photoSide: boolean, appl
       swapped = true;
       apply();
     }
-  }, (T_COVER + 0.5) * 1000);
+  }, (T_SWAP + 0.5) * 1000);
   window.setTimeout(() => {
     if (running) {
-      canvas.remove();
+      hud.canvas.remove();
       running = false;
     }
   }, (T_END + 1) * 1000);
@@ -204,36 +451,30 @@ function curtain(x: number, y: number, toDark: boolean, photoSide: boolean, appl
 
 // ─── The morph ──────────────────────────────────────────────────────────────
 
-// The paint worklet: the new page's mask. Every cell of the page's grid gets a
-// dot that starts growing when the wave reaches it and closes up its cell;
-// where every cell has closed, one solid disc stands in for them.
+// The paint worklet: the new page's mask, every plate's slid-home part. The
+// plates arrive once as a flat list of numbers in --vt-plates.
 const WORKLET = `
-registerPaint("halftone", class {
+const reveal = (${reveal.toString()});
+let key = "", plates = [];
+registerPaint("assembly", class {
   static get inputProperties() {
-    return ["--vt-t", "--vt-x", "--vt-y", "--vt-ox", "--vt-oy", "--vt-maxd", "--vt-spread", "--vt-grow", "--vt-gap"];
+    return ["--vt-t", "--vt-plates", "--vt-trace", "--vt-slide"];
   }
   paint(ctx, size, props) {
-    const n = (k) => parseFloat(String(props.get(k))) || 0;
-    const t = n("--vt-t"), x = n("--vt-x"), y = n("--vt-y"), ox = n("--vt-ox"), oy = n("--vt-oy");
-    const maxd = n("--vt-maxd") || 1, spread = n("--vt-spread"), grow = n("--vt-grow"), gap = n("--vt-gap") || 24;
-    const rFull = gap * Math.SQRT1_2 + 0.75;
-    const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+    const n = (k) => parseFloat(props.get(k).toString()) || 0;
+    const src = props.get("--vt-plates").toString();
+    if (src !== key) {
+      key = src;
+      const v = src.trim().split(/\\s+/).map(Number);
+      plates = [];
+      for (let i = 0; i + 8 <= v.length; i += 8) plates.push(v.slice(i, i + 8));
+    }
+    const t = n("--vt-t"), trace = n("--vt-trace"), slide = n("--vt-slide");
     ctx.fillStyle = "#000";
-    // every cell nearer than this has closed up
-    const dIn = ((t - grow) / spread) * maxd - gap;
-    if (dIn > 0) { ctx.beginPath(); ctx.arc(x, y, dIn + gap * 0.5, 0, Math.PI * 2); ctx.fill(); }
-    const dOut = (t / spread) * maxd;
     ctx.beginPath();
-    for (let cy = oy - gap; cy < size.height + gap; cy += gap) {
-      for (let cx = ox - gap; cx < size.width + gap; cx += gap) {
-        const d = Math.hypot(cx - x, cy - y);
-        if (d > dOut || d < dIn) continue;
-        const k = Math.min(1, Math.max(0, (t - (d / maxd) * spread) / grow));
-        if (k <= 0) continue;
-        const r = rFull * ease(k);
-        ctx.moveTo(cx + r, cy);
-        ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      }
+    for (const p of plates) {
+      const r = reveal(p, t, trace, slide);
+      for (let i = 0; i < r.length; i += 4) ctx.rect(r[i] - 0.5, r[i + 1] - 0.5, r[i + 2] + 1, r[i + 3] + 1);
     }
     ctx.fill();
   }
@@ -261,30 +502,64 @@ function prepare(): Promise<"paint" | "css"> {
   return setup;
 }
 
-function morph(x: number, y: number, apply: () => void) {
+// Without the worklet: the same mask as a stack of CSS mask layers, one solid
+// layer per slid-home rect, rewritten each frame.
+function cssMask(plates: Plate[], t: number) {
+  const img: string[] = [], size: string[] = [], pos: string[] = [];
+  for (const p of plates) {
+    const r = reveal(p, t, TRACE, SLIDE);
+    for (let i = 0; i < r.length; i += 4) {
+      img.push("linear-gradient(#000,#000)");
+      size.push(`${(r[i + 2] + 1).toFixed(1)}px ${(r[i + 3] + 1).toFixed(1)}px`);
+      pos.push(`${(r[i] - 0.5).toFixed(1)}px ${(r[i + 1] - 0.5).toFixed(1)}px`);
+    }
+  }
+  const rule = img.length
+    ? `mask-image:${img.join(",")};mask-size:${size.join(",")};mask-position:${pos.join(",")};mask-repeat:no-repeat;`
+    : "mask-image:linear-gradient(transparent,transparent);";
+  return `html.vt-css::view-transition-new(root){${rule}}`;
+}
+
+function morph(x: number, y: number, toDark: boolean, apply: () => void) {
   running = true;
   const root = document.documentElement;
   const w = window.innerWidth, h = window.innerHeight;
-  const sx = window.scrollX, sy = window.scrollY;
-  const ox = GAP / 2 - (((sx % GAP) + GAP) % GAP), oy = GAP / 2 - (((sy % GAP) + GAP) % GAP);
-  const maxD = Math.max(Math.hypot(x, y), Math.hypot(w - x, y), Math.hypot(x, h - y), Math.hypot(w - x, h - y)) || 1;
-  const T_END = M_SPREAD + M_GROW;
+  const { plates, last } = layout(x, y, w, h);
+  const T_END = last + TRACE + SLIDE + LOCK;
+  const T_HOME = last + TRACE + SLIDE;
+  const hud = makeHud({ x, y, w, h, plates, toDark });
+  hud.canvas.style.setProperty("view-transition-name", "vt-hud");
   const vars: Record<string, string> = {
-    "--vt-x": `${x}px`, "--vt-y": `${y}px`, "--vt-ox": `${ox}px`, "--vt-oy": `${oy}px`,
-    "--vt-maxd": `${maxD}`, "--vt-spread": `${M_SPREAD}`, "--vt-grow": `${M_GROW}`, "--vt-gap": `${GAP}`,
+    "--vt-plates": plates.map((p) => p.map((v) => +v.toFixed(2)).join(" ")).join(" "),
+    "--vt-trace": `${TRACE}`,
+    "--vt-slide": `${SLIDE}`,
   };
+  let sheet: HTMLStyleElement | null = null;
+  let raf = 0;
   const done = () => {
-    root.classList.remove("vt-halftone", "vt-paint", "vt-css");
+    cancelAnimationFrame(raf);
+    root.classList.remove("vt-assembly", "vt-paint", "vt-css");
     for (const k of Object.keys(vars)) root.style.removeProperty(k);
+    hud.canvas.remove();
+    sheet?.remove();
     running = false;
   };
 
   prepare().then((mode) => {
     for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
-    root.classList.add("vt-halftone", mode === "paint" ? "vt-paint" : "vt-css");
+    root.classList.add("vt-assembly", mode === "paint" ? "vt-paint" : "vt-css");
+    if (mode === "css") {
+      sheet = document.createElement("style");
+      sheet.textContent = cssMask(plates, 0);
+      document.head.appendChild(sheet);
+    }
     let vt: { ready: Promise<void>; finished: Promise<void> };
     try {
-      vt = (document as Document & { startViewTransition: (cb: () => void) => typeof vt }).startViewTransition(apply);
+      // the HUD joins in the new state only, so it's carried live above both snapshots
+      vt = (document as Document & { startViewTransition: (cb: () => void) => typeof vt }).startViewTransition(() => {
+        apply();
+        document.body.appendChild(hud.canvas);
+      });
     } catch {
       apply();
       done();
@@ -292,13 +567,22 @@ function morph(x: number, y: number, apply: () => void) {
     }
     vt.ready
       .then(() => {
-        // the wave: --vt-t runs from 0 to the end, in seconds, and the mask follows it
+        // --vt-t runs from 0 to the end, in seconds; the worklet's mask follows
+        // it, and it keeps the transition open until the last lock has faded
         root.animate({ "--vt-t": [0, T_END] } as unknown as Keyframe[], {
           duration: T_END * 1000,
           easing: "linear",
           fill: "forwards",
           pseudoElement: "::view-transition-new(root)",
         });
+        const t0 = performance.now();
+        const frame = (now: number) => {
+          const t = (now - t0) / 1000;
+          hud.draw(t);
+          if (sheet) sheet.textContent = t >= T_HOME ? "" : cssMask(plates, t);
+          if (t < T_END) raf = requestAnimationFrame(frame);
+        };
+        raf = requestAnimationFrame(frame);
       })
       .catch(() => {});
     vt.finished.then(done, done);
