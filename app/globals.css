@@ -340,7 +340,9 @@ html.paper-glass .glass-back {
     -webkit-backdrop-filter 600ms ease,
     backdrop-filter 600ms ease;
 }
-.glass-gl > .glass-back {
+/* only while DotField is drawing: if its context is lost mid-swell (iOS drops
+   them), the card falls back to the browser's glass rather than none */
+html.paper-gl .glass-gl > .glass-back {
   visibility: hidden;
 }
 .glass-panel[data-liquid] {

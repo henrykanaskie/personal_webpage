@@ -629,6 +629,9 @@ export default function DotField() {
         canvas.style.opacity = "0";
         showAll();
         releaseBuds();
+        // close the swell, so its card doesn't stay marked as this canvas's glass
+        if (holeEl) setRingHole(holeEl, "s", 0, 0, 0);
+        holeEl = null;
         document.documentElement.classList.remove("paper-gl", "paper-glass");
       };
       canvas.addEventListener("webglcontextlost", onLost);
@@ -972,6 +975,7 @@ export default function DotField() {
         unqueue();
         disposed = true;
         releaseBuds();
+        if (holeEl) setRingHole(holeEl, "s", 0, 0, 0);
         document.documentElement.classList.remove("paper-gl", "paper-glass");
         themeObs.disconnect();
         offDrawings();
