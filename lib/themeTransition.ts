@@ -107,8 +107,8 @@ function layout(x: number, y: number, w: number, h: number): { plates: Plate[]; 
   };
   const split = (c: number, r: number, cw: number, rh: number) => {
     const canX = cw >= 2 * MIN_CELLS, canY = rh >= 2 * MIN_CELLS;
-    const big = cw > 6 || rh > 5;
-    if ((!canX && !canY) || (!big && rand() < 0.35)) return leaf(c, r, cw, rh);
+    const big = cw > 5 || rh > 4;
+    if ((!canX && !canY) || (!big && rand() < 0.3)) return leaf(c, r, cw, rh);
     const alongX = canX && (!canY || cw * (0.7 + rand() * 0.6) >= rh);
     const len = alongX ? cw : rh;
     const cut = MIN_CELLS + Math.floor(rand() * (len - 2 * MIN_CELLS + 1));
