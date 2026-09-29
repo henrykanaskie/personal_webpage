@@ -300,17 +300,29 @@ body {
   background: var(--card-fill);
   box-shadow: var(--glass-drop);
 }
-/* A liquid card is frosted from its first frame, before (and without)
-   WebGL: behind a card there's only the dot grid, and the dot grid through
-   1.6px of frost is a sheet of soft, faint dots, which CSS paints directly
-   (::before, lined up with the page's grid by --frost-x/--frost-y, which
-   DotField sets from each card's layout position). It carries the card's
-   fill, so the panel's own background steps aside. It used to wait for
-   DotField's shader, which could take seconds to compile: the cards came up
-   clear and turned frosted later. */
+/* A liquid card's glass is the bubbles' glass, from the browser: its fill
+   and a backdrop-filter (blur, saturation and the lift, as .glass-bubble),
+   frosted from its first frame with no shader to wait for. It needs every
+   element above it to be fully opaque: inside an ancestor at opacity < 1
+   the browser's blur sees nothing and switches off (measured: a panel in a
+   parent at 0.5 was as sharp as the bare grid). The cards rise in, and pages
+   fade, on ancestors, so while any of that is under way the card wears a
+   stand-in (::before): an opaque sheet of the dot grid as the frost shows
+   it, soft faint dots lined up with the page grid (--frost-x/--frost-y, set
+   by DotField), which matches the browser's frost within a level or two.
+   DotField marks a card .glass-live once everything above it is opaque;
+   the stand-in fades away over the real frost then, and comes back at once
+   if a fade starts again (a page leaving). */
+.glass-panel[data-liquid].glass-live {
+  -webkit-backdrop-filter: blur(1.6px) saturate(1.25) brightness(var(--bubble-lift));
+  backdrop-filter: blur(1.6px) saturate(1.25) brightness(var(--bubble-lift));
+}
 .glass-panel[data-liquid] {
-  background: transparent;
+  --bubble-lift: 1.02;
   transition: box-shadow 600ms ease;
+}
+.dark .glass-panel[data-liquid] {
+  --bubble-lift: 1.12;
 }
 .glass-panel[data-liquid]::before {
   content: "";
@@ -323,22 +335,22 @@ body {
     radial-gradient(circle, var(--frost-dot-0) 0, var(--frost-dot-1) 1.6px, var(--frost-dot-2) 3.2px, transparent 4.8px)
       var(--frost-x, 0px) var(--frost-y, 0px) / var(--dot-gap) var(--dot-gap),
     var(--frost-sheet);
-  /* the rim's inner light (glassGlow in lib/gl.ts: white fading in from the edge) */
-  box-shadow: inset 0 0 22px 2px var(--frost-glow);
-  transition: opacity 600ms ease;
 }
-/* DotField's takeover, in two steps so nothing is ever doubled or missing:
-   first its canvas fades in under the opaque CSS frost, and the cards' CSS
-   shadow fades out as the canvas's fades in (paper-gl); then the CSS frost
-   fades away over the canvas's, frost into frost (paper-glass). From then
-   on DotField paints the liquid cards' fill and shadow itself, from the
-   whole glass outline (a swell, a bud): the box's own met the swell at the
-   card's straight edge, a line through the swell. */
+.glass-panel[data-liquid].glass-live::before {
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+/* the rim's inner light (glassGlow in lib/gl.ts), on the edge ring so a
+   swell opens it with the rest of the edge */
+.glass-panel[data-liquid] .edge-ring {
+  box-shadow: var(--edge-lip), var(--edge-film), inset 0 0 22px 2px var(--frost-glow);
+}
+/* Once DotField draws the paper, it casts the liquid cards' shadow itself,
+   from the whole glass outline (a swell, a bud), and the box's steps aside
+   as its canvas fades in: the box's shadow met a swell at the card's
+   straight edge, a line through the swell. */
 html.paper-gl .glass-panel[data-liquid] {
   box-shadow: none;
-}
-html.paper-glass .glass-panel[data-liquid]::before {
-  opacity: 0;
 }
 
 /* ─── Drafting details ─────────────────────────────────────────────────────── */
