@@ -23,10 +23,6 @@
   --frost-dot-0: rgba(53, 49, 43, 0.06);
   --frost-dot-1: rgba(53, 49, 43, 0.037);
   --frost-dot-2: rgba(53, 49, 43, 0.008);
-  /* the rim's inner light, fitted to glassGlow in lib/gl.ts (0.42 exp(-d/12)
-     here, 0.11 exp(-d/14) on the dark sheet) within about two levels, so it
-     meets the shader's without a step where a swell opens the edge ring */
-  --rim-glow: inset 0 0 30px 0 rgba(255, 255, 255, 0.8);
   --ink: #17161a;
   --ink-2: rgba(23, 22, 26, 0.68);
   --ink-3: rgba(23, 22, 26, 0.44);
@@ -89,7 +85,6 @@
   --frost-dot-0: rgba(220, 228, 248, 0.04);
   --frost-dot-1: rgba(220, 228, 248, 0.024);
   --frost-dot-2: rgba(220, 228, 248, 0.0054);
-  --rim-glow: inset 0 0 40px 0 rgba(255, 255, 255, 0.2);
   --ink: #eef0f4;
   --ink-2: rgba(238, 240, 244, 0.64);
   --ink-3: rgba(238, 240, 244, 0.4);
@@ -316,30 +311,37 @@ body {
    DotField marks a card .glass-live once everything above it is opaque;
    the stand-in fades away over the real frost then, and comes back at once
    if a fade starts again (a page leaving). */
-/* The browser's glass is its own layer (.glass-back, GlassLayers), not the
-   panel, so it can open around a swell with the rim (the same hole as
-   .ring-mask's, its variables written by setRingHole): there DotField paints
-   the whole glass instead, card and swell as one, and the two frosts
-   cross-fade over the hole's soft edge. Met at the card's straight edge,
-   they left a faint line across the swell (the browser's blur stops hard at
-   its box). */
+/* The browser's glass is its own layer (.glass-back, GlassLayers). Before
+   DotField runs (and without WebGL) it's the bubbles' glass whole: blur,
+   saturation, the lift and the fill. Once DotField paints the frost under
+   every card (the same frost as a swell's or a bud's), its blur goes to
+   nothing (paper-glass, over DotField's 600ms) and it keeps only the tone
+   and the fill, which DotField does with the same arithmetic. So a card and
+   its swell are one frost: where the browser's own blur met DotField's (it
+   stops hard at its box, and blurs the drawings differently) a faint line
+   always showed. While a card swells or buds, DotField does the tone and the
+   fill too, and the layer steps aside (.glass-gl, set by setRingHole). */
 .glass-back {
   position: absolute;
   inset: 0;
   z-index: 0;
   border-radius: inherit;
   pointer-events: none;
-  /* cut cleanly (a pixel of antialiasing) at the rim hole's outer edge, not
-     faded: where the browser's glass was part transparent, it frosted
-     DotField's finished glass a second time (fill, lift and light counted
-     twice), a faint ring round the hole */
-  -webkit-mask-image: radial-gradient(circle at var(--sx, -9999px) var(--sy, -9999px), transparent calc(var(--sr, 0px) + 13.5px), #000 calc(var(--sr, 0px) + 14.5px));
-  mask-image: radial-gradient(circle at var(--sx, -9999px) var(--sy, -9999px), transparent calc(var(--sr, 0px) + 13.5px), #000 calc(var(--sr, 0px) + 14.5px));
+  --glass-blur: 1.6px;
+}
+html.paper-glass .glass-back {
+  --glass-blur: 0px;
 }
 .glass-live > .glass-back {
   background: var(--card-fill);
-  -webkit-backdrop-filter: blur(1.6px) saturate(1.25) brightness(var(--bubble-lift));
-  backdrop-filter: blur(1.6px) saturate(1.25) brightness(var(--bubble-lift));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.25) brightness(var(--bubble-lift));
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.25) brightness(var(--bubble-lift));
+  transition:
+    -webkit-backdrop-filter 600ms ease,
+    backdrop-filter 600ms ease;
+}
+.glass-gl > .glass-back {
+  visibility: hidden;
 }
 .glass-panel[data-liquid] {
   --bubble-lift: 1.02;
@@ -365,11 +367,6 @@ body {
 .glass-panel[data-liquid].glass-live::before {
   opacity: 0;
   transition: opacity 300ms ease;
-}
-/* the rim's inner light (glassGlow in lib/gl.ts), on the edge ring so a
-   swell opens it with the rest of the edge */
-.glass-panel[data-liquid] .edge-ring {
-  box-shadow: var(--edge-lip), var(--edge-film), var(--rim-glow);
 }
 /* Once DotField draws the paper, it casts the liquid cards' shadow itself,
    from the whole glass outline (a swell, a bud), and the box's steps aside

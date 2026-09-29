@@ -52,7 +52,7 @@ uniform vec3 uRipple;     // x, y (viewport), seconds since click
 uniform vec2 uOrigin;     // intro wave origin (viewport)
 uniform float uIntro;     // seconds since the last navigation
 uniform vec4 uCards[8];   // x, y, w, h (viewport) of the visible cards
-uniform vec2 uCardP[8];   // corner radius, opacity
+uniform vec3 uCardP[8];   // corner radius, opacity, whose glass: this canvas's (1) or the browser's (0)
 uniform float uNCards;
 uniform vec3 uBlob;       // the swell a card grows toward the cursor: x, y, radius
 uniform float uHoleR;     // radius of the hole opened in that card's rim (centred on the blob)
@@ -120,14 +120,18 @@ vec4 drawings(vec2 p, float blur) {
   return c;
 }
 // The cards alone (what the DOM draws) and the liquid (cards plus the swell).
+// gCardGL: whether the nearest card's glass is this canvas's (while it swells
+// or buds) rather than the browser's.
+float gCardGL = 0.0;
 float cards(vec2 p, out float alpha) {
   float d = 1e5;
   alpha = 0.0;
+  gCardGL = 0.0;
   for (int i = 0; i < 8; i++) {
     if (float(i) >= uNCards) break;
     vec4 c = uCards[i];
     float di = sdBox(p, c.xy + c.zw * 0.5, c.zw * 0.5, uCardP[i].x);
-    if (di < d) { d = di; alpha = uCardP[i].y; }
+    if (di < d) { d = di; alpha = uCardP[i].y; gCardGL = uCardP[i].z; }
   }
   return d;
 }
@@ -208,27 +212,32 @@ float dots(vec2 p) {
 void main() {
   // p in viewport px (the canvas starts uMargin above the viewport)
   vec2 p = vec2(gl_FragCoord.x, uRes.y * uDpr - gl_FragCoord.y) / uDpr - vec2(0.0, uMargin);
-  // The page everywhere, cards included: a card's frost is the browser's
-  // (the bubbles' backdrop-filter, globals.css), which frosts what this canvas
-  // paints under it. Under a card's rim that's painted through the bubbles'
-  // lens (the 22px bevel, bending inward, each colour a little more than the
-  // last), so lens then frost is the bubble's glass exactly; the bubbles' own
-  // lens, an SVG filter, cost five times the whole page's scroll frame on
-  // cards this size. This canvas adds glass only where the liquid outline
-  // reaches past a card's box (a swell, a bud), where the browser's frost
-  // can't reach, and it casts the shadow and draws the rim of the whole outline.
+  // Under every card this canvas paints the frost (glassFrost: the page
+  // blurred by the glass's 1.6px and bent through its lens at the rim), the
+  // same frost as a swell's or a bud's. On a card the browser's glass layer
+  // adds the rest (.glass-back: saturation, the lift and the fill, the same
+  // arithmetic as glassTone); where this canvas owns the glass, past a card's
+  // box (a swell, a bud) and the whole card while it swells or buds
+  // (.glass-gl, when the browser's layer steps aside), it adds them itself.
+  // So card, swell and bud are one frost with one tone whichever draws it:
+  // where the browser's blur met this canvas's frost (its blur stops hard at
+  // its box, and blurs differently from this one: the drawings by up to 52
+  // levels) a faint line always showed, wherever they met.
   float ca = 0.0;
   float dc = 1e5;
   if (uNCards > 0.5) dc = cards(p, ca);
+  float cgl = gCardGL;
   // the rim's hole (same falloff as .ring-mask): 0 in the hole around a
   // swell, 1 away from it
   float ringVis = uHoleR > 0.5 ? clamp((length(p - uBlob.xy) - uHoleR) / 14.0, 0.0, 1.0) : 1.0;
-  // dl: the cards and their swell (whose rim this canvas draws); dg: the
-  // whole glass outline, buds included (a bud's rim is its own canvas's);
-  // n: its outward normal; v: the lens's inward bend under a card's rim
+  float aa = 0.7 / uDpr;
+  // Near a card's edge (the lens's bevel, a swell, a bud): dl, the cards and
+  // their swell (whose rim this canvas draws); dg, the whole glass outline,
+  // buds included (a bud's rim is its own canvas's); n, its outward normal.
+  // Deep inside a card the glass is flat.
   bool near = uNCards > 0.5 && (dc > -23.0 || ringVis < 1.0);
   float dl = dc, dg = dc, gw = 1.0;
-  vec2 n = vec2(0.0), v = vec2(0.0);
+  vec2 n = vec2(0.0);
   if (near) {
     dl = liquid(p, dc);
     dg = glassD(p, dc, gw);
@@ -237,15 +246,25 @@ void main() {
       float gx = glassD(p + vec2(1.0, 0.0), cards(p + vec2(1.0, 0.0), t1), gw1) - dg;
       float gy = glassD(p + vec2(0.0, 1.0), cards(p + vec2(0.0, 1.0), t2), gw2) - dg;
       n = normalize(vec2(gx, gy) + 1e-5);
-      if (dc < 0.0) {
-        float u = 1.0 - clamp(-dg / 22.0, 0.0, 1.0);
-        v = -n * (1.0 - sqrt(max(0.0, 1.0 - u * u))) * 18.9 * ca;
-      }
     }
   }
-  vec3 col = mix(uBg, uDot, vec3(dots(p + v), dots(p + v * 1.07), dots(p + v * 1.14)) * uDotA);
-  vec4 dr = drawingsSharp(p + v * 1.07);
-  col = col * (1.0 - dr.a) + dr.rgb;
+  float inGlass = uNCards > 0.5 ? (1.0 - smoothstep(-aa, aa, dg)) * ca * gw : 0.0;
+  vec3 col = vec3(0.0);
+  if (inGlass < 1.0) {
+    // the bare page, sharp
+    col = mix(uBg, uDot, dots(p) * uDotA);
+    vec4 dr = drawingsSharp(p);
+    col = col * (1.0 - dr.a) + dr.rgb;
+  }
+  if (inGlass > 0.0) {
+    // the frost, with the rim's inner light in it (from the whole liquid
+    // outline, so it runs on into a swell), painted here for every card
+    vec3 frost = mix(glassFrost(p, uScroll, dg, n), vec3(1.0), glassGlow(dg));
+    // and where this canvas owns the glass, the tone and the fill over it,
+    // as the browser's glass layer does them everywhere else
+    float own = max(smoothstep(-aa, aa, dc), cgl);
+    col = mix(col, mix(frost, mix(glassTone(frost), uFill, uFillA), own), inGlass);
+  }
   if (near && (dc > -3.0 || ringVis < 1.0)) {
     // The cards' drop shadow (--glass-drop), cast by the whole glass outline,
     // swells and buds included. Cast by the card's box (CSS), it lay over a
@@ -262,28 +281,6 @@ void main() {
       col = mix(col, mix(vec3(0.157, 0.141, 0.118), vec3(0.0), uDark), a * ca * outside);
     }
     if (dg < 2.5 && ca > 0.01) {
-      float aa = 0.7 / uDpr;
-      // The glass this canvas paints: past the card's box (a swell, a bud),
-      // and inside it wherever the browser's glass has opened around a swell
-      // (.glass-back's hole, the same as the rim's): the same frost and lens
-      // over the dots and the drawings, the card's fill and the rim's inner
-      // light, from the whole liquid outline, so card and swell are one
-      // glass there and the browser's frost cross-fades into it over the
-      // hole's soft edge. Met at the box's straight edge, the two left a
-      // faint line across the swell.
-      // The browser's glass is cut cleanly at the hole's outer edge
-      // (.glass-back), so this glass is whole inside it; only the rim's inner
-      // light fades, with the card's edge ring (whose light fades out over
-      // the same 14px), so the light is counted once everywhere.
-      float inLiquid = 1.0 - smoothstep(-aa, aa, dg);
-      float pastBox = smoothstep(-aa, aa, dc);
-      float holeCut = uHoleR > 0.5 ? 1.0 - smoothstep(uHoleR + 13.5, uHoleR + 14.5, length(p - uBlob.xy)) : 0.0;
-      float w = inLiquid * max(pastBox, holeCut) * ca * gw;
-      if (w > 0.0) {
-        vec3 frost = glassSurface(p, uScroll, dg, n);
-        vec3 inside = mix(mix(frost, uFill, uFillA), vec3(1.0), glassGlow(dg) * max(pastBox, 1.0 - ringVis));
-        col = mix(col, inside, w);
-      }
       // The rim of the whole liquid outline, just outside it: along the swell,
       // and along the card's edge inside the hole opened in the card's own rim,
       // so the border molds into the swell.
@@ -495,7 +492,8 @@ export default function DotField() {
         "uDraw0", "uDraw1", "uDraw2", "uDraw3", "uDrawA", "uDrawB", "uDrawL", "uDrawO", "uNDraw",
         "uBudC", "uBudD", "uBudP", "uBudS", "uNBud",
       ]);
-      const cardBuf = new Float32Array(32), cardPBuf = new Float32Array(16);
+      const cardBuf = new Float32Array(32), cardPBuf = new Float32Array(24);
+      const cardEls: HTMLElement[] = [];
       // live: a card that mounts (a page arriving) is in the next frame's list,
       // not up to a second later, part way through its fade
       const panels = document.getElementsByClassName("glass-panel") as HTMLCollectionOf<HTMLElement>;
@@ -540,7 +538,7 @@ export default function DotField() {
       // \`raf\` is just "a frame is queued".
       let raf = 0, last = performance.now();
       // when the first frame was drawn (the crossfade in starts then); 0 before
-      let revealAt = 0, drawn = 0;
+      let revealAt = 0, drawn = 0, toneOnly = false;
       const onFrame = (d: FrameData) => frame(d.timestamp);
       const queue = () => { motionFrame.postRender(onFrame); return 1; };
       const unqueue = () => cancelFrame(onFrame);
@@ -631,7 +629,7 @@ export default function DotField() {
         canvas.style.opacity = "0";
         showAll();
         releaseBuds();
-        document.documentElement.classList.remove("paper-gl");
+        document.documentElement.classList.remove("paper-gl", "paper-glass");
       };
       canvas.addEventListener("webglcontextlost", onLost);
       document.documentElement.addEventListener("pointerleave", onLeave);
@@ -732,7 +730,8 @@ export default function DotField() {
           }
           const a = opacityOf(el);
           cardBuf[n * 4] = r.left; cardBuf[n * 4 + 1] = r.top; cardBuf[n * 4 + 2] = r.width; cardBuf[n * 4 + 3] = r.height;
-          cardPBuf[n * 2] = Math.min(rad, r.width / 2, r.height / 2); cardPBuf[n * 2 + 1] = a;
+          cardPBuf[n * 3] = Math.min(rad, r.width / 2, r.height / 2); cardPBuf[n * 3 + 1] = a;
+          cardEls[n] = el;
           sig += `${r.left | 0},${r.top | 0},${r.width | 0},${r.height | 0},${a.toFixed(2)};`;
           n++;
           // distance from the cursor to this card's edge, and the edge point nearest it
@@ -898,7 +897,11 @@ export default function DotField() {
         gl.uniform2f(u.uOrigin, wave.x, wave.y);
         gl.uniform1f(u.uIntro, introT);
         gl.uniform4fv(u.uCards, cardBuf);
-        gl.uniform2fv(u.uCardP, cardPBuf);
+        // whose glass each card wears, read after this frame's swell and buds
+        // have set it (setRingHole), so the browser's glass steps aside in the
+        // same frame this canvas takes it over
+        for (let i = 0; i < n; i++) cardPBuf[i * 3 + 2] = cardEls[i].classList.contains("glass-gl") ? 1 : 0;
+        gl.uniform3fv(u.uCardP, cardPBuf);
         gl.uniform1f(u.uNCards, n);
         gl.uniform3f(u.uBlob, blobX, blobY, Math.max(0, blob.r));
         gl.uniform1f(u.uHoleR, holeR);
@@ -940,6 +943,13 @@ export default function DotField() {
           canvas.style.opacity = "1";
           document.documentElement.classList.add("paper-gl");
         }
+        // Then, with the canvas all the way in (its frost under every card),
+        // the browser's glass lets go of its blur (paper-glass, over the same
+        // REVEAL_MS) and keeps only the tone and the fill.
+        if (revealAt && !toneOnly && now - revealAt > REVEAL_MS) {
+          toneOnly = true;
+          document.documentElement.classList.add("paper-glass");
+        }
 
         // With nothing moving, the last frame stays on screen and the loop sleeps
         // until the next scroll, pointer move, click, resize or theme change.
@@ -952,7 +962,7 @@ export default function DotField() {
           busy = true; // one more frame, at full resolution (resized as it draws)
         }
         // (a bud stepping above may already have woken the loop: never queue two frames)
-        if (!revealAt) busy = true; // warming up: keep drawing until the reveal
+        if (!toneOnly) busy = true; // warming up, then handing over: keep drawing until it's done
         if (busy && !raf) raf = queue();
       }
       glassDriver.active = true;
@@ -962,7 +972,7 @@ export default function DotField() {
         unqueue();
         disposed = true;
         releaseBuds();
-        document.documentElement.classList.remove("paper-gl");
+        document.documentElement.classList.remove("paper-gl", "paper-glass");
         themeObs.disconnect();
         offDrawings();
         offBuds();

@@ -105,18 +105,27 @@ vec4 drawings(vec2 p, float blur);
 // is pasted whole into every place that calls it, and so is everything it
 // calls: reading the drawings per colour put three more copies of the
 // drawings' texture reads into the shader for each call, and the GPU has to
-// build all of them before the first frame (seconds, on a cold load).
-vec3 glassSurface(vec2 p, vec2 off, float d, vec2 n) {
+// build all of it before the first frame (seconds, on a cold load).
+// This is the frost alone; glassTone adds the saturation and the lift.
+vec3 glassFrost(vec2 p, vec2 off, float d, vec2 n) {
   float u = 1.0 - clamp(-d / 22.0, 0.0, 1.0);
   float tilt = 1.0 - sqrt(max(0.0, 1.0 - u * u));
   vec2 v = -n * tilt * 18.9; // zero across the flat middle
   vec3 dots = vec3(glassDot(p + v, off), glassDot(p + v * 1.07, off), glassDot(p + v * 1.14, off));
   vec3 col = mix(uBg, uDot, dots * uDotA);
   vec4 dr = drawings(p + v * 1.07, 1.6);
-  col = col * (1.0 - dr.a) + dr.rgb;
-  float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
-  col = mix(vec3(l), col, 1.25);
-  return col * mix(1.02, 1.12, uDark);
+  return col * (1.0 - dr.a) + dr.rgb;
+}
+// saturate(1.25) brightness(lift), exactly as the CSS filters do them (the
+// same luminance weights, clamped after each step), so the browser's glass
+// (.glass-back) over the frost and this are the same arithmetic
+vec3 glassTone(vec3 col) {
+  float l = dot(col, vec3(0.213, 0.715, 0.072));
+  vec3 s = clamp(mix(vec3(l), col, 1.25), 0.0, 1.0);
+  return min(s * mix(1.02, 1.12, uDark), vec3(1.0));
+}
+vec3 glassSurface(vec2 p, vec2 off, float d, vec2 n) {
+  return glassTone(glassFrost(p, off, d, n));
 }
 // how much white the rim's inner light adds, d inside the outline
 float glassGlow(float d) {

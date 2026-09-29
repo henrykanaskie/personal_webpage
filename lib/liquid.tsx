@@ -158,22 +158,30 @@ export function useGlassLens(
 // Open (or close, r <= 0) a hole in a panel's rim at x, y (panel-local px).
 // "s" is the cursor swell's hole ("b" is reserved for a second source).
 
-const ringOf = new WeakMap<HTMLElement, HTMLElement[]>();
+const ringOf = new WeakMap<HTMLElement, HTMLElement | null>();
+const holesOf = new WeakMap<HTMLElement, { s: boolean; b: boolean }>();
 export function setRingHole(panel: HTMLElement, which: "s" | "b", x: number, y: number, r: number) {
-  let els = ringOf.get(panel);
-  if (!els) {
-    // the rim, and the browser's glass layer, which opens with it
-    els = Array.from(panel.querySelectorAll<HTMLElement>(":scope > .ring-mask, :scope > .glass-back"));
-    ringOf.set(panel, els);
+  let ring = ringOf.get(panel);
+  if (ring === undefined) {
+    ring = panel.querySelector<HTMLElement>(":scope > .ring-mask");
+    ringOf.set(panel, ring);
   }
   const on = r > 0.5;
-  // on those two elements alone: set on the panel, every frame of a swell
-  // would restyle the whole card's content
-  for (const el of els) {
-    el.style.setProperty(`--${which}x`, on ? `${x.toFixed(1)}px` : "-9999px");
-    el.style.setProperty(`--${which}y`, on ? `${y.toFixed(1)}px` : "-9999px");
-    el.style.setProperty(`--${which}r`, on ? `${r.toFixed(1)}px` : "0px");
+  // While a card swells or buds, all of its glass is DotField's (.glass-gl:
+  // the browser's steps aside), so a single renderer draws the card and its
+  // swell or bud; toggled only when a hole opens or closes.
+  const holes = holesOf.get(panel) ?? { s: false, b: false };
+  if (holes[which] !== on) {
+    holes[which] = on;
+    holesOf.set(panel, holes);
+    panel.classList.toggle("glass-gl", holes.s || holes.b);
   }
+  if (!ring) return;
+  // on the rim element alone: set on the panel, every frame of a swell would
+  // restyle the whole card's content
+  ring.style.setProperty(`--${which}x`, on ? `${x.toFixed(1)}px` : "-9999px");
+  ring.style.setProperty(`--${which}y`, on ? `${y.toFixed(1)}px` : "-9999px");
+  ring.style.setProperty(`--${which}r`, on ? `${r.toFixed(1)}px` : "0px");
 }
 
 // ─── Buds on the paper ──────────────────────────────────────────────────────
