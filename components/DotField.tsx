@@ -497,6 +497,7 @@ export default function DotField() {
       // live: a card that mounts (a page arriving) is in the next frame's list,
       // not up to a second later, part way through its fade
       const panels = document.getElementsByClassName("glass-panel") as HTMLCollectionOf<HTMLElement>;
+      const lineDrawings = document.getElementsByClassName("line-drawing") as HTMLCollectionOf<SVGSVGElement>;
       const radiusOf = new WeakMap<HTMLElement, number>();
       let lastSig = "";
       // The swell: a blob that rises out of the nearest card's edge toward the cursor.
@@ -903,7 +904,29 @@ export default function DotField() {
         // whose glass each card wears, read after this frame's swell and buds
         // have set it (setRingHole), so the browser's glass steps aside in the
         // same frame this canvas takes it over
-        for (let i = 0; i < n; i++) cardPBuf[i * 3 + 2] = cardEls[i].classList.contains("glass-gl") ? 1 : 0;
+        // A drawing is the DOM's own SVG until it has drawn itself and been
+        // handed to this canvas; behind a card, only the browser can frost it
+        // then (this canvas's frost can't see it). So a card with a DOM
+        // drawing behind it keeps the browser's blur (.glass-blur) until the
+        // drawing is handed over: without it the SVG showed sharp through the
+        // glass while it drew, then snapped to frosted.
+        const svgRects: DOMRect[] = [];
+        for (const s of Array.from(lineDrawings)) {
+          if (s.style.visibility === "hidden" || opacityOf(s) < 0.01) continue;
+          const q = s.getBoundingClientRect();
+          if (q.width > 0 && q.bottom > -40 && q.top < h + 40) svgRects.push(q);
+        }
+        for (let i = 0; i < n; i++) {
+          const c = cardBuf;
+          const x0 = c[i * 4], y0 = c[i * 4 + 1], x1 = x0 + c[i * 4 + 2], y1 = y0 + c[i * 4 + 3];
+          const under = svgRects.some((q) => q.right > x0 && q.left < x1 && q.bottom > y0 && q.top < y1);
+          if (under !== cardEls[i].classList.contains("glass-blur")) cardEls[i].classList.toggle("glass-blur", under);
+        }
+        // (a card blurring a DOM drawing keeps the browser's glass, even mid-swell)
+        for (let i = 0; i < n; i++) {
+          const cl = cardEls[i].classList;
+          cardPBuf[i * 3 + 2] = cl.contains("glass-gl") && !cl.contains("glass-blur") ? 1 : 0;
+        }
         gl.uniform3fv(u.uCardP, cardPBuf);
         gl.uniform1f(u.uNCards, n);
         gl.uniform3f(u.uBlob, blobX, blobY, Math.max(0, blob.r));

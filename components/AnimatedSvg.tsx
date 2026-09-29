@@ -143,7 +143,7 @@ function AnimatedSvg({ paths, size = 240, strokeWidth = 0.8, drawn, rotate = 0, 
         transform: rotate ? `rotate(${rotate}deg)` : undefined,
       }}
     >
-      <svg ref={svgRef} viewBox="500 300 136 112" style={{ width: "100%", height: "100%", overflow: "visible" }}>
+      <svg ref={svgRef} className="line-drawing" viewBox="500 300 136 112" style={{ width: "100%", height: "100%", overflow: "visible" }}>
         {tex && (
           <defs>
             <pattern id={wireId} patternUnits="userSpaceOnUse" x={TEX.x} y={TEX.y} width={TEX.w} height={TEX.h}>
