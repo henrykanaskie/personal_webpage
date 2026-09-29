@@ -13,16 +13,16 @@
 
 :root {
   --paper: #f1f0ed;
-  --dot: rgba(52, 48, 42, 0.3);
+  --dot: rgba(52, 48, 42, 0.38);
   --dot-gap: 24px;
   /* The CSS frost (.glass-panel[data-liquid]::before): the paper as the
      glass shows it, worked out from glassSurface in lib/gl.ts (lifted, the
      card fill over it) and the dots blurred by the glass's 1.6px (a Gaussian
      of peak r^2 / 2 sigma^2 times the dot's alpha, at 0, 1 and 2 sigma) */
   --frost-sheet: rgb(247, 246, 244);
-  --frost-dot-0: rgba(53, 49, 43, 0.067);
-  --frost-dot-1: rgba(53, 49, 43, 0.041);
-  --frost-dot-2: rgba(53, 49, 43, 0.009);
+  --frost-dot-0: rgba(53, 49, 43, 0.085);
+  --frost-dot-1: rgba(53, 49, 43, 0.052);
+  --frost-dot-2: rgba(53, 49, 43, 0.011);
   --ink: #17161a;
   --ink-2: rgba(23, 22, 26, 0.68);
   --ink-3: rgba(23, 22, 26, 0.44);
@@ -80,11 +80,11 @@
 
 .dark {
   --paper: #0c0d10;
-  --dot: rgba(196, 204, 222, 0.18);
+  --dot: rgba(196, 204, 222, 0.24);
   --frost-sheet: rgb(22, 23, 26);
-  --frost-dot-0: rgba(220, 228, 248, 0.045);
-  --frost-dot-1: rgba(220, 228, 248, 0.027);
-  --frost-dot-2: rgba(220, 228, 248, 0.0061);
+  --frost-dot-0: rgba(220, 228, 248, 0.06);
+  --frost-dot-1: rgba(220, 228, 248, 0.036);
+  --frost-dot-2: rgba(220, 228, 248, 0.0081);
   --ink: #eef0f4;
   --ink-2: rgba(238, 240, 244, 0.64);
   --ink-3: rgba(238, 240, 244, 0.4);
