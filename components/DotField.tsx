@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { frame as motionFrame, cancelFrame, type FrameData } from "framer-motion";
 import { paper } from "@/lib/tokens";
@@ -372,6 +372,38 @@ export default function DotField() {
   const waveRef = useRef<(x?: number, y?: number) => void>(() => {});
   const lastDown = useRef<{ x: number; y: number; t: number } | null>(null);
 
+  // The cards' CSS frost (globals.css, .glass-panel[data-liquid]::before) is a
+  // pattern of blurred dots that has to land on the page's own grid, so each
+  // liquid card is told its offset from it: from its layout position (the
+  // offsets, which ignore the rise's transform, plus <body>'s own place on the
+  // page, which they leave out), whenever cards mount or the layout changes.
+  useLayoutEffect(() => {
+    if (!enabled) return;
+    const gap = paper.gap;
+    let queued = 0;
+    const align = () => {
+      queued = 0;
+      const body = document.body.getBoundingClientRect();
+      const bx = body.left + window.scrollX, by = body.top + window.scrollY;
+      for (const el of Array.from(document.querySelectorAll<HTMLElement>(".glass-panel[data-liquid]"))) {
+        let x = bx, y = by;
+        for (let e: HTMLElement | null = el; e && e !== document.body; e = e.offsetParent as HTMLElement | null) {
+          x += e.offsetLeft + e.clientLeft;
+          y += e.offsetTop + e.clientTop;
+        }
+        el.style.setProperty("--frost-x", `${-(((x % gap) + gap) % gap)}px`);
+        el.style.setProperty("--frost-y", `${-(((y % gap) + gap) % gap)}px`);
+      }
+    };
+    const later = () => { if (!queued) queued = requestAnimationFrame(align); };
+    align();
+    const mo = new MutationObserver(later);
+    mo.observe(document.body, { childList: true, subtree: true });
+    const ro = new ResizeObserver(later);
+    ro.observe(document.body);
+    return () => { mo.disconnect(); ro.disconnect(); cancelAnimationFrame(queued); };
+  }, [enabled, pathname]);
+
   // Every navigation replays the configure wave, from where the click happened.
   useEffect(() => {
     const d = lastDown.current;
@@ -443,7 +475,7 @@ export default function DotField() {
       // \`raf\` is just "a frame is queued".
       let raf = 0, last = performance.now();
       // when the first frame was drawn (the crossfade in starts then); 0 before
-      let revealAt = 0, drawn = 0;
+      let revealAt = 0, drawn = 0, glassIn = false;
       const onFrame = (d: FrameData) => frame(d.timestamp);
       const queue = () => { motionFrame.postRender(onFrame); return 1; };
       const unqueue = () => cancelFrame(onFrame);
@@ -534,7 +566,7 @@ export default function DotField() {
         canvas.style.opacity = "0";
         showAll();
         releaseBuds();
-        document.documentElement.classList.remove("paper-gl");
+        document.documentElement.classList.remove("paper-gl", "paper-glass");
       };
       canvas.addEventListener("webglcontextlost", onLost);
       document.documentElement.addEventListener("pointerleave", onLeave);
@@ -834,16 +866,22 @@ export default function DotField() {
         gl.drawArrays(gl.TRIANGLES, 0, 3);
         if (!revealAt && ++drawn >= 3) {
           // The takeover is a crossfade, not a switch: the canvas fades in
-          // (.dot-field's opacity transition) as the cards' CSS fill and shadow
-          // fade out (paper-gl, their transition), both over REVEAL_MS.
-          // Switched at once, the frost appeared whole seconds after the page
-          // had loaded (the shader compiles in the background). It starts on
+          // (.dot-field's opacity transition) under the cards' CSS frost, as
+          // their CSS shadow fades out (paper-gl), over REVEAL_MS; then the CSS
+          // frost fades out over the canvas's (paper-glass, below). The cards
+          // are frosted throughout, from their first frame. It starts on
           // the third frame drawn, not the first: the driver finishes the
           // shader on its first use, a long frame, and a fade started then ran
           // its course behind the stall and arrived as a jump anyway.
           revealAt = now;
           canvas.style.opacity = "1";
           document.documentElement.classList.add("paper-gl");
+        }
+        // Second step, once the canvas is all the way in under the cards' opaque
+        // CSS frost: that frost fades away over the canvas's (paper-glass).
+        if (revealAt && !glassIn && now - revealAt > REVEAL_MS) {
+          glassIn = true;
+          document.documentElement.classList.add("paper-glass");
         }
 
         // With nothing moving, the last frame stays on screen and the loop sleeps
@@ -857,7 +895,7 @@ export default function DotField() {
           busy = true; // one more frame, at full resolution (resized as it draws)
         }
         // (a bud stepping above may already have woken the loop: never queue two frames)
-        if (!revealAt) busy = true; // warming up: keep drawing until the reveal
+        if (!glassIn) busy = true; // warming up, then fading in: keep drawing until the handoff is done
         if (busy && !raf) raf = queue();
       }
       glassDriver.active = true;
@@ -867,7 +905,7 @@ export default function DotField() {
         unqueue();
         disposed = true;
         releaseBuds();
-        document.documentElement.classList.remove("paper-gl");
+        document.documentElement.classList.remove("paper-gl", "paper-glass");
         themeObs.disconnect();
         offDrawings();
         offBuds();

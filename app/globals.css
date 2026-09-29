@@ -15,6 +15,15 @@
   --paper: #f1f0ed;
   --dot: rgba(52, 48, 42, 0.27);
   --dot-gap: 24px;
+  /* The CSS frost (.glass-panel[data-liquid]::before): the paper as the
+     glass shows it, worked out from glassSurface in lib/gl.ts (lifted, the
+     card fill over it) and the dots blurred by the glass's 1.6px (a Gaussian
+     of peak r^2 / 2 sigma^2 times the dot's alpha, at 0, 1 and 2 sigma) */
+  --frost-sheet: rgb(247, 246, 244);
+  --frost-dot-0: rgba(53, 49, 43, 0.06);
+  --frost-dot-1: rgba(53, 49, 43, 0.037);
+  --frost-dot-2: rgba(53, 49, 43, 0.008);
+  --frost-glow: rgba(255, 255, 255, 0.5);
   --ink: #17161a;
   --ink-2: rgba(23, 22, 26, 0.68);
   --ink-3: rgba(23, 22, 26, 0.44);
@@ -73,6 +82,11 @@
 .dark {
   --paper: #0c0d10;
   --dot: rgba(196, 204, 222, 0.16);
+  --frost-sheet: rgb(22, 23, 26);
+  --frost-dot-0: rgba(220, 228, 248, 0.04);
+  --frost-dot-1: rgba(220, 228, 248, 0.024);
+  --frost-dot-2: rgba(220, 228, 248, 0.0054);
+  --frost-glow: rgba(255, 255, 255, 0.12);
   --ink: #eef0f4;
   --ink-2: rgba(238, 240, 244, 0.64);
   --ink-3: rgba(238, 240, 244, 0.4);
@@ -286,20 +300,45 @@ body {
   background: var(--card-fill);
   box-shadow: var(--glass-drop);
 }
-/* While DotField draws the paper, it paints the liquid cards' fill and casts
-   their shadow itself, from the whole glass outline (a swell, a bud): the
-   box's own fill and shadow met the swell at the card's straight edge, a line
-   through the swell. */
-html.paper-gl .glass-panel[data-liquid] {
+/* A liquid card is frosted from its first frame, before (and without)
+   WebGL: behind a card there's only the dot grid, and the dot grid through
+   1.6px of frost is a sheet of soft, faint dots, which CSS paints directly
+   (::before, lined up with the page's grid by --frost-x/--frost-y, which
+   DotField sets from each card's layout position). It carries the card's
+   fill, so the panel's own background steps aside. It used to wait for
+   DotField's shader, which could take seconds to compile: the cards came up
+   clear and turned frosted later. */
+.glass-panel[data-liquid] {
   background: transparent;
+  transition: box-shadow 600ms ease;
+}
+.glass-panel[data-liquid]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(circle, var(--frost-dot-0) 0, var(--frost-dot-1) 1.6px, var(--frost-dot-2) 3.2px, transparent 4.8px)
+      var(--frost-x, 0px) var(--frost-y, 0px) / var(--dot-gap) var(--dot-gap),
+    var(--frost-sheet);
+  /* the rim's inner light (glassGlow in lib/gl.ts: white fading in from the edge) */
+  box-shadow: inset 0 0 22px 2px var(--frost-glow);
+  transition: opacity 600ms ease;
+}
+/* DotField's takeover, in two steps so nothing is ever doubled or missing:
+   first its canvas fades in under the opaque CSS frost, and the cards' CSS
+   shadow fades out as the canvas's fades in (paper-gl); then the CSS frost
+   fades away over the canvas's, frost into frost (paper-glass). From then
+   on DotField paints the liquid cards' fill and shadow itself, from the
+   whole glass outline (a swell, a bud): the box's own met the swell at the
+   card's straight edge, a line through the swell. */
+html.paper-gl .glass-panel[data-liquid] {
   box-shadow: none;
 }
-/* DotField's takeover is a crossfade: these fade out as its canvas fades in
-   (.dot-field, the same 600ms), so the frost arrives gradually, not as a switch */
-.glass-panel[data-liquid] {
-  transition:
-    background-color 600ms ease,
-    box-shadow 600ms ease;
+html.paper-glass .glass-panel[data-liquid]::before {
+  opacity: 0;
 }
 
 /* ─── Drafting details ─────────────────────────────────────────────────────── */
