@@ -8,22 +8,21 @@ import { paper, photo } from "./tokens";
 // between the grid's dots (so the plates are the paper's own cells, grouped),
 // and from the toggle:
 //
-//   1. a reticle locks onto the toggle and hairlines run out from it;
-//   2. as the wave reaches each plate, its outline is traced from the corner
+//   1. as the wave reaches each plate, its outline is traced from the corner
 //      nearest the toggle, two welding points running round it in the glass
 //      edge's thin film (pink left, cyan right, violet top, gold below);
-//   3. the plate slides into place, a single shutter from the side facing the
+//   2. the plate slides into place, a single shutter from the side facing the
 //      toggle or a pair of leaves meeting in the middle, its chrome leading
 //      edge catching the light, and stops dead (no overshoot);
-//   4. it locks: the seam flashes, brackets clamp its corners, and the seam
+//   3. it locks: the seam flashes, brackets clamp its corners, and the seam
 //      fades into the new page.
 //
 // Where the browser has View Transitions the theme swaps at once, the old page
 // is held as a snapshot, and each plate is a window onto the new theme, so the
 // new page is always right behind the plates, never a blank sheet. The window
 // is a paint worklet mask in Chromium and a per-frame stack of CSS mask layers
-// elsewhere (the same geometry, from `reveal` below). The seams, sparks and
-// reticle are a canvas carried above both snapshots under its own
+// elsewhere (the same geometry, from `reveal` below). The seams and sparks
+// are a canvas carried above both snapshots under its own
 // view-transition-name, so it stays live while the snapshots are held.
 //
 // Without View Transitions it falls back to the curtain: the plates assemble
@@ -31,13 +30,12 @@ import { paper, photo } from "./tokens";
 // the cover, and the plates fade away in the same wave.
 
 const GAP = paper.gap;
-const LEAD = 0.12; // seconds the reticle has to itself before the wave leaves
 const SPREAD = 0.9; // seconds for the wave to cross the screen
 const TRACE = 0.28; // seconds to trace a plate's outline
 const SLIDE = 0.34; // seconds for a plate to slide home
 const LOCK = 0.42; // seconds for the lock flash to fade
 const JITTER = 0.08; // plates don't all move in step, like separate servos
-const MIN_CELLS = 3; // the smallest plate side, in grid cells
+const MIN_CELLS = 2; // the smallest plate side, in grid cells
 const FADE = 0.3; // curtain only: seconds each cover plate takes to fade
 
 // A plate: [x, y, w, h, delay, kind, axis, sign] in viewport px and seconds.
@@ -98,18 +96,19 @@ function layout(x: number, y: number, w: number, h: number): { plates: Plate[]; 
   const leaf = (c: number, r: number, cw: number, rh: number) => {
     const px = gx + c * GAP, py = gy + r * GAP, pw = cw * GAP, ph = rh * GAP;
     const dx = px + pw / 2 - x, dy = py + ph / 2 - y;
-    const delay = LEAD + (Math.hypot(dx, dy) / maxD) * SPREAD + rand() * JITTER;
+    const delay = (Math.hypot(dx, dy) / maxD) * SPREAD + rand() * JITTER;
     // slide outward, away from the toggle, mostly along the way the wave runs
     const axis = Math.abs(dx) * (0.6 + rand() * 0.8) > Math.abs(dy) ? 0 : 1;
     const sign = (axis === 0 ? dx : dy) >= 0 ? 1 : -1;
-    const kind = rand() < 0.3 ? 1 : 0;
+    // leaves only where each half is still a plate, not a sliver
+    const kind = (axis === 0 ? cw : rh) >= 4 && rand() < 0.3 ? 1 : 0;
     plates.push([px, py, pw, ph, delay, kind, axis, sign]);
     last = Math.max(last, delay);
   };
   const split = (c: number, r: number, cw: number, rh: number) => {
     const canX = cw >= 2 * MIN_CELLS, canY = rh >= 2 * MIN_CELLS;
-    const big = cw > 11 || rh > 8;
-    if ((!canX && !canY) || (!big && rand() < 0.4)) return leaf(c, r, cw, rh);
+    const big = cw > 6 || rh > 5;
+    if ((!canX && !canY) || (!big && rand() < 0.35)) return leaf(c, r, cw, rh);
     const alongX = canX && (!canY || cw * (0.7 + rand() * 0.6) >= rh);
     const len = alongX ? cw : rh;
     const cut = MIN_CELLS + Math.floor(rand() * (len - 2 * MIN_CELLS + 1));
@@ -126,7 +125,7 @@ function layout(x: number, y: number, w: number, h: number): { plates: Plate[]; 
 }
 
 // ─── The HUD ────────────────────────────────────────────────────────────────
-// Seams, welding points, chrome leading edges, lock flashes and the reticle.
+// Seams, welding points, chrome leading edges and lock flashes.
 // The same drawing serves the morph and the curtain.
 
 // The glass edge's thin film, by side: top violet, right cyan, bottom gold,
@@ -262,49 +261,6 @@ function makeHud(opts: { x: number; y: number; w: number; h: number; plates: Pla
     ctx!.stroke();
   };
 
-  const reticle = (t: number) => {
-    if (t > 0.95) return;
-    const a = t < 0.5 ? 1 : 1 - (t - 0.5) / 0.45;
-    const g = easeOut(clamp01(t / 0.28));
-    ctx!.lineWidth = 1;
-    // hairlines out along both axes, like a sight finding its target
-    const reach = easeOut(clamp01(t / 0.45)) * Math.max(w, h);
-    ctx!.strokeStyle = `${bright}${0.28 * a})`;
-    ctx!.beginPath();
-    ctx!.moveTo(x - reach, y);
-    ctx!.lineTo(x - 30, y);
-    ctx!.moveTo(x + 30, y);
-    ctx!.lineTo(x + reach, y);
-    ctx!.moveTo(x, y - reach);
-    ctx!.lineTo(x, y - 30);
-    ctx!.moveTo(x, y + 30);
-    ctx!.lineTo(x, y + reach);
-    ctx!.stroke();
-    // an inner ring that closes down onto the toggle, an outer one in four
-    // arcs turning the other way, and four ticks
-    ctx!.strokeStyle = `${bright}${0.8 * a})`;
-    ctx!.beginPath();
-    ctx!.arc(x, y, 40 - 22 * g, 0, Math.PI * 2);
-    ctx!.stroke();
-    const r2 = 36 * g, spin = -t * 2.4;
-    ctx!.lineWidth = 1.5;
-    ctx!.beginPath();
-    for (let i = 0; i < 4; i++) {
-      const a0 = spin + (i * Math.PI) / 2 + 0.25;
-      ctx!.moveTo(x + r2 * Math.cos(a0), y + r2 * Math.sin(a0));
-      ctx!.arc(x, y, r2, a0, a0 + Math.PI / 2 - 0.5);
-    }
-    ctx!.stroke();
-    ctx!.lineWidth = 1;
-    ctx!.beginPath();
-    for (let i = 0; i < 4; i++) {
-      const a0 = spin + (i * Math.PI) / 2;
-      ctx!.moveTo(x + (r2 + 3) * Math.cos(a0), y + (r2 + 3) * Math.sin(a0));
-      ctx!.lineTo(x + (r2 + 9) * Math.cos(a0), y + (r2 + 9) * Math.sin(a0));
-    }
-    ctx!.stroke();
-  };
-
   // The whole HUD at time t (seconds). `cover`, curtain only, fills each
   // plate's slid-home part in the new sheet's colour first.
   const draw = (t: number, cover?: (p: Plate, r: number[]) => void) => {
@@ -356,7 +312,6 @@ function makeHud(opts: { x: number; y: number; w: number; h: number; plates: Pla
         brackets(p, f);
       }
     }
-    reticle(t);
   };
 
   return { canvas, ctx, draw };
@@ -418,7 +373,7 @@ function curtain(x: number, y: number, toDark: boolean, photoSide: boolean, appl
       apply();
     }
     hud.draw(t, (p, r) => {
-      const a = swapped ? 1 - clamp01((t - T_SWAP - (p[4] - LEAD)) / FADE) : 1;
+      const a = swapped ? 1 - clamp01((t - T_SWAP - p[4]) / FADE) : 1;
       if (a <= 0) return;
       ctx.globalAlpha = a;
       ctx.fillStyle = bgCss;
