@@ -127,10 +127,15 @@ Hand the user the prompt and these steps:
    bytes of splines, so every fine line survives the trim), bakes the tracer's
    translates into the points, and fits the drawing into the box the site's
    other drawings occupy, so the card's corner, size and offset need no
-   tuning. Per-drawing settings live in `svgs/source_art/trace.json`: an
-   `ink` override, and `erase` polygons (in the source's 1024 frame) for parts
-   that shouldn't ship. Compare the trace against the original before
-   trimming: anything missing was lost here, not in convert.py. An image is the
+   tuning. Aim for a clean drawing, not a pixel-exact copy: the tracer
+   keeps faint strokes only where they connect to dark ink (hysteresis) and
+   drops grit that isn't dash-shaped. Per-drawing settings live in
+   `svgs/source_art/trace.json`: `ink`, `strong` (raise darkness demanded of a
+   stroke, e.g. to drop a faint wallpaper), `min_area`, `solidify` ([k,
+   density], fills mottled grey shading so it traces as one silhouette), and
+   `erase` polygons (in the source's 1024 frame) for parts
+   that shouldn't ship. Review each trace at full size for grit, broken half-lines and
+   stray fragments, and tune that drawing's settings until it is clean. An image is the
    only route to the density of the bee and the chip.
 
 Or draw it in code instead: `svgs/draw/scenes.py` holds one function per

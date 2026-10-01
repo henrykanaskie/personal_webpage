@@ -6,16 +6,24 @@ site's traced drawings are.
     python3 svgs/trace.py acclimate art.svg --ink 200
     python3 svgs/convert.py acclimate
 
-The image is reduced to ink and paper first: every pixel darker than --ink
-(0-255, default 190) is ink. Thin pen lines anti-alias to mid grey, so the
-threshold sits well above the middle to keep them; grey washes and white
-regions drop out. An SVG source (image tools often export one built from
-hundreds of filled grey regions) is rasterised at 2048px first, so its
-tones go through the same threshold rather than tracing as region outlines.
+The image is reduced to clean ink and paper first, aiming for a clean drawing
+rather than a pixel-faithful copy:
+
+- Hysteresis: a stroke is ink if it is darker than --ink (default 190) *and*
+  connects to some genuinely dark ink (darker than --strong, default 120). Real
+  lines keep their full anti-aliased width; faint marks that only half cross
+  the threshold (wallpaper, grain, washes) drop out whole instead of leaving
+  broken fragments.
+- Specks: blobs under MIN_AREA pixels go, unless they are dash-shaped, so
+  dashed lines and rows of code survive while grit does not.
+
+An SVG source (image tools often export one built from hundreds of filled
+grey regions) is rasterised at 2048px first, so its tones go through the same
+cleanup rather than tracing as region outlines.
 
 The tracer outlines the ink: each pen stroke becomes a thin closed contour
 around it, which the site then strokes, so heavy lines stay heavy and fine
-hatching stays fine. Needs vtracer, Pillow, and for SVG input cairosvg.
+hatching stays fine. Needs vtracer, Pillow, OpenCV and numpy, and for SVG input cairosvg.
 """
 
 import argparse
@@ -25,6 +33,8 @@ from pathlib import Path
 
 import json
 
+import cv2
+import numpy as np
 import vtracer
 from PIL import Image, ImageDraw
 
@@ -39,9 +49,37 @@ INK = 190
 # (dashed guides, the dashed Gaussian, rows of code) is itself a tiny blob, and
 # a filter of 6 deleted every one of them.
 SPECKLE = 2
+# Hysteresis: a stroke only counts if some of it is at least this dark.
+STRONG = 120
+# Blobs smaller than this are grit, unless dash-shaped (long and thin).
+MIN_AREA = 24
 
 
-def to_ink(image, ink, erase=()):
+def clean(gray, ink, strong, min_area=None, solidify=None):
+    """Ink mask (True = ink) from a greyscale image, by hysteresis and speck
+    removal; see the module docstring. solidify=(k, density) fills patches
+    where more than `density` of a k x k window is ink: a mottled grey shade
+    then traces as one clean silhouette instead of a cluster of grit."""
+    min_area = MIN_AREA if min_area is None else min_area
+    weak = (gray < ink).astype(np.uint8)
+    n, labels, stats, _ = cv2.connectedComponentsWithStats(weak, connectivity=8)
+    has_strong = np.zeros(n, bool)
+    has_strong[np.unique(labels[gray < strong])] = True
+    w, h, area = stats[:, cv2.CC_STAT_WIDTH], stats[:, cv2.CC_STAT_HEIGHT], stats[:, cv2.CC_STAT_AREA]
+    long_side, short_side = np.maximum(w, h), np.maximum(np.minimum(w, h), 1)
+    dash = (long_side >= 6) & (long_side >= 2.5 * short_side)
+    keep = has_strong & ((area >= min_area) | dash)
+    keep[0] = False  # the paper
+    mask = keep[labels]
+    if solidify:
+        k, density = solidify
+        dense = cv2.blur(mask.astype(np.float32), (k, k)) > density
+        dense = cv2.morphologyEx(dense.astype(np.uint8), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8)).astype(bool)
+        mask |= dense
+    return mask
+
+
+def to_ink(image, ink, erase=(), strong=None, min_area=None, solidify=None):
     """A pure black-on-white PNG of the image's ink, at SIZE on its long side.
     erase: polygons, in the source's own 1024 frame, painted out first (to drop
     a part of the drawing that shouldn't ship)."""
@@ -65,7 +103,8 @@ def to_ink(image, ink, erase=()):
         pen = ImageDraw.Draw(img)
         for poly in erase:
             pen.polygon([(x * k, y * k) for x, y in poly], fill=255)
-    bw = img.point(lambda v: 0 if v < ink else 255, mode="L")
+    mask = clean(np.asarray(img), ink, strong if strong is not None else STRONG, min_area, solidify)
+    bw = Image.fromarray(np.where(mask, 0, 255).astype(np.uint8), mode="L")
     out = tempfile.NamedTemporaryFile(suffix=".png", delete=False).name
     bw.save(out)
     return out
@@ -140,7 +179,7 @@ def trace(name, image, ink=None, speckle=SPECKLE):
     cfg = settings(name)
     ink = ink if ink is not None else cfg.get("ink", INK)
     vtracer.convert_image_to_svg_py(
-        to_ink(image, ink, cfg.get("erase", ())), str(out),
+        to_ink(image, ink, cfg.get("erase", ()), cfg.get("strong"), cfg.get("min_area"), cfg.get("solidify")), str(out),
         colormode="binary",
         mode="polygon",          # straight runs: a fifth the bytes of splines, so the
                                  # trim can keep every outline (fine lines are holes in

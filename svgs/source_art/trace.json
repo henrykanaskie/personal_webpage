@@ -53,5 +53,18 @@
       ]
     ],
     "note": "the capacitor reel and its tape, below the board's lower edge, removed at the user's request"
+  },
+  "spriteRoom": {
+    "strong": 80,
+    "min_area": 60,
+    "note": "the screen's faint wallpaper only half crosses the threshold; demand darker ink so it drops out whole"
+  },
+  "monteCarlo": {
+    "strong": 80,
+    "solidify": [
+      9,
+      0.55
+    ],
+    "note": "the histogram's shaded side is a mottled grey; fill it solid so it traces as one silhouette"
   }
 }
