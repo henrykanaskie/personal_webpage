@@ -86,15 +86,20 @@ def pick_keep(units, budget_kb):
     return len(units)
 
 
-def trim(units, keep):
-    """Keeps the largest units, rejoined into their paths in drawing order."""
+def trim(units, keep, per_path=None):
+    """Keeps the largest units, rejoined into their paths in drawing order.
+    per_path splits a path's kept outlines into groups of that many: the site
+    animates each path drawing itself, and a tracer packs hundreds of outlines
+    into one path, which would draw a whole region in a single stroke."""
     ranked = sorted(range(len(units)), key=lambda i: len(units[i][1]), reverse=True)
     top = set(ranked[:keep])
     kept = {}
     for i, (parent, unit) in enumerate(units):
         if i in top:
             kept.setdefault(parent, []).append(unit)
-    return ["".join(parts) for parts in kept.values()]
+    if not per_path:
+        return ["".join(parts) for parts in kept.values()]
+    return ["".join(parts[i:i + per_path]) for parts in kept.values() for i in range(0, len(parts), per_path)]
 
 
 def render_ts(name, kept):
@@ -112,7 +117,7 @@ def build(name, entry, defaults):
         units = [(i, s) for i, p in enumerate(paths) for s in split(compact(p, precision))]
     if entry.get("keep") is None:
         entry["keep"] = pick_keep(units, entry.get("budget_kb", defaults["budget_kb"]))
-    kept = trim(units, entry["keep"])
+    kept = trim(units, entry["keep"], None if precision is None else 4)
     ts = render_ts(name, kept)
 
     share = sum(map(len, kept)) / max(sum(len(u) for _, u in units), 1)

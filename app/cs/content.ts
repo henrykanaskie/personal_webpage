@@ -1,11 +1,17 @@
 import type { InfoBoxProps } from "@/components/InfoBox";
 import type { Project, SvgConfig } from "@/components/ProjectCard";
+import { acclimatePaths } from "@/svgs/acclimatePaths";
+import { aggregateAnalyticsPaths } from "@/svgs/aggregateAnalyticsPaths";
 import { beePaths } from "@/svgs/beePaths";
+import { capMatchPaths } from "@/svgs/capMatchPaths";
 import { cpuPaths } from "@/svgs/cpuPaths";
 import { daimlerPaths } from "@/svgs/daimlerPaths";
 import { dronesPaths } from "@/svgs/dronesPaths";
 import { fpgaPaths } from "@/svgs/fpgaPaths";
+import { gptScratchPaths } from "@/svgs/gptScratchPaths";
+import { monteCarloPaths } from "@/svgs/monteCarloPaths";
 import { nnPaths } from "@/svgs/nnPaths";
+import { spriteRoomPaths } from "@/svgs/spriteRoomPaths";
 import { thrusterPaths } from "@/svgs/thrusterPaths";
 
 // ─── The CS page's words ────────────────────────────────────────────────────
@@ -94,20 +100,10 @@ export const EXPERIENCE: InfoBoxProps[] = [
 
 // ── Projects ──────────────────────────────────────────────────────────────────
 
-// Stand-in corner art for the projects that don't have their own drawing yet.
-// Mirrored so a card in the left column gets top-left art and one in the right
-// column gets top-right, matching the cards that do have real art. Replace a
-// card's `svgs` entry with its own paths/size/offset when the drawing exists.
-const placeholderSvgLeft: SvgConfig = {
-  paths: cpuPaths,
-  corner: "top-left",
-  size: 46,
-  rotate: -6,
-  offset: { x: 20, y: 8 },
-  drawDuration: 4,
-};
-
-const placeholderSvgRight: SvgConfig = {
+// Stand-in corner art for the projects that don't have their own drawing yet
+// (both in the right column, so it sits top-right). Replace a card's `svgs`
+// entry with its own paths/size/offset when the drawing exists.
+const placeholderSvg: SvgConfig = {
   paths: cpuPaths,
   corner: "top-right",
   size: 46,
@@ -126,7 +122,16 @@ export const PROJECTS: Project[] = [
     links: {
       githubUrl: "https://github.com/henrykanaskie/accliMate",
     },
-    svgs: [placeholderSvgLeft],
+    svgs: [
+      {
+        paths: acclimatePaths,
+        corner: "top-left",
+        size: 70,
+        rotate: 0,
+        offset: { x: 20, y: -10 },
+        drawDuration: 4,
+      },
+    ],
   },
   {
     title: "Sprite Room: Agents as Pixel Art",
@@ -137,7 +142,16 @@ export const PROJECTS: Project[] = [
     links: {
       githubUrl: "https://github.com/henrykanaskie/animAgent",
     },
-    svgs: [placeholderSvgRight],
+    svgs: [
+      {
+        paths: spriteRoomPaths,
+        corner: "top-right",
+        size: 70,
+        rotate: 0,
+        offset: { x: -20, y: -10 },
+        drawDuration: 4,
+      },
+    ],
   },
   {
     title: "Monte Carlo Portfolio Risk Engine",
@@ -148,7 +162,16 @@ export const PROJECTS: Project[] = [
     links: {
       githubUrl: "https://github.com/henrykanaskie/ML_quantitative_research",
     },
-    svgs: [placeholderSvgLeft],
+    svgs: [
+      {
+        paths: monteCarloPaths,
+        corner: "top-left",
+        size: 70,
+        rotate: 0,
+        offset: { x: 20, y: -10 },
+        drawDuration: 4,
+      },
+    ],
   },
   {
     title: "GPT From Scratch",
@@ -159,7 +182,16 @@ export const PROJECTS: Project[] = [
     links: {
       githubUrl: "https://github.com/henrykanaskie/gpt-scratch",
     },
-    svgs: [placeholderSvgRight],
+    svgs: [
+      {
+        paths: gptScratchPaths,
+        corner: "top-right",
+        size: 70,
+        rotate: 0,
+        offset: { x: -20, y: -10 },
+        drawDuration: 4,
+      },
+    ],
   },
   {
     title: "Capacitor Matching Network Solver",
@@ -170,7 +202,16 @@ export const PROJECTS: Project[] = [
     links: {
       githubUrl: "https://github.com/henrykanaskie/Cap_Match_Net",
     },
-    svgs: [placeholderSvgLeft],
+    svgs: [
+      {
+        paths: capMatchPaths,
+        corner: "top-left",
+        size: 70,
+        rotate: 0,
+        offset: { x: 20, y: -10 },
+        drawDuration: 4,
+      },
+    ],
   },
   {
     title: "smallsh: A Unix Shell in C",
@@ -181,7 +222,7 @@ export const PROJECTS: Project[] = [
     links: {
       githubUrl: "https://github.com/henrykanaskie/small-shell",
     },
-    svgs: [placeholderSvgRight],
+    svgs: [placeholderSvg],
   },
   {
     title: "Bee Habitat Recommendation System",
@@ -224,5 +265,32 @@ export const PROJECTS: Project[] = [
         drawDuration: 4,
       },
     ],
+  },
+  {
+    title: "Aggregate Analytics: NFL Margin Model",
+    techStack: "Python, Polars, scikit-learn",
+    description:
+      "A margin-aware Elo model over every NFL game that prices each week's slate before kickoff: a predicted margin for every game, measured against the betting line. Ratings carry across seasons with a home-field term, and each week's predictions are committed to git before kickoff, so the track record can't be backfilled.",
+    links: {
+      githubUrl: "https://github.com/henrykanaskie/aggregateAnalytics",
+    },
+    svgs: [
+      {
+        paths: aggregateAnalyticsPaths,
+        corner: "top-left",
+        size: 70,
+        rotate: 0,
+        offset: { x: 20, y: -10 },
+        drawDuration: 4,
+      },
+    ],
+  },
+  {
+    title: "Orchestrate: Mission Control for Agent Teams",
+    techStack: "Node.js, Swift",
+    description:
+      "A local dashboard that points a team of Claude Code agents at any project on disk. Eight teams and thirty-five specialist agents, each team a dependency graph: every agent starts the moment its own upstream report lands, and the graph is drawn live as finished reports flow into the next agent's prompt. No dependencies; it runs on the local claude CLI.",
+    links: {},
+    svgs: [placeholderSvg],
   },
 ];

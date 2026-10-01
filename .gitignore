@@ -9,3 +9,4 @@ node_modules/
 !svgs/svg_data/*.svg
 svgs/preview/
 __pycache__/
+!svgs/source_art/*.svg
