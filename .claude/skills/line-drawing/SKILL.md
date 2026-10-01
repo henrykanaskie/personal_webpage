@@ -10,40 +10,35 @@ pasted by the user. Output: a spec at `svgs/specs/<name>.md` holding the image
 prompt, and, once the user has a traced SVG, `svgs/<name>Paths.ts` wired into
 the card.
 
-The standard is the drawings already on the site: the rocket in cutaway, the
-chip, the FPGA package, the thruster, the mechanical bee. Each is **one real
-object**, drawn like a blueprint or patent plate in three-quarter view, bold
-outline, fine detail, its working parts showing. None is a scene, a pipeline or
-a diagram of boxes and arrows.
+The standard is the drawings already on the site, and each shows **what the
+work actually is, as it is today**:
 
-> **One picture, one or two concrete objects that stand for the whole project.**
-> A real, recognisable piece of hardware, not a metaphor that only gestures at
-> the topic (a compass for "navigating code") and not an abstract assembly of
-> floating plates, trees and arrows. Its details carry the specifics.
+- **Hardware work → the real, modern hardware**, accurately: the Freightliner
+  truck for Daimler, the Hall thruster for the propulsion lab, the FPGA package
+  for the DSP work.
+- **Software → the project's own core structure, drawn as a technical plate**,
+  the way the neural network drawing is the network itself, in three
+  dimensions, with stippled and hatched solid geometry.
 
-The bar is **impressive engineering hardware**, the kind of object the rocket,
-the thruster and the FPGA are: machined, dense with real parts, shown lid-off
-or cut away so its insides read, with 45 degree section hatching on cut
-surfaces. An everyday object (a microscope, a typewriter, a plain circuit
-board) is too ordinary even when it fits; choose the more technical machine
-that fits as well. Worked examples, all on the site:
+> **One subject that is the project itself.** No metaphor (a compass for
+> "navigating code"), no vintage stand-in (a typewriter for a language model),
+> no scene. Its details carry the specifics.
 
-- AccliMate: a hard drive with its lid off; the tracks are drawn as data and
-  the head sits over one exact track, marked (the exact lines an answer cites).
-- GPT From Scratch: an Enigma-style rotor machine; four rotors for the model's
-  four blocks, one lamp lit for the next character.
-- Monte Carlo: a Galton board; its ball piles run past the Gaussian printed on
-  its back panel (the fat tail).
-- Cap Match: an open RF tuner chassis; four identical air-variable capacitors
-  set symmetrically and strapped into a bridge.
-- smallsh: a Teletype ASR-33, the terminal Unix grew up on; prompts on the
-  paper, punched tape out its side.
-- Sprite Room: a laptop with its deck cut away to the logic board; the pixel
-  room hangs from the notch on its screen.
+Worked examples (specs in `svgs/specs/`): AccliMate is the repository's
+dependency graph with one file opened to three cited lines; GPT From Scratch is
+the transformer's four stacked blocks with the top one exploded; Monte Carlo is
+the fan of simulated paths ending in a histogram whose tail runs past the
+Gaussian; Cap Match is the RF board with four matched capacitors in a bridge
+beside the reel they came from; smallsh is the shell's process tree with a
+signal routed to the foreground job; Sprite Room is a MacBook Pro with the
+pixel room dropping from its notch.
 
-The test: the object is recognisable at 140px, and someone who has read the
-card can say why this object, and point at the detail that makes it this
-project.
+Everything must survive being a pen sketch traced to outlines: opaque parts
+defined by edges, insides shown by cutaways. No glass, transparency, light,
+glow or smoke.
+
+The test: someone who knows the project recognises it at 140px, and someone who
+has read the card can point at the detail that makes it this project.
 
 ## 1. Claims
 
@@ -60,11 +55,11 @@ brag about in an interview). That becomes the **signature detail**.
 
 ## 2. Three concepts
 
-Sketch three concepts in a sentence or two each. Each is one or two real
-objects (instruments, machines, devices, hardware), never a scene or a
-pipeline. For each, name the object, the detail on it that carries the
-signature claim, and which other claims its details show. Prefer objects with
-hard, machined forms: they draw well both from an image model and in code.
+Sketch three concepts in a sentence or two each. Each is the project itself:
+for hardware work, the actual modern hardware; for software, its core structure
+(the architecture, the data structure, the process, the output) drawn as a
+technical plate. For each, name the subject, the detail that carries the
+signature claim, and which other claims its details show.
 
 ## 3. Score
 
@@ -75,7 +70,7 @@ if the best is under 10 of 12.
 |---|---|---|
 | **Specific** | could illustrate any project in the field | at least two parts only this project would have |
 | **Silhouette** | needs the detail to be recognised | recognisable from its outline at 140px |
-| **One object** | a scene, a pipeline, or floating parts joined by arrows | one or two real objects, nothing floating |
+| **Literal** | a metaphor, a vintage stand-in, or a scene | the project's own hardware or structure, as it is today |
 | **Traceable** | needs text, tone, glass, transparency, light, glow, smoke or big solid areas | opaque parts defined by edges; insides shown by cutaways |
 | **Family** | looks like clip art, or repeats a drawing already in `svgs/drawings.json` (two chips, two drones) | reads as another plate from the same book as the bee and the network |
 | **Tone** | brains, robots, glow, money signs, weapons, lightning | precise, understated, engineered |

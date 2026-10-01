@@ -1,21 +1,20 @@
 # AccliMate: Codebase Onboarding Assistant
 Card: project, left column
-Object: a hard drive with its lid off
-Code-drawn version: `svgs/draw/scenes.py`, `acclimate()`
+Subject: the repository's dependency graph, with one file opened to the lines an answer cites
 
 ## Claims → details
-| Claim (from the description) | Detail on the object |
+| Claim (from the description) | Detail in the drawing |
 |---|---|
-| Paste a GitHub URL, get a guide to the repository | the drive: where a repository lives, opened up |
-| Every claim cites the exact lines behind it | the head parked over one exact track, that span doubled and bracketed |
-| Chunked by structure, then retrieved | tracks drawn as runs of data (dashed arcs) |
+| Paste a GitHub URL, get an interactive guide to the repository | the repository itself: its files as nodes, clustered by folder |
+| Dependency tracing | directed links between the files |
+| Every claim cites the exact lines behind it | one file opened, three lines bracketed, a leader line to an answer card |
 
 ## Signature detail
-The head over one marked track: citation to the exact lines is the project's claim to trust.
+The opened file with three bracketed lines: answers cited to the exact lines.
 
 ## Prompt
 ```
-Hyper-detailed technical pen-and-ink drawing of a real, accurately proportioned object, drawn by a master technical illustrator: like a steel engraving in a 19th-century engineering journal or the cutaway in a factory service manual. Drawn with a 0.1 mm technical pen in thin black lines of slightly varying weight; no thick outlines anywhere. Every part is physically correct and real: screws, fasteners, seams, machined edges, springs, cables and small components, hundreds of them, at true scale. Tone and form come only from dense, precise hatching, cross-hatching and stippling that follow each surface's curvature. Realistic three-quarter view from slightly above with gentle perspective, as if photographed with a 50mm lens and then drawn. Black ink on pure white paper: no color, no gray wash, no gradients. One object, centered, entirely in frame with a wide white margin. No text, labels or numbers.
-The object faces toward the lower right.
-A 3.5 inch hard disk drive with its lid removed, three-quarter view: cast aluminum base with walls and screw holes along the rim, a stack of platters on the spindle with a six-screw clamp, the actuator arm with lightening holes pivoting from its bearing, the voice coil and magnet behind it, a flex cable, a breather filter and a head-parking ramp. The platter's concentric tracks are drawn as short dashed arcs like data; one track just ahead of the read head is drawn bold and bracketed at both ends. Avoid: labels, logos, text, glow, cartoon, clip art, vector icon, flat design, coloring book, thick outlines, bold uniform lines, isometric game asset, toy-like, cute, simplified, low detail, 3D render, CGI, color, gray shading, gradients, text, watermark, frame.
+Hyper-detailed modern technical pen-and-ink drawing, like a contemporary engineering patent drawing or a cutaway in a current service manual. Drawn with a 0.1 mm technical pen in thin black lines of slightly varying weight; no thick outlines anywhere. The subject is accurate and current: real parts at true scale (screws, seams, connectors, components, cables), or for a diagram, every node and connection drawn precisely as solid geometry. Tone and form come only from dense, precise hatching, cross-hatching and stippling that follow each surface. Everything is opaque and defined by its edges: no glass, transparency, light, glow, reflections, smoke or motion effects; insides are shown by cutaways with hatched cut edges. Realistic three-quarter view from slightly above with gentle perspective. Black ink on pure white paper: no color, no gray wash, no gradients. One subject, centered, entirely in frame with a wide white margin. No readable text, letters or numbers; where text or code would appear, draw short dashes.
+The subject faces toward the lower right.
+A software repository drawn as a three-dimensional dependency graph: about thirty source files as small sheets of paper, each with a folded corner and rows of short indented dashes for code, grouped in clusters by folder, joined by fine directed lines with small arrowheads. At the center one file is drawn larger, opened toward the viewer; three of its rows are enclosed by a bracket, and a leader line runs from the bracket to a small card of dashed lines beside it, the answer that cites them. Avoid: cartoon, clip art, vector icon, flat design, coloring book, thick outlines, bold uniform lines, isometric game asset, toy-like, cute, simplified, low detail, 3D render, CGI, color, gray shading, gradients, glass, transparency, glow, reflections, smoke, motion blur, vintage, antique, steampunk, Victorian, text, watermark, frame.
 ```

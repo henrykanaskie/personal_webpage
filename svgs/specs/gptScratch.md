@@ -1,21 +1,21 @@
 # GPT From Scratch
 Card: project, right column
-Object: an Enigma-style rotor machine, lid open
-Code-drawn version: `svgs/draw/scenes.py`, `gptScratch()`
+Subject: the transformer: its decoder stack as a technical plate
 
 ## Claims → details
-| Claim (from the description) | Detail on the object |
+| Claim (from the description) | Detail in the drawing |
 |---|---|
-| Transformer blocks (four, per the project) | four rotors on their spindle, between a reflector and an entry wheel |
-| Generates text one token at a time | one key pressed, one lamp lit on the lampboard |
-| Built from scratch, nothing a black box | the lid open, rotors and wiring on show |
+| Self-attention, multi-head attention | stacked attention layers with several parallel heads |
+| Positional encoding, BPE tokenizer | token blocks and wave-etched encoding plate at the base |
+| Layer, batch and RMS normalization | thin norm plates between layers |
+| A transformer built block by block (four blocks) | four identical blocks stacked, the top one exploded |
 
 ## Signature detail
-One lamp lit after four rotors: the next token, out of four blocks.
+Four identical blocks, the top one exploded into its parts: the model built by hand.
 
 ## Prompt
 ```
-Hyper-detailed technical pen-and-ink drawing of a real, accurately proportioned object, drawn by a master technical illustrator: like a steel engraving in a 19th-century engineering journal or the cutaway in a factory service manual. Drawn with a 0.1 mm technical pen in thin black lines of slightly varying weight; no thick outlines anywhere. Every part is physically correct and real: screws, fasteners, seams, machined edges, springs, cables and small components, hundreds of them, at true scale. Tone and form come only from dense, precise hatching, cross-hatching and stippling that follow each surface's curvature. Realistic three-quarter view from slightly above with gentle perspective, as if photographed with a 50mm lens and then drawn. Black ink on pure white paper: no color, no gray wash, no gradients. One object, centered, entirely in frame with a wide white margin. No text, labels or numbers.
-The object faces toward the lower left.
-An Enigma-style rotor cipher machine in a wooden case, three-quarter view, lid open and leaning back: four rotors with knurled thumbwheels and alphabet rings on a spindle between a reflector and an entry wheel, three staggered rows of round keys with one pressed, a lampboard of round lamp windows behind them with exactly one lamp lit, and a plugboard of socket pairs on the front with a few curved patch cables. Avoid: readable letters, insignia or emblems, people, glow, cartoon, clip art, vector icon, flat design, coloring book, thick outlines, bold uniform lines, isometric game asset, toy-like, cute, simplified, low detail, 3D render, CGI, color, gray shading, gradients, text, watermark, frame.
+Hyper-detailed modern technical pen-and-ink drawing, like a contemporary engineering patent drawing or a cutaway in a current service manual. Drawn with a 0.1 mm technical pen in thin black lines of slightly varying weight; no thick outlines anywhere. The subject is accurate and current: real parts at true scale (screws, seams, connectors, components, cables), or for a diagram, every node and connection drawn precisely as solid geometry. Tone and form come only from dense, precise hatching, cross-hatching and stippling that follow each surface. Everything is opaque and defined by its edges: no glass, transparency, light, glow, reflections, smoke or motion effects; insides are shown by cutaways with hatched cut edges. Realistic three-quarter view from slightly above with gentle perspective. Black ink on pure white paper: no color, no gray wash, no gradients. One subject, centered, entirely in frame with a wide white margin. No readable text, letters or numbers; where text or code would appear, draw short dashes.
+The subject faces toward the lower left.
+A decoder-only transformer drawn as a precise three-dimensional technical plate: a row of token blocks at the base, an embedding layer and a positional-encoding plate etched with sine waves, then four identical transformer blocks stacked upward like machined modules. The top block is exploded apart to show its parts: several parallel attention heads, each a square grid with its lower triangle cross-hatched, a thin normalization layer, a feed-forward layer of stippled spheres joined by fine lines, and residual connections drawn as pipes bypassing each layer. Avoid: cartoon, clip art, vector icon, flat design, coloring book, thick outlines, bold uniform lines, isometric game asset, toy-like, cute, simplified, low detail, 3D render, CGI, color, gray shading, gradients, glass, transparency, glow, reflections, smoke, motion blur, vintage, antique, steampunk, Victorian, text, watermark, frame.
 ```
