@@ -23,15 +23,28 @@ import re
 import tempfile
 from pathlib import Path
 
+import json
+
 import vtracer
-from PIL import Image
+from PIL import Image, ImageDraw
 
 OUT = Path(__file__).resolve().parent / "svg_data"
+SETTINGS = Path(__file__).resolve().parent / "source_art" / "trace.json"
 SIZE = 2048
+# Ink threshold: pixels darker than this are ink. Thin pen lines anti-alias to
+# mid grey, so it sits well above the middle; much higher and an image tool's
+# grey shading (histogram bars, washes) fills in solid black.
+INK = 190
+# Specks smaller than this many pixels are dropped. Keep it small: a short dash
+# (dashed guides, the dashed Gaussian, rows of code) is itself a tiny blob, and
+# a filter of 6 deleted every one of them.
+SPECKLE = 2
 
 
-def to_ink(image, ink):
-    """A pure black-on-white PNG of the image's ink, at SIZE on its long side."""
+def to_ink(image, ink, erase=()):
+    """A pure black-on-white PNG of the image's ink, at SIZE on its long side.
+    erase: polygons, in the source's own 1024 frame, painted out first (to drop
+    a part of the drawing that shouldn't ship)."""
     src = Path(image)
     if src.suffix.lower() == ".svg":
         import cairosvg
@@ -47,6 +60,11 @@ def to_ink(image, ink):
     scale = SIZE / max(img.size)
     if scale > 1:
         img = img.resize((round(img.width * scale), round(img.height * scale)), Image.LANCZOS)
+    if erase:
+        k = img.width / FRAME
+        pen = ImageDraw.Draw(img)
+        for poly in erase:
+            pen.polygon([(x * k, y * k) for x, y in poly], fill=255)
     bw = img.point(lambda v: 0 if v < ink else 255, mode="L")
     out = tempfile.NamedTemporaryFile(suffix=".png", delete=False).name
     bw.save(out)
@@ -110,10 +128,19 @@ def fit_to_box(svg):
     return re.sub(r'\bd="([^"]*)"', move, svg)
 
 
-def trace(name, image, ink=190, speckle=6):
+def settings(name):
+    """This drawing's saved trace settings (ink threshold, erase polygons)."""
+    if SETTINGS.exists():
+        return json.loads(SETTINGS.read_text()).get(name, {})
+    return {}
+
+
+def trace(name, image, ink=None, speckle=SPECKLE):
     out = OUT / f"{name}.svg"
+    cfg = settings(name)
+    ink = ink if ink is not None else cfg.get("ink", INK)
     vtracer.convert_image_to_svg_py(
-        to_ink(image, ink), str(out),
+        to_ink(image, ink, cfg.get("erase", ())), str(out),
         colormode="binary",
         mode="polygon",          # straight runs: a fifth the bytes of splines, so the
                                  # trim can keep every outline (fine lines are holes in
@@ -139,8 +166,8 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("name")
     ap.add_argument("image")
-    ap.add_argument("--ink", type=int, default=190, help="pixels darker than this are ink (0-255)")
-    ap.add_argument("--speckle", type=int, default=6, help="drop specks smaller than this many pixels")
+    ap.add_argument("--ink", type=int, default=None, help=f"pixels darker than this are ink (0-255); default {INK}, or the drawing's saved setting")
+    ap.add_argument("--speckle", type=int, default=SPECKLE, help="drop specks smaller than this many pixels")
     a = ap.parse_args()
     path, n = trace(a.name, a.image, a.ink, a.speckle)
     print(f"wrote svgs/svg_data/{path.name}: {n} paths")

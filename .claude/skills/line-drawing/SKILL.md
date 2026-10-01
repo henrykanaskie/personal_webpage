@@ -123,11 +123,15 @@ Hand the user the prompt and these steps:
 3. Keep the image tool's file in `svgs/source_art/<name>.svg` (or .png) and
    trace it: `python3 svgs/trace.py <name> svgs/source_art/<name>.svg`. It
    rasterises an SVG (image tools export hundreds of filled grey regions),
-   keeps only ink (`--ink`, default 190), traces in polygons (a fifth the
+   keeps only ink (`--ink`, default 190), keeps specks down to 2px (dashes are specks), traces in polygons (a fifth the
    bytes of splines, so every fine line survives the trim), bakes the tracer's
    translates into the points, and fits the drawing into the box the site's
    other drawings occupy, so the card's corner, size and offset need no
-   tuning. An image is the only route to the density of the bee and the chip.
+   tuning. Per-drawing settings live in `svgs/source_art/trace.json`: an
+   `ink` override, and `erase` polygons (in the source's 1024 frame) for parts
+   that shouldn't ship. Compare the trace against the original before
+   trimming: anything missing was lost here, not in convert.py. An image is the
+   only route to the density of the bee and the chip.
 
 Or draw it in code instead: `svgs/draw/scenes.py` holds one function per
 drawing, built from the isometric kit in `svgs/draw/iso.py` (solids,

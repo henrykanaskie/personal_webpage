@@ -37,31 +37,31 @@
       "precision": null
     },
     "acclimate": {
-      "keep": 364
+      "keep": 3272
     },
     "spriteRoom": {
-      "keep": 1439
+      "keep": 1572
     },
     "monteCarlo": {
-      "keep": 684
+      "keep": 839
     },
     "gptScratch": {
-      "keep": 2150
+      "keep": 2321
     },
     "capMatch": {
-      "keep": 648
+      "keep": 420
     },
     "smallsh": {
       "keep": 368
     },
     "groupStat": {
-      "keep": 502
+      "keep": 608
     },
     "aggregateAnalytics": {
-      "keep": 1049
+      "keep": 1262
     },
     "groundControl": {
-      "keep": 1779
+      "keep": 1863
     }
   }
 }

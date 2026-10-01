@@ -22,6 +22,7 @@ paths, full precision).
 
 import argparse
 import gzip
+import math
 import json
 import re
 import sys
@@ -38,6 +39,8 @@ NUMBER = re.compile(r"-?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?")
 # to 400 KB, the truck and satellite still read at card size with about 20% of
 # their linework, so share alone says little; the thumbnail is the real test.
 SPARSE_SHARE = 0.15
+# Most <path> elements a drawing may have: each one animates on its own.
+MAX_PATHS = 400
 DENSE_SOURCE = 5000
 
 
@@ -99,7 +102,12 @@ def trim(units, keep, per_path=None):
             kept.setdefault(parent, []).append(unit)
     if not per_path:
         return ["".join(parts) for parts in kept.values()]
-    return ["".join(parts[i:i + per_path]) for parts in kept.values() for i in range(0, len(parts), per_path)]
+    # Group outlines in drawing order, across paths: a tracer may make every dash
+    # its own path, and thousands of animated <path> elements on one card is a
+    # scroll freeze. At least per_path outlines per path, at most MAX_PATHS paths.
+    flat = [u for parts in kept.values() for u in parts]
+    n = max(per_path, math.ceil(len(flat) / MAX_PATHS))
+    return ["".join(flat[i:i + n]) for i in range(0, len(flat), n)]
 
 
 def render_ts(name, kept):
