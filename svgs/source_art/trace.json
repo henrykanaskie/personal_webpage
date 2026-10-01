@@ -55,9 +55,72 @@
     "note": "the capacitor reel and its tape, below the board's lower edge, removed at the user's request"
   },
   "spriteRoom": {
-    "strong": 80,
+    "erase": [
+      [
+        [
+          122,
+          262
+        ],
+        [
+          362,
+          203
+        ],
+        [
+          362,
+          672
+        ],
+        [
+          122,
+          724
+        ]
+      ],
+      [
+        [
+          460,
+          153
+        ],
+        [
+          515,
+          135
+        ],
+        [
+          660,
+          89
+        ],
+        [
+          660,
+          147
+        ],
+        [
+          515,
+          186
+        ],
+        [
+          470,
+          172
+        ]
+      ],
+      [
+        [
+          140,
+          261
+        ],
+        [
+          345,
+          186
+        ],
+        [
+          345,
+          200
+        ],
+        [
+          140,
+          275
+        ]
+      ]
+    ],
     "min_area": 60,
-    "note": "the screen's faint wallpaper only half crosses the threshold; demand darker ink so it drops out whole"
+    "note": "the screen's desktop wallpaper (left of the room panel, and the strip above it) is erased so the screen reads as a plain panel"
   },
   "monteCarlo": {
     "strong": 80,
