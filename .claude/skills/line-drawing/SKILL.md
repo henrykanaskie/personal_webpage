@@ -76,7 +76,7 @@ if the best is under 10 of 12.
 | **Specific** | could illustrate any project in the field | at least two parts only this project would have |
 | **Silhouette** | needs the detail to be recognised | recognisable from its outline at 140px |
 | **One object** | a scene, a pipeline, or floating parts joined by arrows | one or two real objects, nothing floating |
-| **Traceable** | needs text, tone, gradients, photo realism or big solid areas | pure line work and hatching |
+| **Traceable** | needs text, tone, glass, transparency, light, glow, smoke or big solid areas | opaque parts defined by edges; insides shown by cutaways |
 | **Family** | looks like clip art, or repeats a drawing already in `svgs/drawings.json` (two chips, two drones) | reads as another plate from the same book as the bee and the network |
 | **Tone** | brains, robots, glow, money signs, weapons, lightning | precise, understated, engineered |
 
