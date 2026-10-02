@@ -43,25 +43,25 @@
       "keep": 1269
     },
     "monteCarlo": {
-      "keep": 600
+      "keep": 593
     },
     "gptScratch": {
       "keep": 2266
     },
     "capMatch": {
-      "keep": 405
+      "keep": 400
     },
     "smallsh": {
       "keep": 368
     },
     "groupStat": {
-      "keep": 578
+      "keep": 577
     },
     "aggregateAnalytics": {
-      "keep": 1228
+      "keep": 1218
     },
     "groundControl": {
-      "keep": 1754
+      "keep": 1752
     }
   }
 }
