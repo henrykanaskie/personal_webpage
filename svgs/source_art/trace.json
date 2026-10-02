@@ -117,10 +117,100 @@
           140,
           275
         ]
+      ],
+      [
+        [
+          400,
+          185
+        ],
+        [
+          411,
+          183
+        ],
+        [
+          411,
+          198
+        ],
+        [
+          400,
+          198
+        ]
+      ],
+      [
+        [
+          438,
+          176
+        ],
+        [
+          458,
+          172
+        ],
+        [
+          458,
+          183
+        ],
+        [
+          440,
+          184
+        ]
+      ],
+      [
+        [
+          486,
+          182
+        ],
+        [
+          503,
+          182
+        ],
+        [
+          503,
+          196
+        ],
+        [
+          486,
+          198
+        ]
+      ],
+      [
+        [
+          662,
+          157
+        ],
+        [
+          671,
+          157
+        ],
+        [
+          671,
+          250
+        ],
+        [
+          662,
+          250
+        ]
+      ],
+      [
+        [
+          344,
+          183.3
+        ],
+        [
+          452,
+          152.0
+        ],
+        [
+          452,
+          172.6
+        ],
+        [
+          344,
+          203.9
+        ]
       ]
     ],
     "min_area": 60,
-    "note": "the screen's desktop wallpaper (left of the room panel, and the strip above it) is erased so the screen reads as a plain panel",
+    "note": "the screen's desktop wallpaper is erased so the screen reads as a plain panel; the notch is painted solid (its hatching broke it into slashes) with hairline hatch strokes trimmed beside it; the room's back corner line, which climbed above the walls to the panel edge, is cut back to the walls",
     "drop": [
       [
         214,
@@ -139,6 +229,75 @@
         602,
         124,
         628
+      ]
+    ],
+    "paint": [
+      [
+        [
+          356,
+          176.8
+        ],
+        [
+          446,
+          150.7
+        ],
+        [
+          446,
+          171.8
+        ],
+        [
+          445.8,
+          173.3
+        ],
+        [
+          445.0,
+          174.7
+        ],
+        [
+          443.9,
+          175.8
+        ],
+        [
+          442.5,
+          176.6
+        ],
+        [
+          441.0,
+          176.8
+        ],
+        [
+          361.0,
+          202.9
+        ],
+        [
+          359.5,
+          202.7
+        ],
+        [
+          358.1,
+          201.9
+        ],
+        [
+          357.0,
+          200.8
+        ],
+        [
+          356.2,
+          199.4
+        ],
+        [
+          356.0,
+          197.9
+        ]
+      ]
+    ],
+    "open": [
+      [
+        340,
+        176,
+        408,
+        202,
+        3
       ]
     ]
   },

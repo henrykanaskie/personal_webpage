@@ -134,7 +134,10 @@ Hand the user the prompt and these steps:
    stroke, e.g. to drop a faint wallpaper), `min_area`, `solidify` ([k,
    density], fills mottled grey shading so it traces as one silhouette), `drop` boxes (removes only
    ink blobs lying wholly inside a box: the safe way to delete a stray mark
-   next to a real edge), and `erase` polygons (in the source's 1024 frame) for parts
+   next to a real edge), `paint` polygons (filled with ink after cleanup: rebuild a
+   shape its hatching broke up, like the laptop's notch), `open` boxes (trim
+   hairline protrusions inside a box; keep them away from thin real lines), and
+   `erase` polygons (in the source's 1024 frame) for parts
    that shouldn't ship. Review each trace at full size for grit, broken half-lines and
    stray fragments, and tune that drawing's settings until it is clean. An image is the
    only route to the density of the bee and the chip.
