@@ -2,7 +2,7 @@
 
 import { useRef, useCallback, useState, useEffect, memo } from "react";
 import { motion, type TargetAndTransition, type Transition } from "framer-motion";
-import { useGlassLens, LiquidBud } from "@/lib/liquid";
+import { useGlassLens, LiquidBud, useBud } from "@/lib/liquid";
 
 // ─── Border Vapor Particle ───
 interface BorderParticle {
@@ -234,15 +234,13 @@ const POP_TRANSITION: Transition = {
   opacity: { duration: 0.08 },
 };
 const SETTLE_TRANSITION: Transition = {
-  // The droplet itself is drawn by LiquidBud; this element only
-  // fades in once the droplet has settled onto its box.
+  // The bubble's opacity isn't animated here: LiquidBud flies the bubble in
+  // and useBud shows or hides it after (a MotionValue on its style).
   x: SETTLE_SPRING,
   y: SETTLE_SPRING,
   top: SETTLE_SPRING,
   scaleX: PRESS_SPRING,
   scaleY: PRESS_SPRING,
-  // the clear bubble frosts over: a slower crossfade with the droplet
-  opacity: { duration: 0.32, ease: "easeInOut" },
 };
 const BUBBLE_EXIT: TargetAndTransition = { opacity: 0, transition: { duration: 0.001 } };
 const BUBBLE_HOVER: TargetAndTransition = { scale: 1.03, transition: { duration: 0.2 } };
@@ -368,8 +366,9 @@ export function InfoBubble({
 }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
   const lens = useGlassLens(bubbleRef, { radius: 32, frost: BUBBLE_FROST });
-  // Hidden at its resting spot until LiquidBud has grown the droplet onto it.
-  const [budDone, setBudDone] = useState(false);
+  // Invisible at its resting spot until LiquidBud flies it there from the
+  // card's side; then shown while its card is in view.
+  const bud = useBud(!!parentInView);
   const showBelow = isMobile;
   const isRight = side === "right";
   const [isPressed, setIsPressed] = useState(false);
@@ -391,7 +390,7 @@ export function InfoBubble({
   return (
     <>
       {lens.filter}
-      <LiquidBud bubbleRef={bubbleRef} bubbleRadius={32} onDone={() => setBudDone(true)} />
+      <LiquidBud bubbleRef={bubbleRef} bubbleRadius={32} glass={bud.glass} content={bud.content} onDone={bud.onDone} />
       <motion.div
         ref={bubbleRef}
         style={{
@@ -407,6 +406,7 @@ export function InfoBubble({
           transformOrigin: showBelow ? "center top" : isRight ? "left center" : "right center",
           zIndex: 9999999,
           willChange: "auto",
+          opacity: bud.glass,
           ...lens.style,
         }}
         className="glass-bubble"
@@ -414,7 +414,7 @@ export function InfoBubble({
           if (onLink(e)) return;
           pop();
         }}
-        initial={{ ...rest, opacity: 0 }}
+        initial={rest}
         onMouseDown={(e) => {
           if (onLink(e)) return;
           setIsPressed(true);
@@ -437,17 +437,18 @@ export function InfoBubble({
           if (isTap(touchStartRef.current, e.changedTouches[0])) pop();
           touchStartRef.current = null;
         }}
-        animate={{ ...rest, ...motionProps.scale, opacity: budDone && parentInView ? 1 : 0 }}
+        animate={{ ...rest, ...motionProps.scale }}
         transition={motionProps.transition}
         exit={motionProps.exit}
         whileHover={motionProps.whileHover}
       >
-        <div
+        <motion.div
           style={{
             position: "relative",
             zIndex: 1,
             pointerEvents: "auto",
             textAlign: "center",
+            opacity: bud.content,
           }}
         >
           {/* Duration */}
@@ -506,7 +507,7 @@ export function InfoBubble({
           <BubbleFact label="Location" value={extraInfo.location} />
 
           <DismissHint isMobile={isMobile} style={{ margin: "7px 0 0", fontSize: 9 }} />
-        </div>
+        </motion.div>
       </motion.div>
     </>
   );

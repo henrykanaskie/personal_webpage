@@ -9,8 +9,8 @@
 export const paper = {
   gap: 24,
   dotRadius: 1.15,
-  light: { bg: [0xf1, 0xf0, 0xed], dot: [52, 48, 42], dotAlpha: 0.27 },
-  dark: { bg: [0x0c, 0x0d, 0x10], dot: [196, 204, 222], dotAlpha: 0.16 },
+  light: { bg: [0xf1, 0xf0, 0xed], dot: [52, 48, 42], dotAlpha: 0.38 },
+  dark: { bg: [0x0c, 0x0d, 0x10], dot: [196, 204, 222], dotAlpha: 0.24 },
   // The cards' fill (--card-fill), the same as the bubbles' (--bubble-fill):
   // the shaders paint it wherever a card's liquid edge reaches past its DOM box.
   glass: {

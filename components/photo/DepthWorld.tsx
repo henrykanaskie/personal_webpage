@@ -67,7 +67,6 @@ export default function DepthWorld({
   const t = photoTheme(isDark);
   const router = useRouter();
   const outerRef = useRef<HTMLElement>(null);
-  const flyRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
   const planeRefs = useRef<(HTMLDivElement | null)[]>([]);
   const fillRef = useRef<HTMLDivElement>(null);
@@ -80,7 +79,18 @@ export default function DepthWorld({
   // The camera's current depth, for click handlers that need to know how far away something is
   const camRef = useRef(0);
   // Entering a chapter: the camera dives from where it is, through the target, and the page changes
-  const diveRef = useRef<{ from: number; to: number; start: number; dur: number } | null>(null);
+  // Entering a chapter: the camera floats to what you clicked, then it opens into the chapter
+  const diveRef = useRef<{
+    plane: number;
+    href: string;
+    lift: () => boolean;
+    from: number;
+    to: number;
+    start: number;
+    dur: number;
+    lifted: number | null;
+    pushed: boolean;
+  } | null>(null);
   const isMobile = !!useIsMobile();
   const reduceMotion = !!useReducedMotion();
 
@@ -153,14 +163,17 @@ export default function DepthWorld({
   const plainClick = (e: React.MouseEvent) => !(e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0);
 
   /**
-   * Into a chapter as one motion. What you clicked is lifted out of the scene (dive.ts) and flown
-   * into its place on the chapter page, while the camera dives on through `z` and the world
-   * dissolves around it; the page changes early, underneath, so the chapter is already opening up
-   * by the time the title (or print) lands. There's no moment where the screen is empty and nothing
-   * plays a second entrance. (It used to dive, fade to nothing, cut, and then raise the chapter's
-   * title on its own.)
+   * Into a chapter as one floating motion, in two parts with no seam between them:
+   *   1. Float: the camera glides through the scene, easing in and out, drifting sideways as it goes,
+   *      until what you clicked is centred, facing you and large. Nothing leaves the 3D scene.
+   *   2. Open: only then (centred and square to the screen, so the hand-over can't be seen) the title
+   *      is lifted into the overlay that carries it into the chapter's heading, or the print into its
+   *      tile (dive.ts), while the rest of the scene fades out object by object. The page changes once
+   *      the scene has gone, so there's never a cut.
+   * The scene is never faded as a whole: opacity on a 3D container flattens it, and every print
+   * jumped to a different size in one frame (that was the flash).
    */
-  const dive = (z: number, href: string, lift: (el: HTMLElement) => boolean) => (e: React.MouseEvent) => {
+  const dive = (plane: number, href: string, lift: (el: HTMLElement) => boolean) => (e: React.MouseEvent) => {
     if (!plainClick(e)) return;
     e.preventDefault();
     if (diveRef.current) return;
@@ -169,16 +182,33 @@ export default function DepthWorld({
       router.push(href);
       return;
     }
-    lift(e.currentTarget as HTMLElement);
+    const el = e.currentTarget as HTMLElement;
+    const p = planes[plane];
+    // How close to get: near enough that it fills the view comfortably. Under perspective P an
+    // element of CSS size s at depth d looks s * P / (P + d) big, so d = P * s / wanted - P.
+    const P = isMobile ? 700 : 1000;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const size = p.kind === "station" ? el.querySelector<HTMLElement>("[data-station-title]") ?? el : el;
+    const w = size.offsetWidth;
+    const h = size.offsetHeight;
+    const near =
+      p.kind === "station"
+        ? Math.max(150, P * (w / (vw * 0.62)) - P)
+        : Math.max(80, P * (h / (vh * 0.72)) - P, P * (w / (vw * 0.86)) - P);
     const from = camRef.current;
-    const to = z + 250; // just past it: the rest of the scene slips by the lens
-    diveRef.current = { from, to, start: performance.now(), dur: 650 + Math.min(1000, Math.abs(to - from) * 0.18) };
-    const fly = flyRef.current;
-    if (fly) {
-      fly.style.transition = "opacity 0.5s ease-in";
-      fly.style.opacity = "0";
-    }
-    window.setTimeout(() => router.push(href), 320);
+    const to = Math.max(from, p.z - near);
+    diveRef.current = {
+      plane,
+      href,
+      lift: () => lift(el),
+      from,
+      to,
+      start: performance.now(),
+      dur: 900 + Math.min(1700, (to - from) * 0.3),
+      lifted: null,
+      pushed: false,
+    };
   };
 
   // Camera loop, running only while the world is on screen
@@ -214,11 +244,34 @@ export default function DepthWorld({
       const target = progress() * depth + introOffset;
       const prev = camZ;
       const dv = diveRef.current;
+      // 0 -> 1 over the float; the clicked thing straightens and the camera centres on it
+      let ease = 0;
+      // the scene fades object by object once what you clicked has been lifted out
+      let fade = 1;
       if (dv) {
-        // s(t) = t^2 (2 - t): starts from rest, ends still moving (s'(1) = 1), and past t = 1 it
-        // carries on at that speed while the page fades out
-        const t = (now - dv.start) / dv.dur;
-        camZ = dv.from + (dv.to - dv.from) * (t < 1 ? t * t * (2 - t) : t);
+        const u = Math.min(1, (now - dv.start) / dv.dur);
+        // sine ease: its peak speed is about 1.6x the average (a cubic ease peaks at 3x, which
+        // whipped the prints nearest the lens past on long floats); this reads as drifting
+        ease = (1 - Math.cos(Math.PI * u)) / 2;
+        camZ = dv.from + (dv.to - dv.from) * ease;
+        if (u >= 1 && dv.lifted === null) {
+          dv.lifted = now;
+          dv.lift();
+        }
+        if (dv.lifted !== null) {
+          const since = now - dv.lifted;
+          // keep drifting gently forward while the scene fades, so nothing ever stops dead
+          camZ += 160 * (1 - Math.exp(-since / 500));
+          fade = Math.max(0, 1 - since / 450);
+          // Change page halfway through the scene's fade: the page's own exit fade (outside the 3D
+          // scene, so it can't flatten it) finishes the job, and the chapter mounts sooner
+          if (since > 200 && !dv.pushed) {
+            dv.pushed = true;
+            // no scroll: Next would jump to the top while the scene is still showing (a visible shift on
+            // phones); the page transition scrolls up once the old page is gone
+            router.push(dv.href, { scroll: false });
+          }
+        }
       } else {
         camZ += (target - camZ) * (reduceMotion ? 1 : smoothing(intro < 1 ? 0.2 : 0.075, dt));
       }
@@ -232,9 +285,22 @@ export default function DepthWorld({
       const vh = window.innerHeight;
       const mobile = vw < 768;
       const time = reduceMotion ? 0 : now / 1000;
-      const roll = Math.max(-4, Math.min(4, velocity * 0.0016));
+      // the lean from speed and the pointer's look settle to level while floating to a target
+      const level = 1 - ease;
+      const roll = Math.max(-4, Math.min(4, velocity * 0.0016)) * level;
       if (worldRef.current) {
-        worldRef.current.style.transform = `rotateZ(${roll.toFixed(2)}deg) rotateY(${(look.x * 3).toFixed(2)}deg) rotateX(${(-look.y * 2).toFixed(2)}deg)`;
+        worldRef.current.style.transform = `rotateZ(${roll.toFixed(2)}deg) rotateY(${(look.x * 3 * level).toFixed(2)}deg) rotateX(${(-look.y * 2 * level).toFixed(2)}deg)`;
+      }
+      // The camera drifts sideways toward the target as it floats: every plane shifts by the same
+      // amount, which is the same as moving the camera
+      let panX = 0;
+      let panY = 0;
+      if (dv) {
+        const tp = planes[dv.plane];
+        const tx = tp.kind === "station" ? tp.x * vw : tp.kind === "photo" ? tp.x * vw * (mobile ? 0.6 : 1) : 0;
+        const ty = tp.kind === "station" ? 0.07 * vh : tp.kind === "photo" ? tp.y * vh : 0;
+        panX = tx * ease;
+        panY = ty * ease;
       }
 
       let best = Infinity;
@@ -250,17 +316,26 @@ export default function DepthWorld({
         }
         if (el.style.visibility !== "visible") el.style.visibility = "visible";
 
+        const isTarget = !!dv && dv.plane === i;
         // Out of the dark far away; gone only in the last moment before the lens
         let o = rel > FAR * 0.6 ? 1 - (rel - FAR * 0.6) / (FAR * 0.4) : 1;
-        if (rel < 160) o *= Math.max(0, (rel + 200) / 360);
-        el.style.opacity = o.toFixed(3);
+        if (rel < 160 && !isTarget) o *= Math.max(0, (rel + 200) / 360);
+        // While floating to a target, anything else that comes close to the lens dissolves as it
+        // nears instead of whipping past at the float's full speed
+        // (phased in over the first quarter second, so things already close don't dim at the click)
+        if (dv && !isTarget) {
+          const near = Math.min(1, Math.max(0, (rel - 100) / 600));
+          const phase = Math.min(1, (now - dv.start) / 250);
+          o *= 1 - phase * (1 - near);
+        }
+        el.style.opacity = (o * fade).toFixed(3);
 
         if (p.kind === "intro" || p.kind === "station") {
           // The opening title sits low and to the left so the world opens up behind it;
           // station titles sit a little below centre, under the vanishing point where prints converge
-          const x = p.kind === "station" ? p.x * vw : mobile ? 0 : -0.2 * vw;
-          const y = p.kind === "station" ? 0.07 * vh : mobile ? 0.22 * vh : 0.24 * vh;
-          const rz = p.kind === "station" ? p.rz : 0;
+          const x = (p.kind === "station" ? p.x * vw : mobile ? 0 : -0.2 * vw) - panX;
+          const y = (p.kind === "station" ? 0.07 * vh : mobile ? 0.22 * vh : 0.24 * vh) - panY;
+          const rz = p.kind === "station" ? p.rz * (isTarget ? 1 - ease : 1) : 0;
           el.style.transform = `translate(-50%, -50%) translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, ${(-rel).toFixed(1)}px) rotateZ(${rz}deg)`;
           // Titles stay clickable as long as you can see them, however far away
           el.style.pointerEvents = p.kind === "station" && rel > 120 && rel < FAR * 0.9 ? "auto" : "none";
@@ -268,14 +343,17 @@ export default function DepthWorld({
         }
 
         // Approaching prints swing outward and turn to face the camera as they pass
-        const pass = rel < PASS ? 1 - Math.max(rel, 0) / PASS : 0;
+        // The print being floated to eases out of its swing, drift and tilt as the float goes on, so it
+        // squares up to the camera (cutting them off at the click moved it hundreds of px in a frame)
+        const pass = rel < PASS ? (1 - Math.max(rel, 0) / PASS) * (isTarget ? 1 - ease : 1) : 0;
         const spread = 1 + pass * pass * 1.1;
-        const settle = 1 - pass * 0.65;
-        const fx = Math.sin(time * 0.35 + p.phase) * 14;
-        const fy = Math.cos(time * 0.28 + p.phase * 1.3) * 11;
-        const x = p.x * vw * (mobile ? 0.6 : 1) * spread + fx;
-        const y = p.y * vh * spread + fy;
-        const rz = p.rz * settle + Math.sin(time * 0.22 + p.phase) * 1.6;
+        const settle = (1 - pass * 0.65) * (isTarget ? 1 - ease : 1);
+        const drift = isTarget ? 1 - ease : 1;
+        const fx = Math.sin(time * 0.35 + p.phase) * 14 * drift;
+        const fy = Math.cos(time * 0.28 + p.phase * 1.3) * 11 * drift;
+        const x = p.x * vw * (mobile ? 0.6 : 1) * spread + fx - panX;
+        const y = p.y * vh * spread + fy - panY;
+        const rz = p.rz * settle + Math.sin(time * 0.22 + p.phase) * 1.6 * drift;
         el.style.transform = `translate(-50%, -50%) translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, ${(-rel).toFixed(1)}px) rotateX(${(
           p.rx * settle
         ).toFixed(2)}deg) rotateY(${(p.ry * settle).toFixed(2)}deg) rotateZ(${rz.toFixed(2)}deg)`;
@@ -312,7 +390,7 @@ export default function DepthWorld({
       cancelAnimationFrame(raf);
       window.removeEventListener("pointermove", onMove);
     };
-  }, [planes, stops, depth, reduceMotion]);
+  }, [planes, stops, depth, reduceMotion, router]);
 
   const nearItem = items[near];
   const glow = nearItem ? rgbTriplet(nearItem.photo.palette[1] ?? nearItem.photo.color) : "120,120,160";
@@ -356,7 +434,8 @@ export default function DepthWorld({
         />
 
         {/* These full-screen layers sit at depth 0, in front of every print, so they must let clicks through */}
-        <div ref={flyRef} style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d", pointerEvents: "none" }}>
+        {/* Never give these 3D layers an opacity: it flattens the whole scene in one frame */}
+        <div style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d", pointerEvents: "none" }}>
           <div ref={worldRef} style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d", pointerEvents: "none" }}>
             {planes.map((p, i) => {
               const ref = (el: HTMLDivElement | null) => {
@@ -403,12 +482,12 @@ export default function DepthWorld({
                     <Link
                       href={stop.href}
                       data-af=""
-                      onClick={dive(stop.z, stop.href, (el) => {
+                      onClick={dive(i, stop.href, (el) => {
                         const cover = covers.get(stop.href);
                         return diveTitle({
                           href: stop.href,
                           from: el.querySelector<HTMLElement>("[data-station-title]") ?? el,
-                          rotation: p.rz,
+                          rotation: 0,
                           title: stop.title,
                           titleSize: chapterTitleSize(stop.title),
                           cover: cover ? coverSrc(cover) : null,
@@ -478,12 +557,12 @@ export default function DepthWorld({
                     type="button"
                     data-af=""
                     aria-label={`Go to ${p.item.sectionTitle}`}
-                    onClick={dive(p.z, `/photography/${p.item.sectionId}`, (el) =>
+                    onClick={dive(i, `/photography/${p.item.sectionId}`, (el) =>
                       divePrint({
                         href: `/photography/${p.item.sectionId}`,
                         from: (el.firstElementChild as HTMLElement | null) ?? el,
                         img: el.querySelector("img"),
-                        rotation: p.rz * 0.5,
+                        rotation: 0,
                         src: p.item.photo.src,
                         aspect: aspect(p.item.photo),
                       }),
