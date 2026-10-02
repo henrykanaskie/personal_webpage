@@ -132,8 +132,9 @@ Hand the user the prompt and these steps:
    drops grit that isn't dash-shaped. Per-drawing settings live in
    `svgs/source_art/trace.json`: `ink`, `strong` (raise darkness demanded of a
    stroke, e.g. to drop a faint wallpaper), `min_area`, `solidify` ([k,
-   density], fills mottled grey shading so it traces as one silhouette), and
-   `erase` polygons (in the source's 1024 frame) for parts
+   density], fills mottled grey shading so it traces as one silhouette), `drop` boxes (removes only
+   ink blobs lying wholly inside a box: the safe way to delete a stray mark
+   next to a real edge), and `erase` polygons (in the source's 1024 frame) for parts
    that shouldn't ship. Review each trace at full size for grit, broken half-lines and
    stray fragments, and tune that drawing's settings until it is clean. An image is the
    only route to the density of the bee and the chip.

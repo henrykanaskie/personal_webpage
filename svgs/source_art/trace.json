@@ -120,7 +120,27 @@
       ]
     ],
     "min_area": 60,
-    "note": "the screen's desktop wallpaper (left of the room panel, and the strip above it) is erased so the screen reads as a plain panel"
+    "note": "the screen's desktop wallpaper (left of the room panel, and the strip above it) is erased so the screen reads as a plain panel",
+    "drop": [
+      [
+        214,
+        662,
+        250,
+        690
+      ],
+      [
+        123,
+        686,
+        150,
+        717
+      ],
+      [
+        114,
+        602,
+        124,
+        628
+      ]
+    ]
   },
   "monteCarlo": {
     "strong": 80,

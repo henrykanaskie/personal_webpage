@@ -79,7 +79,20 @@ def clean(gray, ink, strong, min_area=None, solidify=None):
     return mask
 
 
-def to_ink(image, ink, erase=(), strong=None, min_area=None, solidify=None):
+def drop_blobs(mask, boxes, k):
+    """Removes each ink blob lying entirely inside one of the boxes ([x0, y0,
+    x1, y1] in the source's 1024 frame). A blob that only crosses a box is
+    kept, so a real edge next to a stray mark can't be clipped."""
+    n, labels, stats, _ = cv2.connectedComponentsWithStats(mask.astype(np.uint8), connectivity=8)
+    x, y, w, h = (stats[:, i] for i in (cv2.CC_STAT_LEFT, cv2.CC_STAT_TOP, cv2.CC_STAT_WIDTH, cv2.CC_STAT_HEIGHT))
+    gone = np.zeros(n, bool)
+    for x0, y0, x1, y1 in boxes:
+        gone |= (x >= x0 * k) & (y >= y0 * k) & (x + w <= x1 * k) & (y + h <= y1 * k)
+    gone[0] = False
+    return mask & ~gone[labels]
+
+
+def to_ink(image, ink, erase=(), strong=None, min_area=None, solidify=None, drop=()):
     """A pure black-on-white PNG of the image's ink, at SIZE on its long side.
     erase: polygons, in the source's own 1024 frame, painted out first (to drop
     a part of the drawing that shouldn't ship)."""
@@ -104,6 +117,8 @@ def to_ink(image, ink, erase=(), strong=None, min_area=None, solidify=None):
         for poly in erase:
             pen.polygon([(x * k, y * k) for x, y in poly], fill=255)
     mask = clean(np.asarray(img), ink, strong if strong is not None else STRONG, min_area, solidify)
+    if drop:
+        mask = drop_blobs(mask, drop, img.width / FRAME)
     bw = Image.fromarray(np.where(mask, 0, 255).astype(np.uint8), mode="L")
     out = tempfile.NamedTemporaryFile(suffix=".png", delete=False).name
     bw.save(out)
@@ -179,7 +194,7 @@ def trace(name, image, ink=None, speckle=SPECKLE):
     cfg = settings(name)
     ink = ink if ink is not None else cfg.get("ink", INK)
     vtracer.convert_image_to_svg_py(
-        to_ink(image, ink, cfg.get("erase", ()), cfg.get("strong"), cfg.get("min_area"), cfg.get("solidify")), str(out),
+        to_ink(image, ink, cfg.get("erase", ()), cfg.get("strong"), cfg.get("min_area"), cfg.get("solidify"), cfg.get("drop", ())), str(out),
         colormode="binary",
         mode="polygon",          # straight runs: a fifth the bytes of splines, so the
                                  # trim can keep every outline (fine lines are holes in
